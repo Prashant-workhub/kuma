@@ -29,7 +29,17 @@ export type PageId =
   | 'faculty-learning-analytics'
   | 'faculty-lecture-insights'
   | 'faculty-announcements'
-  | 'faculty-activity-center';
+  | 'faculty-activity-center'
+  | 'admin-dashboard'
+  | 'admin-organization'
+  | 'admin-trainees'
+  | 'admin-trainers'
+  | 'admin-competencies'
+  | 'admin-training-programs'
+  | 'admin-assessments'
+  | 'admin-analytics'
+  | 'admin-certificates'
+  | 'admin-settings';
 
 export interface Citation {
   text: string;
@@ -414,7 +424,7 @@ export interface SlideBlueprint {
   designNotes: string;
 }
 
-export type UserRole = 'student' | 'faculty';
+export type UserRole = 'student' | 'faculty' | 'admin' | 'trainee' | 'trainer';
 
 export interface FacultyProfile {
   uid: string;

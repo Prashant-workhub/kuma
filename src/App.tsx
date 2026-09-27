@@ -70,10 +70,11 @@ import GuidedTour from './components/GuidedTour';
 import NotificationPermissionBanner from './components/NotificationPermissionBanner';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
 
-// Faculty Portal Imports
+// Faculty & Admin Portal Imports
 import { subscribeFacultyDoubts, generateTeacherCode } from './services/teacherDoubtService';
 import FacultyOnboardingView from './components/faculty/FacultyOnboardingView';
 import TeacherPortalApp from './teacher-portal/TeacherPortalApp';
+import AdminPortalApp from './admin/AdminPortalApp';
 
 
 export default function App() {
@@ -138,7 +139,7 @@ export default function App() {
 
   // Authenticated user session state & Role state
   const [sessionUser, setSessionUser] = useState<{ uid: string; fullName: string; emailAddress: string } | null>(null);
-  const [userRole, setUserRole] = useState<'student' | 'faculty'>('student');
+  const [userRole, setUserRole] = useState<'student' | 'faculty' | 'admin'>('student');
   const [doubts, setDoubts] = useState<DoubtItem[]>([]);
 
   // Onboarding checks
@@ -255,7 +256,15 @@ export default function App() {
             console.log("User data loaded from Firestore database:", data);
             
             const isCompleted = !!data.onboarding_completed;
-            const detectedRole = data.role === 'faculty' ? 'faculty' : 'student';
+            const rawRole = (data.role || '').toLowerCase();
+            const userEmail = (loggedUser.emailAddress || '').toLowerCase();
+            
+            let detectedRole: 'student' | 'faculty' | 'admin' = 'student';
+            if (rawRole === 'admin' || userEmail === 'admin@acme.com' || userEmail.includes('admin')) {
+              detectedRole = 'admin';
+            } else if (rawRole === 'faculty' || rawRole === 'teacher' || rawRole === 'trainer' || userEmail.includes('trainer')) {
+              detectedRole = 'faculty';
+            }
             setUserRole(detectedRole);
 
             const calculatedCode = detectedRole === 'faculty'
@@ -302,7 +311,10 @@ export default function App() {
               fullName: fullNameFromDb
             });
 
-            if (detectedRole === 'faculty') {
+            if (detectedRole === 'admin') {
+              setIsOnboarding(false);
+              setActivePage('admin-dashboard');
+            } else if (detectedRole === 'faculty') {
               if (!isCompleted || !data.teacherCode) {
                 setIsOnboarding(true);
               } else {
@@ -364,6 +376,15 @@ export default function App() {
       navigate(targetPath);
     }
   };
+
+  // Admin Route Protection Guard: Blocks unauthorized users from entering /admin/* pages
+  useEffect(() => {
+    if (sessionUser && activePage.startsWith('admin-') && userRole !== 'admin') {
+      console.warn(`[Security] Unauthorized access attempt to ${activePage} by non-admin user (${userRole}). Redirecting...`);
+      setActivePage(userRole === 'faculty' ? 'faculty-dashboard' : 'dashboard');
+    }
+  }, [activePage, userRole, sessionUser]);
+
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [isOpenMobile, setIsOpenMobile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -772,9 +793,22 @@ export default function App() {
               localStorage.setItem('kuma_user_api_key', data.api_key);
               if (data.ai_provider) localStorage.setItem(`kuma_user_api_key_${data.ai_provider}`, data.api_key);
             }
-            const detectedRole = data.role === 'faculty' || user.role === 'faculty' ? 'faculty' : 'student';
+            const rawRole = (user.role || data.role || '').toLowerCase();
+            const userEmail = (data.email || user.emailAddress || currentUser.email || '').toLowerCase();
+            const detectedRole: 'student' | 'faculty' | 'admin' = (rawRole === 'admin' || userEmail === 'admin@acme.com' || userEmail.includes('admin'))
+              ? 'admin'
+              : (rawRole === 'faculty' || rawRole === 'teacher' || rawRole === 'trainer' || userEmail.includes('trainer'))
+              ? 'faculty'
+              : 'student';
+
             setUserRole(detectedRole);
-            setActivePage(detectedRole === 'faculty' ? 'faculty-dashboard' : 'dashboard');
+            if (detectedRole === 'admin') {
+              setActivePage('admin-dashboard');
+            } else if (detectedRole === 'faculty') {
+              setActivePage('faculty-dashboard');
+            } else {
+              setActivePage('dashboard');
+            }
             setSessionUser({
               uid: currentUser.uid,
               fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.fullName || user.fullName || currentUser.displayName || 'Academic Scholar',
@@ -788,11 +822,20 @@ export default function App() {
       }
     }
 
-    if (user.role === 'faculty') {
-      setUserRole('faculty');
+    const fallbackEmail = (user.emailAddress || '').toLowerCase();
+    const fallbackRole = (user.role || '').toLowerCase();
+    const detectedRole: 'student' | 'faculty' | 'admin' = (fallbackRole === 'admin' || fallbackEmail === 'admin@acme.com' || fallbackEmail.includes('admin'))
+      ? 'admin'
+      : (fallbackRole === 'faculty' || fallbackRole === 'trainer' || fallbackEmail.includes('trainer'))
+      ? 'faculty'
+      : 'student';
+
+    setUserRole(detectedRole);
+    if (detectedRole === 'admin') {
+      setActivePage('admin-dashboard');
+    } else if (detectedRole === 'faculty') {
       setActivePage('faculty-dashboard');
     } else {
-      setUserRole('student');
       setActivePage('dashboard');
     }
     if (user.fullName) {
@@ -1126,6 +1169,27 @@ export default function App() {
 
   if (notesLoading && lecturesLoading) {
     return <BruteLoader message="Initializing Kuma Capacity Connect Workspace..." />;
+  }
+
+  // ADMIN PORTAL WORKSPACE
+  if (sessionUser && userRole === 'admin') {
+    return (
+      <ErrorBoundary theme={theme}>
+        <AdminPortalApp
+          user={{
+            uid: sessionUser.uid,
+            fullName: settings.profile.fullName || sessionUser.fullName,
+            emailAddress: sessionUser.emailAddress,
+            organization: settings.profile.organization || 'Acme Digital Services'
+          }}
+          activePage={activePage}
+          setActivePage={setActivePage}
+          onSignOut={handleLogOut}
+          theme={theme}
+        />
+        <FeedbackWidget theme={theme} />
+      </ErrorBoundary>
+    );
   }
 
   // TEACHER PORTAL WORKSPACE (Integrated from teachers-LMS-portal)

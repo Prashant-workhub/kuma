@@ -32,6 +32,16 @@ export const PAGE_TO_PATH_MAP: Record<PageId, string> = {
   'faculty-lecture-insights': '/faculty/lecture-insights',
   'faculty-announcements': '/faculty/announcements',
   'faculty-activity-center': '/faculty/activity-center',
+  'admin-dashboard': '/admin/dashboard',
+  'admin-organization': '/admin/organization',
+  'admin-trainees': '/admin/trainees',
+  'admin-trainers': '/admin/trainers',
+  'admin-competencies': '/admin/competencies',
+  'admin-training-programs': '/admin/training-programs',
+  'admin-assessments': '/admin/assessments',
+  'admin-analytics': '/admin/analytics',
+  'admin-certificates': '/admin/certificates',
+  'admin-settings': '/admin/settings'
 };
 
 const PATH_TO_PAGE_MAP: Record<string, PageId> = Object.entries(PAGE_TO_PATH_MAP).reduce(
@@ -57,6 +67,14 @@ export function pathToPageId(pathname: string): PageId {
   }
   if (cleanPath.startsWith('/verify/certificate')) {
     return 'verify-certificate';
+  }
+  if (cleanPath.startsWith('/admin')) {
+    const adminSubPath = cleanPath.replace('/admin/', '').replace('/admin', '');
+    const candidate = `admin-${adminSubPath || 'dashboard'}` as PageId;
+    if (PAGE_TO_PATH_MAP[candidate]) {
+      return candidate;
+    }
+    return 'admin-dashboard';
   }
   if (cleanPath.startsWith('/faculty')) {
     const facultySubPath = cleanPath.replace('/faculty/', '');

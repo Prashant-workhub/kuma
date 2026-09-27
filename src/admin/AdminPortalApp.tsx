@@ -1,0 +1,751 @@
+/**
+ * Project Kuma - Admin Portal & Governance App
+ * Executive Organization Management, Competency Administration & Governance Dashboard
+ */
+
+import React, { useState, useMemo } from 'react';
+import {
+  Building,
+  Users,
+  Award,
+  BookOpen,
+  Target,
+  BarChart3,
+  ShieldCheck,
+  Search,
+  Plus,
+  Filter,
+  CheckCircle,
+  AlertCircle,
+  TrendingUp,
+  Settings,
+  LogOut,
+  Sparkles,
+  ExternalLink,
+  ChevronRight,
+  RefreshCw,
+  Briefcase
+} from 'lucide-react';
+import { PageId, CatalogCompetency, TrainingCertificate, TrainingEnrollment } from '../types';
+import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, DEMO_TRAINEES, seedDemoEnvironment, resetDemoEnvironment } from '../utils/demoDataSeeder';
+import { getAllCertificates } from '../utils/certificateUtils';
+import { LearningAnalytics } from '../teacher-portal/views/LearningAnalytics';
+
+interface AdminPortalAppProps {
+  user: {
+    uid: string;
+    fullName: string;
+    emailAddress: string;
+    organization?: string;
+  };
+  activePage: PageId;
+  setActivePage: (page: PageId) => void;
+  onSignOut: () => void;
+  theme: 'light' | 'dark';
+}
+
+export default function AdminPortalApp({
+  user,
+  activePage,
+  setActivePage,
+  onSignOut,
+  theme
+}: AdminPortalAppProps) {
+  // Local admin sub-tab state
+  const currentTab = useMemo(() => {
+    if (activePage.startsWith('admin-')) {
+      return activePage.replace('admin-', '');
+    }
+    return 'dashboard';
+  }, [activePage]);
+
+  // Seeder & local records state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDept, setSelectedDept] = useState<string>('all');
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
+
+  // Modal / Form States
+  const [showAddCompModal, setShowAddCompModal] = useState(false);
+  const [newCompName, setNewCompName] = useState('');
+  const [newCompCategory, setNewCompCategory] = useState<'Technical' | 'Professional' | 'Communication' | 'Leadership' | 'Management' | 'Digital' | 'Domain Specific'>('Technical');
+  const [newCompDesc, setNewCompDesc] = useState('');
+
+  const [competencies, setCompetencies] = useState<CatalogCompetency[]>(DEMO_COMPETENCIES);
+  const [selectedTrainee, setSelectedTrainee] = useState<typeof DEMO_TRAINEES[0] | null>(null);
+
+  // Certificates real lookup
+  const certificates = useMemo(() => getAllCertificates(), []);
+
+  // Compute live admin KPIs from real records
+  const kpis = useMemo(() => {
+    const totalTrainees = DEMO_TRAINEES.length;
+    const totalTrainers = DEMO_TRAINERS.length;
+    const activeCourses = 5;
+    const totalCompetencies = competencies.length;
+    
+    // Enrollments
+    const enrollmentsRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('kuma_user_enrollments') : null;
+    const enrollments: TrainingEnrollment[] = enrollmentsRaw ? JSON.parse(enrollmentsRaw) : [];
+    
+    const completedEnrollments = enrollments.filter(e => e.status === 'completed').length;
+    const totalEnrollments = enrollments.length || 1;
+    const completionRate = Math.round((completedEnrollments / totalEnrollments) * 100);
+
+    // Total Skill Gaps
+    let totalSkillGaps = 0;
+    DEMO_TRAINEES.forEach(t => {
+      t.competencies.forEach(c => {
+        const declared = c.numericLevel || 1;
+        const assessed = c.latestAssessedNumericLevel || declared;
+        const currentMax = Math.max(declared, assessed);
+        const target = c.targetNumericLevel || currentMax;
+        if (target > currentMax) {
+          totalSkillGaps += (target - currentMax);
+        }
+      });
+    });
+
+    return {
+      totalTrainees,
+      totalTrainers,
+      activeCourses,
+      totalCompetencies,
+      completedEnrollments,
+      completionRate,
+      totalSkillGaps,
+      certificatesIssued: certificates.length
+    };
+  }, [competencies, certificates]);
+
+  const handleCreateCompetency = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCompName.trim()) return;
+
+    const newComp: CatalogCompetency = {
+      id: `comp-${Date.now()}`,
+      name: newCompName.trim(),
+      category: newCompCategory,
+      description: newCompDesc.trim() || 'Organizational capacity building competency.',
+      isActive: true
+    };
+
+    setCompetencies(prev => [newComp, ...prev]);
+    setShowAddCompModal(false);
+    setNewCompName('');
+    setNewCompDesc('');
+    setStatusNotice(`Competency '${newComp.name}' created successfully.`);
+  };
+
+  const handleSeedData = () => {
+    const res = seedDemoEnvironment();
+    setStatusNotice(res.message);
+  };
+
+  const handleResetData = () => {
+    const res = resetDemoEnvironment();
+    setStatusNotice(res.message);
+  };
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-paper)] text-[var(--text-primary)] font-sans select-none">
+      
+      {/* SIDEBAR NAVIGATION */}
+      <aside className="w-64 border-r-2 border-[var(--border-main)] bg-[var(--sidebar-bg)] flex flex-col justify-between p-4 shrink-0">
+        <div>
+          {/* Brand Header */}
+          <div className="flex items-center gap-3 p-2 mb-6">
+            <div className="p-1.5 rounded-[6px] bg-[#38BDF8] border-2 border-[var(--border-main)] shadow-paper-sm text-[#111111]">
+              <ShieldCheck size={22} className="stroke-[2.5]" />
+            </div>
+            <div>
+              <div className="font-heading font-extrabold text-sm text-[var(--text-primary)] tracking-tight uppercase">KUMA ADMIN</div>
+              <div className="text-[9px] font-mono font-bold text-[#38BDF8] uppercase tracking-widest">ORGANIZATION GOVERNANCE</div>
+            </div>
+          </div>
+
+          {/* Nav Items */}
+          <nav className="space-y-1 font-mono text-xs font-bold">
+            {[
+              { id: 'admin-dashboard', label: 'DASHBOARD', icon: BarChart3 },
+              { id: 'admin-organization', label: 'ORGANIZATION', icon: Building },
+              { id: 'admin-trainees', label: 'TRAINEES', icon: Users },
+              { id: 'admin-trainers', label: 'TRAINERS', icon: Briefcase },
+              { id: 'admin-competencies', label: 'COMPETENCIES', icon: Target },
+              { id: 'admin-training-programs', label: 'TRAINING PROGRAMS', icon: BookOpen },
+              { id: 'admin-assessments', label: 'ASSESSMENTS', icon: Award },
+              { id: 'admin-analytics', label: 'ANALYTICS', icon: TrendingUp },
+              { id: 'admin-certificates', label: 'CERTIFICATES', icon: ShieldCheck },
+              { id: 'admin-settings', label: 'SETTINGS', icon: Settings }
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = activePage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActivePage(item.id as PageId)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[6px] border-2 transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-[#38BDF8] text-[#111111] border-[var(--border-main)] shadow-paper-sm font-extrabold'
+                      : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* User Info & Sign Out */}
+        <div className="border-t-2 border-[var(--border-main)] pt-4 space-y-3 font-mono">
+          <div className="flex items-center gap-2.5 px-2">
+            <div className="h-8 w-8 rounded-full bg-[#FFC400] border-2 border-[var(--border-main)] flex items-center justify-center font-bold text-xs text-[#111111]">
+              AD
+            </div>
+            <div className="overflow-hidden">
+              <div className="text-xs font-extrabold text-[var(--text-primary)] truncate">{user.fullName}</div>
+              <div className="text-[10px] text-[var(--text-secondary)] truncate">{user.emailAddress}</div>
+            </div>
+          </div>
+
+          <button
+            onClick={onSignOut}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] text-xs font-bold text-[#FF4D4D] hover:bg-[#FF4D4D]/10 cursor-pointer shadow-paper-sm transition-colors"
+          >
+            <LogOut size={14} />
+            <span>SIGN OUT</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-paper)]">
+        
+        {/* Top Navbar */}
+        <header className="h-16 border-b-2 border-[var(--border-main)] bg-[var(--card-bg)] px-6 flex items-center justify-between shrink-0 font-mono">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-extrabold uppercase text-[var(--text-secondary)] tracking-wider">
+              GOVERNANCE PORTAL • {DEMO_ORGANIZATION}
+            </span>
+            <span className="text-xs font-bold text-[#38BDF8] bg-[#38BDF8]/10 px-2 py-0.5 rounded border border-[#38BDF8]">
+              {currentTab.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSeedData}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] bg-[#FFC400] text-[#111111] font-bold text-xs border border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer"
+            >
+              <RefreshCw size={13} />
+              <span>SEED DEMO DATA</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Status notice banner */}
+        {statusNotice && (
+          <div className="bg-[#19B56B]/15 border-b-2 border-[#19B56B] px-6 py-2 text-xs font-mono font-bold text-[var(--text-primary)] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle size={14} className="text-[#19B56B]" />
+              <span>{statusNotice}</span>
+            </div>
+            <button onClick={() => setStatusNotice(null)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">✕</button>
+          </div>
+        )}
+
+        {/* Dynamic View Switcher */}
+        <main className="flex-1 overflow-y-auto p-6">
+          
+          {/* DASHBOARD TAB */}
+          {currentTab === 'dashboard' && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">ORGANIZATIONAL CAPACITY DASHBOARD</h1>
+                <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Real-time capacity building insights, workforce competencies, and training progress for {DEMO_ORGANIZATION}.</p>
+              </div>
+
+              {/* KPI Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
+                {[
+                  { label: 'TOTAL TRAINEES', val: kpis.totalTrainees, icon: Users, color: '#FFC400' },
+                  { label: 'ACTIVE TRAINERS', val: kpis.totalTrainers, icon: Briefcase, color: '#38BDF8' },
+                  { label: 'TRAINING PROGRAMS', val: kpis.activeCourses, icon: BookOpen, color: '#A855F7' },
+                  { label: 'COMPETENCIES', val: kpis.totalCompetencies, icon: Target, color: '#19B56B' },
+                  { label: 'COMPLETION RATE', val: `${kpis.completionRate}%`, icon: TrendingUp, color: '#38BDF8' },
+                  { label: 'SKILL GAPS IDENTIFIED', val: kpis.totalSkillGaps, icon: AlertCircle, color: '#FF4D4D' },
+                  { label: 'CERTIFICATES ISSUED', val: kpis.certificatesIssued, icon: ShieldCheck, color: '#19B56B' },
+                  { label: 'ORGANIZATION DEPTS', val: DEMO_DEPARTMENTS.length, icon: Building, color: '#FFC400' }
+                ].map((kpi, idx) => {
+                  const Icon = kpi.icon;
+                  return (
+                    <div key={idx} className="p-4 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-2">
+                      <div className="flex items-center justify-between text-[10px] font-extrabold text-[var(--text-secondary)] uppercase">
+                        <span>{kpi.label}</span>
+                        <Icon size={16} style={{ color: kpi.color }} />
+                      </div>
+                      <div className="text-2xl font-black text-[var(--text-primary)]">{kpi.val}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Trainee Directory Quick Overview */}
+              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
+                <div className="flex items-center justify-between font-mono">
+                  <h3 className="text-sm font-extrabold uppercase text-[var(--text-primary)]">TRAINEE CAPACITY DIRECTORY</h3>
+                  <button onClick={() => setActivePage('admin-trainees')} className="text-xs font-bold text-[#38BDF8] hover:underline flex items-center gap-1 cursor-pointer">
+                    <span>View All Trainees</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left font-mono text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-[var(--border-main)] text-[10px] uppercase text-[var(--text-secondary)]">
+                        <th className="py-2.5 px-3">Trainee Name</th>
+                        <th className="py-2.5 px-3">Department</th>
+                        <th className="py-2.5 px-3">Designation</th>
+                        <th className="py-2.5 px-3">Competencies</th>
+                        <th className="py-2.5 px-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y border-b border-[var(--border-main)]">
+                      {DEMO_TRAINEES.map((t) => (
+                        <tr key={t.uid} className="hover:bg-[var(--panel-bg)]">
+                          <td className="py-3 px-3 font-bold text-[var(--text-primary)]">{t.fullName}</td>
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">{t.department}</td>
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">{t.designation}</td>
+                          <td className="py-3 px-3">
+                            <span className="bg-[#FFC400]/15 text-[#FFC400] px-2 py-0.5 rounded border border-[#FFC400] font-bold">
+                              {t.competencies.length} Active
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <button
+                              onClick={() => setSelectedTrainee(t)}
+                              className="px-2.5 py-1 rounded bg-[#38BDF8] text-[#111111] font-bold border border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer"
+                            >
+                              Inspect Profile
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ORGANIZATION TAB */}
+          {currentTab === 'organization' && (
+            <div className="space-y-6 max-w-4xl">
+              <div>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">ORGANIZATION GOVERNANCE</h1>
+                <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Configure organizational structures, departments, and capacity parameters.</p>
+              </div>
+
+              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4 font-mono">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-[#FFC400] border-2 border-[var(--border-main)] text-[#111111]">
+                    <Building size={24} />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-[var(--text-primary)]">{DEMO_ORGANIZATION}</div>
+                    <div className="text-xs text-[var(--text-secondary)]">National Digital Capacity Building Framework</div>
+                  </div>
+                </div>
+
+                <div className="border-t-2 border-[var(--border-main)] pt-4 space-y-3">
+                  <label className="text-xs font-extrabold uppercase text-[var(--text-secondary)]">REGISTERED DEPARTMENTS</label>
+                  <div className="flex flex-wrap gap-2">
+                    {DEMO_DEPARTMENTS.map((dept, i) => (
+                      <span key={i} className="px-3 py-1 rounded-[6px] bg-[var(--panel-bg)] border-2 border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)]">
+                        {dept}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* COMPETENCIES TAB */}
+          {currentTab === 'competencies' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between font-mono">
+                <div>
+                  <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">COMPETENCY CATALOG</h1>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">Manage organizational competency frameworks and proficiency benchmarks.</p>
+                </div>
+
+                <button
+                  onClick={() => setShowAddCompModal(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-[6px] bg-[#FFC400] text-[#111111] font-bold text-xs border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer"
+                >
+                  <Plus size={16} />
+                  <span>CREATE COMPETENCY</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 font-mono">
+                {competencies.map((comp) => (
+                  <div key={comp.id} className="p-5 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase bg-[#38BDF8]/15 text-[#38BDF8] px-2 py-0.5 rounded border border-[#38BDF8]">
+                        {comp.category}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#19B56B]">Active</span>
+                    </div>
+
+                    <h3 className="text-base font-extrabold text-[var(--text-primary)]">{comp.name}</h3>
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{comp.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TRAINEES TAB */}
+          {currentTab === 'trainees' && (
+            <div className="space-y-6 font-mono">
+              <div>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">TRAINEE DIRECTORY</h1>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">View trainee profiles, competencies, skill gaps, and certificates.</p>
+              </div>
+
+              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-[var(--border-main)] text-[10px] uppercase text-[var(--text-secondary)]">
+                        <th className="py-2.5 px-3">Name</th>
+                        <th className="py-2.5 px-3">Email</th>
+                        <th className="py-2.5 px-3">Department</th>
+                        <th className="py-2.5 px-3">Designation</th>
+                        <th className="py-2.5 px-3">Competencies</th>
+                        <th className="py-2.5 px-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y border-b border-[var(--border-main)]">
+                      {DEMO_TRAINEES.map((t) => (
+                        <tr key={t.uid} className="hover:bg-[var(--panel-bg)]">
+                          <td className="py-3 px-3 font-bold text-[var(--text-primary)]">{t.fullName}</td>
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">{t.emailAddress}</td>
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">{t.department}</td>
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">{t.designation}</td>
+                          <td className="py-3 px-3">
+                            <span className="bg-[#FFC400]/15 text-[#FFC400] px-2 py-0.5 rounded border border-[#FFC400] font-bold">
+                              {t.competencies.length} Competencies
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <button
+                              onClick={() => setSelectedTrainee(t)}
+                              className="px-2.5 py-1 rounded bg-[#38BDF8] text-[#111111] font-bold border border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer"
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TRAINERS TAB */}
+          {currentTab === 'trainers' && (
+            <div className="space-y-6 font-mono">
+              <div>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">TRAINER DIRECTORY</h1>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Manage assigned instructors, training specializations, and departmental trainers.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {DEMO_TRAINERS.map((tr) => (
+                  <div key={tr.uid} className="p-5 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-[#38BDF8] text-[#111111] font-extrabold border-2 border-[var(--border-main)] flex items-center justify-center text-sm">
+                        {tr.fullName.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <div className="text-sm font-extrabold text-[var(--text-primary)]">{tr.fullName}</div>
+                        <div className="text-xs text-[var(--text-secondary)]">{tr.designation}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-[var(--text-secondary)] border-t border-[var(--border-main)] pt-2 space-y-1">
+                      <div>Department: <strong className="text-[var(--text-primary)]">{tr.department}</strong></div>
+                      <div>Specialization: <strong className="text-[#FFC400]">{tr.specialization}</strong></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TRAINING PROGRAMS TAB */}
+          {currentTab === 'training-programs' && (
+            <div className="space-y-6 font-mono">
+              <div>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">TRAINING PROGRAMS</h1>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Organizational capacity building courses mapped to competencies.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { code: 'DA101', name: 'Advanced Data Analytics & Insights', comp: 'Data Analysis', trainer: 'Dr. Rajesh Kumar' },
+                  { code: 'PY102', name: 'Python for Data Professionals', comp: 'Python', trainer: 'Dr. Rajesh Kumar' },
+                  { code: 'CM103', name: 'Professional Communication & Reporting', comp: 'Communication', trainer: 'Prof. Anita Sharma' },
+                  { code: 'LD104', name: 'Leadership Fundamentals & Mentorship', comp: 'Leadership', trainer: 'Prof. Anita Sharma' },
+                  { code: 'DS105', name: 'Digital Skills Essentials', comp: 'Digital Literacy', trainer: 'Prof. Anita Sharma' }
+                ].map((course, idx) => (
+                  <div key={idx} className="p-5 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-3">
+                    <div className="flex items-center justify-between text-[10px] font-bold">
+                      <span className="bg-[#FFC400] text-[#111111] px-2 py-0.5 rounded border border-[var(--border-main)] font-extrabold">{course.code}</span>
+                      <span className="text-[#19B56B]">Active</span>
+                    </div>
+                    <h3 className="text-sm font-extrabold text-[var(--text-primary)]">{course.name}</h3>
+                    <div className="text-xs text-[var(--text-secondary)] space-y-1 border-t border-[var(--border-main)] pt-2">
+                      <div>Competency: <strong className="text-[#38BDF8]">{course.comp}</strong></div>
+                      <div>Trainer: <strong className="text-[var(--text-primary)]">{course.trainer}</strong></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ASSESSMENTS TAB */}
+          {currentTab === 'assessments' && (
+            <div className="space-y-6 font-mono">
+              <div>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">COMPETENCY ASSESSMENTS</h1>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Interactive competency evaluations and participant score records.</p>
+              </div>
+
+              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
+                <div className="text-xs font-bold text-[var(--text-primary)]">Active Assessment Modules</div>
+                <div className="space-y-3">
+                  {[
+                    { name: 'Data Analysis Proficiency Evaluation', comp: 'Data Analysis', passScore: '70%', questions: 10 },
+                    { name: 'Python Programming Diagnostic', comp: 'Python', passScore: '75%', questions: 12 },
+                    { name: 'Executive Communication Assessment', comp: 'Communication', passScore: '65%', questions: 8 }
+                  ].map((a, i) => (
+                    <div key={i} className="p-4 rounded-[6px] bg-[var(--panel-bg)] border-2 border-[var(--border-main)] flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-extrabold text-[var(--text-primary)]">{a.name}</div>
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">Mapped Competency: <span className="text-[#38BDF8]">{a.comp}</span></div>
+                      </div>
+                      <div className="text-right text-xs">
+                        <div className="font-extrabold text-[#FFC400]">Pass Threshold: {a.passScore}</div>
+                        <div className="text-[var(--text-secondary)]">{a.questions} Questions</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ANALYTICS TAB */}
+          {currentTab === 'analytics' && (
+            <LearningAnalytics />
+          )}
+
+          {/* CERTIFICATES TAB */}
+          {currentTab === 'certificates' && (
+            <div className="space-y-6 font-mono">
+              <div>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">DIGITAL CERTIFICATE AUDIT</h1>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Issued organizational capacity certificates and cryptographic verification records.</p>
+              </div>
+
+              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-[var(--border-main)] text-[10px] uppercase text-[var(--text-secondary)]">
+                        <th className="py-2.5 px-3">Certificate ID</th>
+                        <th className="py-2.5 px-3">Trainee Name</th>
+                        <th className="py-2.5 px-3">Training Program</th>
+                        <th className="py-2.5 px-3">Issue Date</th>
+                        <th className="py-2.5 px-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y border-b border-[var(--border-main)]">
+                      {certificates.map((c) => (
+                        <tr key={c.id} className="hover:bg-[var(--panel-bg)]">
+                          <td className="py-3 px-3 font-bold text-[#FFC400]">{c.id}</td>
+                          <td className="py-3 px-3 font-bold text-[var(--text-primary)]">{c.userName}</td>
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">{c.courseName}</td>
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">{c.issueDate}</td>
+                          <td className="py-3 px-3">
+                            <span className="bg-[#19B56B]/15 text-[#19B56B] px-2 py-0.5 rounded border border-[#19B56B] font-bold">
+                              VERIFIED
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SETTINGS TAB */}
+          {currentTab === 'settings' && (
+            <div className="space-y-6 font-mono max-w-3xl">
+              <div>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">ADMIN SYSTEM SETTINGS</h1>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Manage system configurations and demonstration utilities.</p>
+              </div>
+
+              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
+                <div className="text-sm font-extrabold text-[var(--text-primary)] uppercase">Demonstration Seeder & Utility Controls</div>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  Initialize or reset sample capacity building records for demonstration purposes. This operates exclusively within the 'Acme Digital Services' scope without affecting production data.
+                </p>
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <button
+                    onClick={handleSeedData}
+                    className="px-4 py-2 rounded-[6px] bg-[#FFC400] text-[#111111] font-bold text-xs border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer"
+                  >
+                    SEED DEMO DATA
+                  </button>
+                  <button
+                    onClick={handleResetData}
+                    className="px-4 py-2 rounded-[6px] bg-[#FF4D4D] text-[#ffffff] font-bold text-xs border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-red-600 cursor-pointer"
+                  >
+                    RESET DEMO DATA
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </main>
+      </div>
+
+      {/* CREATE COMPETENCY MODAL */}
+      {showAddCompModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-mono">
+          <div className="w-full max-w-md p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4">
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)] uppercase">Create New Competency</h3>
+
+            <form onSubmit={handleCreateCompetency} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Competency Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newCompName}
+                  onChange={(e) => setNewCompName(e.target.value)}
+                  placeholder="e.g. Cloud Infrastructure Architecture"
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Category</label>
+                <select
+                  value={newCompCategory}
+                  onChange={(e) => setNewCompCategory(e.target.value as any)}
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                >
+                  <option value="Technical">Technical</option>
+                  <option value="Professional">Professional</option>
+                  <option value="Communication">Communication</option>
+                  <option value="Leadership">Leadership</option>
+                  <option value="Management">Management</option>
+                  <option value="Digital">Digital</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Description</label>
+                <textarea
+                  value={newCompDesc}
+                  onChange={(e) => setNewCompDesc(e.target.value)}
+                  placeholder="Detailed description of competency expectations and skills."
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none h-20"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCompModal(false)}
+                  className="px-3 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-secondary)] font-bold border border-[var(--border-main)] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-[#38BDF8] text-[#111111] font-extrabold border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer"
+                >
+                  Create Competency
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* INSPECT TRAINEE PROFILE MODAL */}
+      {selectedTrainee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-mono">
+          <div className="w-full max-w-xl p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b-2 border-[var(--border-main)] pb-3">
+              <div>
+                <h3 className="text-lg font-extrabold text-[var(--text-primary)]">{selectedTrainee.fullName}</h3>
+                <div className="text-xs text-[var(--text-secondary)]">{selectedTrainee.designation} • {selectedTrainee.department}</div>
+              </div>
+              <button onClick={() => setSelectedTrainee(null)} className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]">✕ Close</button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-xs font-extrabold uppercase text-[var(--text-secondary)]">Competencies & Skill Levels</div>
+              <div className="space-y-2">
+                {selectedTrainee.competencies.map((c) => (
+                  <div key={c.id} className="p-3 rounded-[6px] bg-[var(--panel-bg)] border border-[var(--border-main)] flex items-center justify-between text-xs">
+                    <div>
+                      <div className="font-bold text-[var(--text-primary)]">{c.name}</div>
+                      <div className="text-[10px] text-[var(--text-secondary)]">Declared: {c.level} | Assessed: {c.latestAssessedLevel || 'None'}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-[#FFC400]">Target: {c.targetLevel || c.level}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedTrainee.certificates.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <div className="text-xs font-extrabold uppercase text-[var(--text-secondary)]">Issued Certificates</div>
+                  {selectedTrainee.certificates.map(cert => (
+                    <div key={cert.id} className="p-3 rounded-[6px] bg-[#19B56B]/10 border border-[#19B56B] text-xs flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-[var(--text-primary)]">{cert.courseName}</div>
+                        <div className="text-[10px] text-[#19B56B]">ID: {cert.id}</div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-[#19B56B] text-[#ffffff] font-extrabold text-[10px]">VERIFIED</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
