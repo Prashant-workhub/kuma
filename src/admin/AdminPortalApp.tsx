@@ -71,14 +71,58 @@ export default function AdminPortalApp({
   const [newCompDesc, setNewCompDesc] = useState('');
 
   const [competencies, setCompetencies] = useState<CatalogCompetency[]>(DEMO_COMPETENCIES);
+  const [traineeList, setTraineeList] = useState<typeof DEMO_TRAINEES>(DEMO_TRAINEES);
   const [selectedTrainee, setSelectedTrainee] = useState<typeof DEMO_TRAINEES[0] | null>(null);
+
+  const [showCsvModal, setShowCsvModal] = useState(false);
+  const [csvContent, setCsvContent] = useState(
+`fullName,emailAddress,department,designation
+Ananya Rao,ananya.rao@acme.com,Data & Analytics,Data Analyst
+Vikram Patel,vikram.patel@acme.com,Technology,Senior Software Engineer
+Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
+  );
+
+  const handleBulkImportCsv = (e: React.FormEvent) => {
+    e.preventDefault();
+    const lines = csvContent.trim().split('\n');
+    if (lines.length <= 1) return;
+
+    let addedCount = 0;
+    const newTrainees = [...traineeList];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const parts = line.split(',').map(s => s.trim());
+      if (parts.length >= 2) {
+        const [fullName, emailAddress, department, designation] = parts;
+        if (fullName && emailAddress && !newTrainees.some(t => t.emailAddress.toLowerCase() === emailAddress.toLowerCase())) {
+          newTrainees.push({
+            uid: `user-csv-${Date.now()}-${i}`,
+            fullName,
+            emailAddress,
+            department: department || 'General',
+            designation: designation || 'Trainee',
+            competencies: [],
+            enrollments: [],
+            certificates: []
+          });
+          addedCount++;
+        }
+      }
+    }
+
+    setTraineeList(newTrainees);
+    setShowCsvModal(false);
+    setStatusNotice(`Successfully imported ${addedCount} new trainees into organization directory.`);
+  };
 
   // Certificates real lookup
   const certificates = useMemo(() => getAllCertificates(), []);
 
   // Compute live admin KPIs from real records
   const kpis = useMemo(() => {
-    const totalTrainees = DEMO_TRAINEES.length;
+    const totalTrainees = traineeList.length;
     const totalTrainers = DEMO_TRAINERS.length;
     const activeCourses = 5;
     const totalCompetencies = competencies.length;
@@ -93,7 +137,7 @@ export default function AdminPortalApp({
 
     // Total Skill Gaps
     let totalSkillGaps = 0;
-    DEMO_TRAINEES.forEach(t => {
+    traineeList.forEach(t => {
       t.competencies.forEach(c => {
         const declared = c.numericLevel || 1;
         const assessed = c.latestAssessedNumericLevel || declared;
@@ -115,7 +159,7 @@ export default function AdminPortalApp({
       totalSkillGaps,
       certificatesIssued: certificates.length
     };
-  }, [competencies, certificates]);
+  }, [competencies, certificates, traineeList]);
 
   const handleCreateCompetency = (e: React.FormEvent) => {
     e.preventDefault();
@@ -412,9 +456,19 @@ export default function AdminPortalApp({
           {/* TRAINEES TAB */}
           {currentTab === 'trainees' && (
             <div className="space-y-6 font-mono">
-              <div>
-                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">TRAINEE DIRECTORY</h1>
-                <p className="text-xs text-[var(--text-secondary)] mt-1">View trainee profiles, competencies, skill gaps, and certificates.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">TRAINEE DIRECTORY</h1>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">View trainee profiles, competencies, skill gaps, and certificates.</p>
+                </div>
+
+                <button
+                  onClick={() => setShowCsvModal(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-[6px] bg-[#38BDF8] text-[#111111] font-bold text-xs border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer"
+                >
+                  <Plus size={16} />
+                  <span>IMPORT TRAINEES (CSV)</span>
+                </button>
               </div>
 
               <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
@@ -431,7 +485,7 @@ export default function AdminPortalApp({
                       </tr>
                     </thead>
                     <tbody className="divide-y border-b border-[var(--border-main)]">
-                      {DEMO_TRAINEES.map((t) => (
+                      {traineeList.map((t) => (
                         <tr key={t.uid} className="hover:bg-[var(--panel-bg)]">
                           <td className="py-3 px-3 font-bold text-[var(--text-primary)]">{t.fullName}</td>
                           <td className="py-3 px-3 text-[var(--text-secondary)]">{t.emailAddress}</td>
@@ -633,6 +687,41 @@ export default function AdminPortalApp({
 
         </main>
       </div>
+
+      {/* BULK CSV TRAINEE IMPORT MODAL */}
+      {showCsvModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-mono">
+          <div className="w-full max-w-lg p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4">
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)] uppercase">Bulk Import Trainees (CSV)</h3>
+            <p className="text-xs text-[var(--text-secondary)]">Paste CSV rows formatted as <code className="text-[#FFC400]">fullName, emailAddress, department, designation</code>:</p>
+
+            <form onSubmit={handleBulkImportCsv} className="space-y-3 text-xs">
+              <textarea
+                value={csvContent}
+                onChange={(e) => setCsvContent(e.target.value)}
+                rows={7}
+                className="w-full p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-mono font-bold text-xs outline-none"
+              />
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCsvModal(false)}
+                  className="px-3 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-secondary)] font-bold border border-[var(--border-main)] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-[#38BDF8] text-[#111111] font-extrabold border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer"
+                >
+                  Import Trainees
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* CREATE COMPETENCY MODAL */}
       {showAddCompModal && (
