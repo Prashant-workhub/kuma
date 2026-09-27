@@ -89,6 +89,12 @@ export interface TeacherAssignment {
   completionRate: number
   accent: 'gold' | 'cyan' | 'emerald' | 'violet' | 'rose'
   syllabus: SyllabusItem[]
+  // Phase 3E: Competency & Training Mapping
+  competencyIds?: string[]
+  competencyNames?: string[]
+  description?: string
+  duration?: string
+  isActive?: boolean
 }
 
 export interface ModuleProgress {

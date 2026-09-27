@@ -12,6 +12,9 @@ import {
   GapPriority, 
   GapStatus 
 } from '../utils/competencyUtils';
+import { getTrainingRecommendations } from '../utils/recommendationUtils';
+import { COURSES } from '../teacher-portal/lib/mockData';
+import { INITIAL_COMPETENCY_CATALOG } from '../data';
 import { Card, Button, Badge } from './bauhaus';
 import { 
   Target, 
@@ -22,7 +25,14 @@ import {
   ShieldAlert, 
   ArrowLeft,
   Sliders,
-  Award
+  Award,
+  BookOpen,
+  GraduationCap,
+  ArrowRight,
+  Clock,
+  PlayCircle,
+  Layers,
+  Info
 } from 'lucide-react';
 
 interface SkillGapViewProps {
@@ -58,6 +68,8 @@ export default function SkillGapView({
     settings.profile.competencies || []
   );
 
+  const [courseProgressState, setCourseProgressState] = useState<Record<string, number>>({});
+
   const handleUpdateTargetLevel = (id: string, newTargetLevel: SkillProficiencyLevel) => {
     const updated = competencies.map((c) => {
       if (c.id !== id) return c;
@@ -91,6 +103,24 @@ export default function SkillGapView({
   const devNeededCount = gapAnalyses.filter((g) => g.analysis.gap === 1).length;
   const sigDevCount = gapAnalyses.filter((g) => g.analysis.gap === 2).length;
   const highDevCount = gapAnalyses.filter((g) => g.analysis.gap >= 3).length;
+
+  // Phase 3E Recommendation Engine execution
+  const { recommendedCourses } = getTrainingRecommendations(
+    competencies,
+    COURSES,
+    [],
+    INITIAL_COMPETENCY_CATALOG,
+    Object.fromEntries(
+      Object.entries(courseProgressState).map(([cid, prog]) => [cid, { completionRate: prog }])
+    )
+  );
+
+  const handleStartCourse = (courseId: string) => {
+    setCourseProgressState((prev) => ({
+      ...prev,
+      [courseId]: prev[courseId] ? Math.min(100, prev[courseId] + 25) : 25
+    }));
+  };
 
   // Visual Step Progress Bar
   const renderProgressBar = (numLevel: number = 2, activeColor: string = 'bg-[#FFC400]') => {
@@ -314,6 +344,145 @@ export default function SkillGapView({
           </div>
         )}
       </Card>
+
+      {/* PHASE 3E: RECOMMENDED TRAINING SECTION */}
+      <Card shadow="md" className="p-6 bg-[var(--card-bg)] border-2 border-[var(--border-main)] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-[var(--border-main)] pb-3 gap-2">
+          <div>
+            <h3 className="section-label text-xs font-bold text-[var(--text-primary)] uppercase tracking-[2px] flex items-center gap-2">
+              <GraduationCap className="h-4 w-4 text-[#9C27B0]" />
+              RECOMMENDED TRAINING & LEARNING MATERIAL
+            </h3>
+            <p className="text-xs font-mono text-[var(--text-secondary)] mt-0.5">
+              Targeted training programs dynamically mapped to your identified skill gaps.
+            </p>
+          </div>
+          <span className="text-xs font-mono text-[var(--text-secondary)] font-bold px-2.5 py-1 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30">
+            Phase 3E Recommendation System
+          </span>
+        </div>
+
+        {recommendedCourses.length === 0 ? (
+          <div className="p-8 text-center rounded-[6px] border-2 border-dashed border-[var(--border-main)] bg-[var(--bg-main)] space-y-2">
+            <CheckCircle2 className="h-8 w-8 text-[#19B56B] mx-auto" />
+            <h4 className="font-heading font-extrabold text-sm text-[var(--text-primary)] uppercase">
+              NO ACTIVE SKILL GAPS REQUIRING TRAINING
+            </h4>
+            <p className="text-xs font-mono text-[var(--text-secondary)] max-w-md mx-auto">
+              You currently meet or exceed all target levels for your tracked competencies! Adjust target levels above or take new assessments to discover training recommendations.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {recommendedCourses.map((rec) => (
+              <div
+                key={rec.id}
+                className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] flex flex-col justify-between space-y-4 shadow-paper-sm hover:shadow-paper transition-shadow relative overflow-hidden"
+              >
+                <div className="space-y-3">
+                  
+                  {/* Top Bar: Course Code, Duration, Status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-black uppercase px-2 py-0.5 rounded bg-[#9C27B0]/20 text-[#9C27B0] border border-[#9C27B0]/40">
+                        {rec.course.courseCode}
+                      </span>
+                      {rec.course.duration && (
+                        <span className="flex items-center gap-1 text-[10px] font-mono font-bold text-[var(--text-secondary)]">
+                          <Clock className="h-3 w-3" />
+                          {rec.course.duration}
+                        </span>
+                      )}
+                    </div>
+
+                    {rec.enrollmentStatus === 'in_progress' ? (
+                      <span className="text-[10px] font-mono font-extrabold uppercase px-2.5 py-0.5 rounded bg-[#FFC400]/20 text-[#B78103] dark:text-[#FFD54F] border border-[#FFC400]/40">
+                        IN PROGRESS ({rec.progressPercentage}%)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono font-extrabold uppercase px-2.5 py-0.5 rounded bg-[#19B56B]/20 text-[#19B56B] border border-[#19B56B]/40">
+                        RECOMMENDED
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Course Name */}
+                  <div>
+                    <h4 className="font-heading font-black text-base text-[var(--text-primary)] uppercase leading-snug">
+                      {rec.course.courseName}
+                    </h4>
+                    {rec.course.description && (
+                      <p className="text-xs font-mono text-[var(--text-secondary)] mt-1 leading-relaxed">
+                        {rec.course.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* SKILL GAP TO TRAINING CONNECTION BANNER */}
+                  <div className="p-3 rounded-[4px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-1.5">
+                    <div className="text-[10px] font-mono font-bold uppercase text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                      <Layers className="h-3.5 w-3.5" />
+                      <span>Skill Gap ➔ Competency ➔ Recommendation</span>
+                    </div>
+
+                    <p className="text-xs font-mono text-[var(--text-primary)] font-bold">
+                      {rec.reason}
+                    </p>
+
+                    {/* Matched Competencies Breakdown */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {rec.matchedGaps.map((mg) => (
+                        <div
+                          key={mg.competencyId}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-800 text-[var(--text-primary)] font-bold flex items-center gap-1 border border-[var(--border-main)]"
+                        >
+                          <span>{mg.competencyName}:</span>
+                          <span className="text-[#FFC400] font-extrabold">{mg.currentLevel}</span>
+                          <span>➔</span>
+                          <span className="text-purple-400 font-extrabold">{mg.targetLevel}</span>
+                          <span className="text-red-500 font-black ml-0.5">(Gap: {mg.gap})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Bottom Action Area */}
+                <div className="pt-2 border-t border-[var(--border-main)]/40 flex items-center justify-between gap-3">
+                  <div className="text-[10px] font-mono text-[var(--text-secondary)]">
+                    Max Gap Addressed: <span className="font-bold text-red-500">{rec.maxGap} Level{rec.maxGap > 1 ? 's' : ''}</span>
+                  </div>
+
+                  {rec.enrollmentStatus === 'in_progress' ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleStartCourse(rec.course.id)}
+                      className="flex items-center gap-1.5"
+                    >
+                      <PlayCircle className="h-4 w-4" />
+                      <span>Continue Training</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleStartCourse(rec.course.id)}
+                      className="flex items-center gap-1.5 bg-[#9C27B0] hover:bg-[#8E24AA] text-white"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      <span>Start Training</span>
+                    </Button>
+                  )}
+                </div>
+
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
+

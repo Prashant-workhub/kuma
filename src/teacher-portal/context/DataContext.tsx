@@ -19,6 +19,7 @@ interface DataContextValue {
   answerDoubt: (id: string, response: string) => void
   setDoubtStatus: (id: string, status: DoubtStatus) => void
   toggleSyllabusItem: (courseId: string, itemId: string) => void
+  updateCourseCompetencies: (courseId: string, competencyIds: string[], competencyNames: string[]) => void
   addAnnouncement: (input: { title: string; body: string; audience: string[]; author: string }) => void
   logActivity: (event: Omit<ActivityEvent, 'id' | 'at'>) => void
 }
@@ -272,6 +273,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [logActivity],
   )
 
+  const updateCourseCompetencies = useCallback(
+    (courseId: string, competencyIds: string[], competencyNames: string[]) => {
+      let courseCode = ''
+      setCourses((list) =>
+        list.map((c) => {
+          if (c.id !== courseId) return c
+          courseCode = c.courseCode
+          return {
+            ...c,
+            competencyIds,
+            competencyNames,
+          }
+        }),
+      )
+      logActivity({
+        kind: 'syllabus-edit',
+        title: 'Competencies updated',
+        detail: `Mapped ${competencyIds.length} competencies to ${courseCode}.`,
+        courseCode,
+      })
+    },
+    [logActivity],
+  )
+
   const addAnnouncement = useCallback(
     (input: { title: string; body: string; audience: string[]; author: string }) => {
       const reach = courses
@@ -306,10 +331,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       answerDoubt,
       setDoubtStatus,
       toggleSyllabusItem,
+      updateCourseCompetencies,
       addAnnouncement,
       logActivity,
     }),
-    [doubts, courses, announcements, activity, answerDoubt, setDoubtStatus, toggleSyllabusItem, addAnnouncement, logActivity],
+    [doubts, courses, announcements, activity, answerDoubt, setDoubtStatus, toggleSyllabusItem, updateCourseCompetencies, addAnnouncement, logActivity],
   )
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

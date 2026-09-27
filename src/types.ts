@@ -50,6 +50,8 @@ export interface Source {
   url?: string;
   addedAt: string;
   wordCount?: number;
+  competencyIds?: string[];
+  competencyNames?: string[];
 }
 
 export type RecordingStatus = 'recording' | 'uploaded' | 'failed';
@@ -393,6 +395,8 @@ export interface KnowledgeSource {
     slideCount: number;
     blueprint: any[];
   };
+  competencyIds?: string[];
+  competencyNames?: string[];
 }
 
 export interface SlideBlueprint {
@@ -427,17 +431,31 @@ export interface FacultyProfile {
 }
 
 export interface TeacherAssignment {
-  id?: string;
-  teacherId: string;
-  teacherName: string;
+  id: string;
+  teacherId?: string;
+  teacherName?: string;
   teacherCode?: string;
   teacherPhone?: string;
-  subjectId: string;
-  subjectName: string;
+  subjectId?: string;
+  subjectName?: string;
   courseId?: string;
+  courseCode?: string;
+  courseName?: string;
+  subject?: string;
+  semester?: string;
+  students?: number;
+  completionRate?: number;
+  accent?: 'gold' | 'cyan' | 'emerald' | 'violet' | 'rose';
+  syllabus?: { id: string; title: string; done: boolean }[];
   classId?: string;
   university?: string;
   assignedAt?: any;
+  // Phase 3E: Competency & Training Mapping
+  competencyIds?: string[];
+  competencyNames?: string[];
+  description?: string;
+  duration?: string;
+  isActive?: boolean;
 }
 
 export interface DoubtItem {
