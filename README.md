@@ -8,144 +8,156 @@
 
 ## 1. PROJECT OVERVIEW
 
-Kuma (Capacity Connect) is a unified Digital Capacity Building and Learning Management Portal designed to help organizations build workforce competencies, identify skill gaps, deliver targeted training programs, and monitor organizational capacity in real time.
+**Kuma (Capacity Connect)** is an enterprise-grade Digital Capacity Building and Learning Management Portal engineered for Smart India Hackathon (SIH26075). It empowers government bodies, public enterprises, and private organizations to continuously build workforce competencies, quantitatively identify skill gaps, deliver targeted training programs, issue cryptographically verifiable digital certificates, and monitor organizational capacity in real time.
 
 ---
 
-## 2. PROBLEM & SOLUTION
+## 2. KEY FEATURES & SIH26075 COMPLIANCE
 
-### Problem Statement
-Organizations struggle to track workforce competencies, measure skill deficiencies, recommend relevant training programs, and verify training completions at scale.
-
-### Solution Overview
-Kuma provides an end-to-end organizational capacity building platform that connects:
-- **Competency Catalog & Framework**: 5-tier proficiency modeling (Novice, Beginner, Intermediate, Advanced, Expert).
-- **Competency Assessments**: Interactive multi-question assessments with automated numeric scoring.
-- **Skill Gap Identification**: Algorithmic gap calculation separating declared, assessed, and target levels.
-- **Training Recommendation Engine**: Rule-based matching connecting skill gaps directly to relevant training programs.
-- **Multimodal Knowledge Studio**: AI-assisted note generation, summaries, flashcards, and resource players.
-- **Training Progress & Completion**: Module-by-module progress tracking and completion validation.
-- **Digital Certification**: Cryptographically verifiable certificates with unique IDs (`KUMA-2026-XXXXXXXX`) and public lookup verification (`/verify-certificate`).
-- **Organizational Capacity Analytics**: Real-time telemetry dashboards for executive administration.
-
----
-
-## 3. USER ROLES & CAPABILITIES
-
-### 1. Trainee (Scholar)
-- Manage professional profile (Organization, Department, Designation).
-- Declare current proficiency levels and set target competency goals.
-- Take competency-based assessments and receive real-time scores.
-- View calculated skill gaps and recommended training programs.
-- Enroll in training programs, complete learning modules, and track progress.
-- View, download, and share verified digital certificates.
-
-### 2. Trainer (Instructor)
-- Manage assigned training programs and learning resources.
-- Monitor active trainee enrollments and module progress.
-- Publish competency assessments and evaluate participant performance.
-- Resolve trainee doubts and post course announcements.
-
-### 3. Admin (Organization Manager)
-- Manage organizational structure, departments, and user roles.
-- Create and edit organizational competencies and proficiency criteria.
-- Publish training programs and map courses to competencies.
-- View executive capacity analytics, skill gap distributions, and training completion telemetry.
-- Audit platform certificates and user records.
+| # | SIH26075 Requirement | Kuma Platform Solution |
+| :-: | :--- | :--- |
+| **1** | **Organizational Training Management** | Department & division taxonomy with catalog mapping in `CourseCatalogView.tsx` and `AdminPortalApp.tsx`. |
+| **2** | **Competency Development** | 5-tier proficiency modeling (*Novice, Beginner, Intermediate, Advanced, Expert*) with target level tracking in `SkillGapView.tsx`. |
+| **3** | **Knowledge Sharing & Resources** | Multimodal Knowledge Studio, AI note/summary synthesis, presentation workspace, and document players in `KnowledgeStudioView.tsx`. |
+| **4** | **Centralized Web & Mobile Portal** | Responsive web app with Bauhaus aesthetic tokens, dark/light modes, and Capacitor Android mobile packaging. |
+| **5** | **Training Program Management** | Multi-module course creation, assigned trainers, competency mapping, and active enrollment tracking in `TeacherPortalApp.tsx`. |
+| **6** | **Competency Assessment** | Multi-question interactive assessment engine with automated scoring and level determination in `AssessmentTakingModal.tsx`. |
+| **7** | **Skill-Gap Identification** | Algorithmic gap calculation separating declared, assessed, and target levels (`Gap = Target - Max(Declared, Assessed)`). |
+| **8** | **Training Recommendations** | Deterministic gap-to-course recommendation engine matching gap competencies directly to training courses in `recommendationUtils.ts`. |
+| **9** | **Training Progress & Completion** | Step-by-step module completion tracking, percentage progress calculation, and completion validation in `enrollmentUtils.ts`. |
+| **10**| **Organizational Capacity Insights** | Real-time executive capacity analytics, competency radar distributions, skill gap urgency matrices, and certificate registers in `LearningAnalytics.tsx`. |
 
 ---
 
-## 4. MAIN WORKFLOW
+## 3. THREE-ROLE GOVERNANCE ARCHITECTURE
+
+Kuma enforces strict role-based access control (RBAC) across three distinct organizational user types:
+
+### 1. Trainee (Workforce Member / Scholar)
+- **Professional Profile**: Department, designation, employee ID, and declared proficiency settings.
+- **Skill Gap Radar**: Dynamic gap visualization based on declared vs. assessed vs. target competency levels.
+- **Interactive Assessments**: Interactive quiz taking with immediate level qualification.
+- **Course Enrollment**: Enroll in recommended or catalog training programs; complete modules step-by-step.
+- **Digital Certificates**: View, download, print, and share verifiable cryptographic certificates (`/verify/certificate/:id`).
+
+### 2. Trainer (Instructor / Subject Matter Expert)
+- **Course Management**: Manage assigned training programs, upload lecture resources, and structure course modules.
+- **Trainee Roster**: Track enrolled trainee progress and completion milestones across modules.
+- **Doubt Resolution**: Queue and respond to student inquiries and doubt submissions in real time.
+- **Assessment Publishing**: Configure assessment questions, score weights, and competency target thresholds.
+
+### 3. Admin (Organization Executive / Admin Panel)
+- **Executive Telemetry**: High-level organizational capacity analytics, competency coverage, and skill gap urgency.
+- **Bulk Trainee Import**: Interactive CSV import engine for batch-enrolling organizational cohorts (`/admin/bulk-import`).
+- **Competency Catalog**: Define 5-level proficiency scales, core skills, and skill taxonomy.
+- **Course & Competency Mapping**: Link training courses directly to required organizational competencies.
+- **Certificate Register**: Audit and verify issued digital certificates across the organization.
+
+---
+
+## 4. END-TO-END WORKFLOW
 
 ```text
-Admin Setup           Trainer           Trainee Journey              System Logic           Certification & Analytics
------------         -----------      ----------------------         --------------         --------------------------
-Create Org     ---> Publish      ---> Create Profile          --->  Calculate Gap      ---> Issue Digital Certificate
-Create Competencies Training          Select Target Levels          (Target - Assessed)      (Unique Verification ID)
-Create Courses      Map to Comp      Take Assessment          --->  Recommend Course   ---> Refresh Admin Telemetry
+               ┌─────────────────────────────────────────────────────────┐
+               │              KUMA CAPACITY CONNECT PORTAL               │
+               └────────────────────────────┬────────────────────────────┘
+                                            │
+         ┌──────────────────────────────────┼──────────────────────────────────┐
+         │                                  │                                  │
+         ▼                                  ▼                                  ▼
+   TRAINEE PORTAL                     TRAINER PORTAL                      ADMIN PORTAL
+   --------------                     --------------                      ------------
+   ✓ Declare Target Levels            ✓ Manage Course Programs            ✓ Executive Capacity Telemetry
+   ✓ Take Skill Assessment            ✓ Monitor Trainee Progress          ✓ Bulk CSV Cohort Import
+   ✓ View Skill Gap Calculation       ✓ Publish Assessments               ✓ Manage Competency Taxonomy
+   ✓ Enroll in Recommended Course     ✓ Answer Trainee Doubts             ✓ Map Courses to Competencies
+   ✓ Complete Modules (0-100%)        ✓ Resource Upload & Delivery        ✓ Audit Certificate Register
+   ✓ Claim Verifiable Certificate                                         ✓ Security & User RBAC Guards
 ```
 
 ---
 
 ## 5. TECHNOLOGY STACK
 
-- **Frontend**: React 19, TypeScript, Vite, Vanilla CSS + Bauhaus styling tokens, Lucide icons.
+- **Frontend Core**: React 19, TypeScript, Vite, Vanilla CSS + Kuma Bauhaus UI System.
 - **Backend API**: Node.js, Express, TypeScript (`server.ts`).
-- **Identity & Database**: Firebase Authentication (with Local Session fallback), Cloud Firestore.
-- **Storage**: Azure Blob Storage / Local fallback for documents & media assets.
-- **AI Integrations**: Gemini API (Multimodal transcript processing, automated notes, summary synthesis).
-- **Mobile Packaging**: Capacitor for Android/iOS cross-platform deployment.
+- **Authentication & Database**: Firebase Auth (with Local Session fallback for demo resiliency) & Cloud Firestore.
+- **AI Engines**: Gemini API (multimodal document processing, flashcard synthesis, lecture summarization).
+- **Mobile Packaging**: Capacitor framework for Android & iOS builds.
 
 ---
 
 ## 6. REPOSITORY STRUCTURE
 
 ```text
-src/
-├── components/          Trainee UI components (SkillGapView, ProfileView, CertificatesView, etc.)
-├── components/faculty/  Trainer & Admin UI components (FacultyOnboarding, etc.)
-├── teacher-portal/      Admin & Trainer Portal App (TeacherPortalApp, LearningAnalytics, etc.)
-├── services/            Firebase services, AI Gemini integration, doubt management
-├── utils/               Skill gap math, recommendation engine, certificate generation, demo seeder
-├── hooks/               Firestore real-time data hooks (useNotes, useLectures)
-├── types.ts             Unified TypeScript interfaces and data models
-├── firebaseConfig.ts    Firebase setup with fallback project credentials & try-catch guards
-server.ts                Express API server
-DEMO_GUIDE.md            Official SIH evaluation demonstration manual & script
+kuma/
+├── src/
+│   ├── admin/               Dedicated Admin Portal (`AdminPortalApp.tsx`) & CSV Import Engine
+│   ├── components/          Trainee UI Views (`SkillGapView`, `ProfileView`, `CertificatesView`, etc.)
+│   ├── components/faculty/  Trainer Portal & Instructor Onboarding
+│   ├── teacher-portal/      Trainer & Organization Admin dashboards & `LearningAnalytics.tsx`
+│   ├── services/            Firebase Auth/Firestore, AI Gemini synthesis, Notifications
+│   ├── utils/               Skill gap math, recommendation logic, certificate generator, demo seeder
+│   ├── types.ts             Unified TypeScript interfaces (Trainee, Trainer, Admin, Competency, Course)
+│   ├── routes.ts            Client route registry with administrative security guards
+│   └── App.tsx              Main layout, route dispatcher, and local session manager
+├── server.ts                Express API backend server
+├── DEMO_GUIDE.md            Official SIH Evaluation Demonstration Manual & Walkthrough Script
+└── README.md                Project documentation
 ```
 
 ---
 
-## 7. LOCAL SETUP & INSTALLATION
+## 7. QUICK START & LOCAL DEVELOPMENT
 
 ### Prerequisites
-- Node.js 18+ (Node 22 recommended)
+- Node.js 18+ (Node.js 20 or 22 recommended)
 - `npm` package manager
 
-### Installation Steps
+### Installation
 
-1. Clone the repository and install dependencies:
+1. **Clone Repository & Install Dependencies**:
    ```bash
    git clone https://github.com/Prashant-workhub/kuma.git
    cd kuma
    npm install
    ```
 
-2. Configure environment variables (optional for local testing; fallbacks are pre-configured):
+2. **Environment Configuration** *(Optional — safe local defaults are pre-configured)*:
    ```bash
    cp .env.example .env
    ```
 
-3. Run the development server:
+3. **Start Development Servers**:
    ```bash
    npm run dev
    ```
-   - Frontend app: `http://localhost:5173`
-   - Express backend: `http://localhost:3003`
+   - **Web Application**: `http://localhost:5173`
+   - **Express Server**: `http://localhost:3003`
 
 ---
 
-## 8. DEMONSTRATION WORKFLOW
+## 8. DEMONSTRATION & SIH EVALUATION GUIDE
 
-For SIH evaluation, Kuma includes a complete demo environment and seeder:
-- **Demonstration Manual**: Refer to [`DEMO_GUIDE.md`](./DEMO_GUIDE.md) for the exact 8-step walkthrough script.
-- **Demo Seeder**: `src/utils/demoDataSeeder.ts` initializes realistic records for *Acme Digital Services*.
-- **Demo Accounts**:
-  - Admin: `admin@acme.com`
-  - Trainer: `trainer@acme.com`
-  - Trainee: `analyst@acme.com`
+Kuma includes an automated demo environment and seeder designed for SIH judges and evaluators:
+- **Demonstration Manual**: Refer to [`DEMO_GUIDE.md`](./DEMO_GUIDE.md) for the 8-step evaluation script.
+- **Demo Data Seeder**: `src/utils/demoDataSeeder.ts` populates sample records for *"Acme Digital Services"*.
+- **Pre-Configured Demo Accounts**:
+  - **Admin Portal**: `admin@acme.com` (Access to `/admin/dashboard` & `/admin/bulk-import`)
+  - **Trainer Portal**: `trainer@acme.com` (Access to Trainer Dashboard & Course Manager)
+  - **Trainee Portal**: `analyst@acme.com` (Access to Trainee Dashboard, Skill Gap & Recommendations)
 
 ---
 
-## 9. VERIFICATION & BUILD
+## 9. BUILD & QUALITY VERIFICATION
 
-Run type checking and production bundling:
+Ensure zero TypeScript errors and verify production Vite compilation:
 
 ```bash
-# TypeScript type check
+# Run TypeScript Type Checker
 npx tsc --noEmit
 
-# Production Vite build
+# Execute Production Bundle Build
 npm run build
 ```
 
