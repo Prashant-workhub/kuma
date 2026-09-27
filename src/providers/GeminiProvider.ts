@@ -112,8 +112,8 @@ export async function fetchGeminiApi(apiKey: string, requestedModel: string, bod
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${openRouterKey}`,
-          'HTTP-Referer': 'https://noteit.ai',
-          'X-Title': 'NoteIT'
+          'HTTP-Referer': 'https://kuma.ai',
+          'X-Title': 'Kuma'
         },
         body: JSON.stringify(openRouterPayload)
       });

@@ -58,7 +58,7 @@ export function PortalLayout({
           >
             <div className="flex items-center justify-between px-4 pt-4">
               <span className="flex items-center gap-2 text-ink">
-                <span className="text-sm font-semibold">NoteIT</span>
+                <span className="text-sm font-semibold">Kuma</span>
               </span>
               <button
                 type="button"

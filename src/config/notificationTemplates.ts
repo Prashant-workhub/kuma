@@ -1,5 +1,5 @@
 /**
- * Manually Controlled Notification Library for NoteIT AI
+ * Manually Controlled Notification Library for Kuma AI
  * Defines message templates, categories, prioritization, and delivery constraints.
  */
 
@@ -386,7 +386,7 @@ export const NOTIFICATION_TEMPLATES: NotificationTemplate[] = [
     id: "roast_01",
     category: "FRIENDLY_ROAST",
     title: "you opened Instagram.",
-    body: "NoteIT saw that. ðŸ‘ï¸ðŸ‘„ðŸ‘ï¸",
+    body: "Kuma saw that. ðŸ‘ï¸ðŸ‘„ðŸ‘ï¸",
     enabled: true,
     priority: "normal",
     route: "/dashboard"

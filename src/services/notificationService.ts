@@ -1,5 +1,5 @@
 /**
- * Client Notification Service for NoteIT AI
+ * Client Notification Service for Kuma AI
  * Manages permission requests, Service Worker registration, FCM tokens, and Firestore sync.
  */
 
@@ -210,8 +210,8 @@ export async function sendTestPushNotificationToBackend(title?: string, body?: s
   const currentUser = auth.currentUser;
   if (!currentUser) return { success: false, error: 'User is not authenticated.' };
 
-  const testTitle = title || 'NoteIT AI Test Notification 🚀';
-  const testBody = body || 'This is a live test of your NoteIT background push notification system!';
+  const testTitle = title || 'Kuma AI Test Notification 🚀';
+  const testBody = body || 'This is a live test of your Kuma background push notification system!';
   const testRoute = route || '/dashboard';
 
   // 1. Try Backend Server API First if available
@@ -316,7 +316,7 @@ export async function saveUserNotificationPreferences(uid: string, preferences: 
 }
 
 /**
- * Sets up foreground message listener when NoteIT app is active
+ * Sets up foreground message listener when Kuma app is active
  */
 export function setupForegroundMessageListener(onNotificationReceived?: (payload: any) => void): () => void {
   if (!isNotificationSupported()) return () => {};
@@ -327,7 +327,7 @@ export function setupForegroundMessageListener(onNotificationReceived?: (payload
       if (onNotificationReceived) {
         onNotificationReceived(payload);
       } else if (Notification.permission === 'granted') {
-        const title = payload.notification?.title || payload.data?.title || 'NoteIT AI';
+        const title = payload.notification?.title || payload.data?.title || 'Kuma AI';
         const options = {
           body: payload.notification?.body || payload.data?.body || '',
           icon: '/favicon.svg',

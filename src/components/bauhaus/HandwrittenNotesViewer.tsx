@@ -642,7 +642,7 @@ export const HandwrittenNotesViewer: React.FC<HandwrittenNotesViewerProps> = ({
     try {
       if (typeof window !== 'undefined') {
         if ((window as any).AndroidPrint && typeof (window as any).AndroidPrint.printDocument === 'function') {
-          (window as any).AndroidPrint.printDocument(title || "NoteIT_Handwritten_Notes");
+          (window as any).AndroidPrint.printDocument(title || "Kuma_Handwritten_Notes");
         } else {
           window.print();
         }
@@ -990,7 +990,7 @@ export const HandwrittenNotesViewer: React.FC<HandwrittenNotesViewerProps> = ({
 
             {/* PAGE FOOTER */}
             <div className="mt-8 pt-3 border-t border-slate-300 flex justify-between items-center text-xs font-mono font-bold text-slate-600">
-              <span>NOTEIT — HANDWRITTEN A4 REVISION ENGINE</span>
+              <span>KUMA — HANDWRITTEN A4 REVISION ENGINE</span>
               <span>STANDARD A4 PORTRAIT (210mm × 297mm) • PAGE {pg.pageNumber} OF {pages.length}</span>
             </div>
           </div>

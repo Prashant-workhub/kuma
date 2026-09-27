@@ -19,7 +19,7 @@ export function useFolders(userId: string | undefined) {
 
   // Helper to load local folders
   const getLocalFolders = (): Folder[] => {
-    const savedLocal = localStorage.getItem('noteit_local_folders');
+    const savedLocal = localStorage.getItem('kuma_local_folders');
     if (savedLocal) {
       try {
         const parsed = JSON.parse(savedLocal);
@@ -93,7 +93,7 @@ export function useFolders(userId: string | undefined) {
     if (!userId) {
       setFolders(prev => {
         const updated = [newLocalFolder, ...prev.filter(f => f.id !== newLocalFolder.id)];
-        localStorage.setItem('noteit_local_folders', JSON.stringify(updated));
+        localStorage.setItem('kuma_local_folders', JSON.stringify(updated));
         return updated;
       });
       return newLocalFolder.id;
@@ -112,7 +112,7 @@ export function useFolders(userId: string | undefined) {
       console.error('Error adding folder to Firestore, saving locally:', err);
       setFolders(prev => {
         const updated = [newLocalFolder, ...prev.filter(f => f.id !== newLocalFolder.id)];
-        localStorage.setItem('noteit_local_folders', JSON.stringify(updated));
+        localStorage.setItem('kuma_local_folders', JSON.stringify(updated));
         return updated;
       });
       return newLocalFolder.id;
@@ -122,7 +122,7 @@ export function useFolders(userId: string | undefined) {
   const deleteFolder = async (folderId: string) => {
     setFolders(prev => {
       const updated = prev.filter(f => f.id !== folderId);
-      localStorage.setItem('noteit_local_folders', JSON.stringify(updated));
+      localStorage.setItem('kuma_local_folders', JSON.stringify(updated));
       return updated;
     });
 
@@ -144,7 +144,7 @@ export function useFolders(userId: string | undefined) {
 
     setFolders(prev => {
       const updated = prev.map(f => f.id === folderId ? { ...f, name: cleanName } : f);
-      localStorage.setItem('noteit_local_folders', JSON.stringify(updated));
+      localStorage.setItem('kuma_local_folders', JSON.stringify(updated));
       return updated;
     });
 

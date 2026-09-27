@@ -139,7 +139,7 @@ export function MascotAvatarPicker({
                   SELECT YOUR ACADEMIC AVATAR
                 </h2>
                 <p className="text-xs font-mono text-[var(--text-secondary)] mt-0.5">
-                  Choose an official NoteIT 3D mascot character or upload your custom photo.
+                  Choose an official Kuma 3D mascot character or upload your custom photo.
                 </p>
               </div>
 
@@ -156,7 +156,7 @@ export function MascotAvatarPicker({
             <div className="space-y-3 text-left">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-extrabold text-[var(--text-primary)] uppercase tracking-wider">
-                  OFFICIAL NOTEIT 3D MASCOTS
+                  OFFICIAL KUMA 3D MASCOTS
                 </span>
                 <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)]">
                   5 Characters Available

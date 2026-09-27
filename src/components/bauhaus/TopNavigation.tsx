@@ -15,7 +15,7 @@ export interface TopNavigationProps {
 
 export const TopNavigation: React.FC<TopNavigationProps> = ({
   currentPageTitle,
-  breadcrumb = 'NOTEIT',
+  breadcrumb = 'KUMA',
   onCaptureClick,
   onProClick,
   searchQuery,

@@ -1,6 +1,6 @@
 /**
- * Firebase Messaging Service Worker for NoteIT AI
- * Handles background push notifications, NoteIT logo branding, and click navigation.
+ * Firebase Messaging Service Worker for Kuma AI
+ * Handles background push notifications, Kuma logo branding, and click navigation.
  */
 
 // Import Firebase compat libraries inside service worker
@@ -19,12 +19,12 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId) {
   messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
   
-  const title = payload.notification?.title || payload.data?.title || 'NoteIT AI';
+  const title = payload.notification?.title || payload.data?.title || 'Kuma AI';
   const body = payload.notification?.body || payload.data?.body || '';
   const icon = payload.notification?.icon || payload.data?.icon || '/favicon.svg';
   const badge = payload.data?.badge || '/favicon.svg';
   const route = payload.data?.route || payload.data?.url || '/';
-  const tag = payload.data?.tag || `noteit-${Date.now()}`;
+  const tag = payload.data?.tag || `kuma-${Date.now()}`;
 
   const notificationOptions = {
     body,
@@ -50,7 +50,7 @@ self.addEventListener('push', (event) => {
   try {
     const payload = event.data.json();
     if (payload && (payload.notification || payload.data)) {
-      const title = payload.notification?.title || payload.data?.title || 'NoteIT AI';
+      const title = payload.notification?.title || payload.data?.title || 'Kuma AI';
       const body = payload.notification?.body || payload.data?.body || '';
       const icon = payload.notification?.icon || payload.data?.icon || '/favicon.svg';
       const badge = payload.data?.badge || '/favicon.svg';
@@ -75,7 +75,7 @@ self.addEventListener('push', (event) => {
     // Non-JSON push payload
     const text = event.data.text();
     event.waitUntil(
-      self.registration.showNotification('NoteIT AI', {
+      self.registration.showNotification('Kuma AI', {
         body: text,
         icon: '/favicon.svg',
         data: { route: '/' }
@@ -93,12 +93,12 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Look for an existing open NoteIT window
+      // Look for an existing open Kuma window
       for (const client of clientList) {
         if ('focus' in client) {
           client.focus();
           client.postMessage({
-            type: 'NOTEIT_NOTIFICATION_NAVIGATE',
+            type: 'KUMA_NOTIFICATION_NAVIGATE',
             route: targetRoute
           });
           return;

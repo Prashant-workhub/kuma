@@ -52,11 +52,11 @@ export default function LandingView({
   const faqs = [
     {
       q: "Who is Broot?",
-      a: "Broot is NoteIT's friendly 3D cognitive companion! Broot listens to your lectures, organizes your research notes, and helps you build flashcards as you study."
+      a: "Broot is Kuma's friendly 3D cognitive companion! Broot listens to your lectures, organizes your research notes, and helps you build flashcards as you study."
     },
     {
-      q: "How does NoteIT record and transcribe lectures?",
-      a: "NoteIT uses browser-native WebAudio pipelines combined with custom Whisper and Gemini 2.5 audio processors to capture live spoken lectures or uploaded audio files, generating verbatim transcripts with speaker labels."
+      q: "How does Kuma record and transcribe lectures?",
+      a: "Kuma uses browser-native WebAudio pipelines combined with custom Whisper and Gemini 2.5 audio processors to capture live spoken lectures or uploaded audio files, generating verbatim transcripts with speaker labels."
     },
     {
       q: "What is Bring Your Own Key (BYOK) mode?",
@@ -83,7 +83,7 @@ export default function LandingView({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-heading font-extrabold text-lg text-[var(--text-primary)] tracking-tight block leading-none">NOTEIT</span>
+              <span className="font-heading font-extrabold text-lg text-[var(--text-primary)] tracking-tight block leading-none">KUMA</span>
             </div>
             <span className="font-mono text-[9px] text-[var(--text-secondary)] font-bold tracking-[2px] uppercase">COGNITIVE SCHOLAR WORKSPACE</span>
           </div>
@@ -127,12 +127,12 @@ export default function LandingView({
           <h1 className="font-heading font-extrabold text-4xl sm:text-6xl md:text-7xl text-[var(--text-primary)] tracking-tight leading-none uppercase">
             LEARN SMARTER <br />
             WITH <span className="bg-[#FFC400] text-[#111111] px-3 py-0.5 border-2 border-[var(--border-main)] shadow-paper-md inline-block mt-2 transform -rotate-1">
-              BROOT & NOTEIT
+              BROOT & KUMA
             </span>
           </h1>
 
           <p className="text-sm sm:text-base text-[var(--text-secondary)] font-mono font-medium leading-relaxed max-w-xl border-l-4 border-[#FFC400] pl-4 py-1">
-            NoteIT captures live lectures, extracts structured notes, generates quizzes, and diagnoses weak topics alongside Broot!
+            Kuma captures live lectures, extracts structured notes, generates quizzes, and diagnoses weak topics alongside Broot!
           </p>
 
           <div className="flex flex-wrap items-center gap-4 pt-3">
@@ -409,7 +409,7 @@ export default function LandingView({
         <div className="max-w-7xl mx-auto space-y-12">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
             <h2 className="font-heading font-extrabold text-3xl md:text-4xl uppercase text-[var(--text-primary)]">
-              HOW NOTEIT WORKS
+              HOW KUMA WORKS
             </h2>
             <p className="text-xs font-mono text-[var(--text-secondary)]">
               From raw acoustic soundwaves to structured academic mastery in 4 simple steps.
@@ -441,7 +441,7 @@ export default function LandingView({
             <h2 className="font-heading font-extrabold text-3xl md:text-4xl uppercase text-[var(--text-primary)]">
               FREQUENTLY ASKED QUESTIONS
             </h2>
-            <p className="text-xs font-mono text-[var(--text-secondary)]">Everything you need to know about NoteIT & Broot.</p>
+            <p className="text-xs font-mono text-[var(--text-secondary)]">Everything you need to know about Kuma & Broot.</p>
           </div>
 
           <div className="space-y-4">
@@ -475,7 +475,7 @@ export default function LandingView({
               <AILogo size={22} theme="light" />
             </div>
             <p className="text-[var(--text-secondary)]">
-              © 2026 NoteIT Scholar. Precision in knowledge synthesis.
+              © 2026 Kuma Scholar. Precision in knowledge synthesis.
             </p>
           </div>
 

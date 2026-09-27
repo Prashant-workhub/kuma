@@ -70,7 +70,7 @@ export default function AILogo({
           <span className={`font-sans font-black tracking-tight text-base leading-none ${
             theme === 'dark' ? 'text-white' : 'text-gray-950'
           }`}>
-            NoteIT
+            Kuma
           </span>
           <span className="text-[9px] uppercase font-bold tracking-widest text-indigo-500 mt-1 block">
             Scholar AI

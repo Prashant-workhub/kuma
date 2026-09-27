@@ -42,7 +42,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Check local storage for fallback doubts
       let localDoubts: DoubtItem[] = [];
       try {
-        const rawLocal = localStorage.getItem('noteit_local_doubts');
+        const rawLocal = localStorage.getItem('kuma_local_doubts');
         if (rawLocal) {
           const parsed = JSON.parse(rawLocal);
           if (Array.isArray(parsed)) {
@@ -157,12 +157,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const handleDoubtCreated = () => {
       loadCombinedDoubts([]);
     };
-    window.addEventListener('noteit_doubt_created', handleDoubtCreated);
+    window.addEventListener('kuma_doubt_created', handleDoubtCreated);
     window.addEventListener('storage', handleDoubtCreated);
 
     return () => {
       unsubscribe();
-      window.removeEventListener('noteit_doubt_created', handleDoubtCreated);
+      window.removeEventListener('kuma_doubt_created', handleDoubtCreated);
       window.removeEventListener('storage', handleDoubtCreated);
     };
   }, []);
@@ -228,7 +228,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Notify user of failure
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
-          new CustomEvent('noteit_api_error', {
+          new CustomEvent('kuma_api_error', {
             detail: {
               context: 'update_doubt_status',
               message: 'Failed to update status. Please try again.',

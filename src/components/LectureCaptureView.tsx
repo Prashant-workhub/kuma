@@ -116,8 +116,8 @@ export default function LectureCaptureView({
         setUiError(e.detail.message);
       }
     };
-    window.addEventListener('noteit-ui-error', handleUiError);
-    return () => window.removeEventListener('noteit-ui-error', handleUiError);
+    window.addEventListener('kuma-ui-error', handleUiError);
+    return () => window.removeEventListener('kuma-ui-error', handleUiError);
   }, []);
 
   // Lecture Metadata inputs
@@ -382,7 +382,7 @@ export default function LectureCaptureView({
 
   const getAsset = (lectureId: string | null | undefined, type: string, mode: string = '') => {
     if (!lectureId) return null;
-    const cacheKey = `noteit_asset_${lectureId}_${type}${mode ? '_' + mode : ''}`;
+    const cacheKey = `kuma_asset_${lectureId}_${type}${mode ? '_' + mode : ''}`;
     if (localAssets[cacheKey]) return localAssets[cacheKey];
 
     // Check sessionStorage and localStorage synchronously for instant session retrieval
@@ -402,7 +402,7 @@ export default function LectureCaptureView({
 
   const loadAsset = async (lectureId: string, assetType: string, mode: string = '') => {
     if (!lectureId || !auth.currentUser) return;
-    const cacheKey = `noteit_asset_${lectureId}_${assetType}${mode ? '_' + mode : ''}`;
+    const cacheKey = `kuma_asset_${lectureId}_${assetType}${mode ? '_' + mode : ''}`;
 
     // 1. Check local & session storage cache
     const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
@@ -796,7 +796,7 @@ export default function LectureCaptureView({
           // Dispatch resource generated notification toast
           if (typeof window !== 'undefined') {
             window.dispatchEvent(
-              new CustomEvent('noteit_notification', {
+              new CustomEvent('kuma_notification', {
                 detail: {
                   type: 'resource_generated',
                   title: 'LECTURE RESOURCES READY! 🎉',
@@ -817,7 +817,7 @@ export default function LectureCaptureView({
           console.error('Failed to save capture:', err);
           if (typeof window !== 'undefined') {
             window.dispatchEvent(
-              new CustomEvent('noteit_notification', {
+              new CustomEvent('kuma_notification', {
                 detail: {
                   type: 'resource_failed',
                   title: 'GENERATION UNCERTAIN ⚠️',
@@ -1258,9 +1258,9 @@ export default function LectureCaptureView({
           <script>
             window.onload = function() {
               if (window.AndroidPrint && typeof window.AndroidPrint.printDocument === 'function') {
-                window.AndroidPrint.printDocument('${title ? title.replace(/'/g, "\\'") : 'NoteIT_Document'}');
+                window.AndroidPrint.printDocument('${title ? title.replace(/'/g, "\\'") : 'Kuma_Document'}');
               } else if (window.opener && window.opener.AndroidPrint && typeof window.opener.AndroidPrint.printDocument === 'function') {
-                window.opener.AndroidPrint.printDocument('${title ? title.replace(/'/g, "\\'") : 'NoteIT_Document'}');
+                window.opener.AndroidPrint.printDocument('${title ? title.replace(/'/g, "\\'") : 'Kuma_Document'}');
               } else {
                 window.print();
               }
@@ -1299,7 +1299,7 @@ export default function LectureCaptureView({
       const docRef = doc(db, 'users', uid, 'lectures', activeLecture.id, 'assets', `notes_${mode}`);
       await setDoc(docRef, { data: generated, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeLecture.id}_notes_${mode}`;
+      const cacheKey = `kuma_asset_${activeLecture.id}_notes_${mode}`;
       localStorage.setItem(cacheKey, JSON.stringify(generated));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: generated }));
     } catch (err: any) {
@@ -1333,7 +1333,7 @@ export default function LectureCaptureView({
       const docRef = doc(db, 'users', uid, 'lectures', activeLecture.id, 'assets', `summaries_${mode}`);
       await setDoc(docRef, { data: generated, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeLecture.id}_summaries_${mode}`;
+      const cacheKey = `kuma_asset_${activeLecture.id}_summaries_${mode}`;
       localStorage.setItem(cacheKey, JSON.stringify(generated));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: generated }));
     } catch (err: any) {
@@ -1371,7 +1371,7 @@ export default function LectureCaptureView({
       const docRef = doc(db, 'users', uid, 'lectures', activeLecture.id, 'assets', `flashcards`);
       await setDoc(docRef, { data: generated, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeLecture.id}_flashcards`;
+      const cacheKey = `kuma_asset_${activeLecture.id}_flashcards`;
       localStorage.setItem(cacheKey, JSON.stringify(generated));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: generated }));
     } catch (err: any) {
@@ -1407,7 +1407,7 @@ export default function LectureCaptureView({
       const newData = [...existing, ...generated];
       await setDoc(docRef, { data: newData, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeLecture.id}_flashcards`;
+      const cacheKey = `kuma_asset_${activeLecture.id}_flashcards`;
       localStorage.setItem(cacheKey, JSON.stringify(newData));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: newData }));
     } catch (err: any) {
@@ -1440,7 +1440,7 @@ export default function LectureCaptureView({
       const docRef = doc(db, 'users', uid, 'lectures', activeLecture.id, 'assets', `quiz`);
       await setDoc(docRef, { data: generated, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeLecture.id}_quiz`;
+      const cacheKey = `kuma_asset_${activeLecture.id}_quiz`;
       localStorage.setItem(cacheKey, JSON.stringify(generated));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: generated }));
     } catch (err: any) {
@@ -1478,7 +1478,7 @@ export default function LectureCaptureView({
       const newData = [...existing, ...generated];
       await setDoc(docRef, { data: newData, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeLecture.id}_quiz`;
+      const cacheKey = `kuma_asset_${activeLecture.id}_quiz`;
       localStorage.setItem(cacheKey, JSON.stringify(newData));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: newData }));
     } catch (err: any) {
@@ -1512,7 +1512,7 @@ export default function LectureCaptureView({
       const docRef = doc(db, 'users', uid, 'lectures', activeLecture.id, 'assets', `keyConcepts`);
       await setDoc(docRef, { data: generated, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeLecture.id}_keyConcepts`;
+      const cacheKey = `kuma_asset_${activeLecture.id}_keyConcepts`;
       localStorage.setItem(cacheKey, JSON.stringify(generated));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: generated }));
     } catch (err: any) {
@@ -3293,7 +3293,7 @@ export default function LectureCaptureView({
                         <textarea
                           value={manualTranscriptInput}
                           onChange={(e) => setManualTranscriptInput(e.target.value)}
-                          placeholder="Type or paste your raw lecture transcript, notes, or spoken lecture text here. NoteIT AI will automatically analyze the text, log it to the console, and generate comprehensive study notes, flashcards, quizzes, and mind maps..."
+                          placeholder="Type or paste your raw lecture transcript, notes, or spoken lecture text here. Kuma AI will automatically analyze the text, log it to the console, and generate comprehensive study notes, flashcards, quizzes, and mind maps..."
                           className="w-full h-40 p-3 rounded-[4px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-secondary)] resize-none focus:outline-none focus:ring-2 focus:ring-[#FFC400]"
                         />
                         <button

@@ -218,7 +218,7 @@ export default function AuthView({
         try {
           userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
         } catch (signInErr: any) {
-          if (cleanEmail === 'premium.student@noteit.ai' || cleanEmail.includes('premium')) {
+          if (cleanEmail === 'premium.student@kuma.ai' || cleanEmail.includes('premium')) {
             try {
               userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password.length >= 6 ? password : 'PremiumUser123!');
             } catch (createErr) {
@@ -232,7 +232,7 @@ export default function AuthView({
         const detectedRole: 'student' | 'faculty' = isFacultyMode ? 'faculty' : 'student';
         const userRef = doc(db, 'users', userCredential.user.uid);
 
-        const isTestPremium = cleanEmail.includes('premium') || cleanEmail === 'premium.student@noteit.ai';
+        const isTestPremium = cleanEmail.includes('premium') || cleanEmail === 'premium.student@kuma.ai';
         const updatePayload: any = {
           role: detectedRole,
           email: cleanEmail,
@@ -357,7 +357,7 @@ export default function AuthView({
   const handleQuickPremiumLogin = async () => {
     setIsFacultyMode(false);
     setMode('login');
-    setEmail('premium.student@noteit.ai');
+    setEmail('premium.student@kuma.ai');
     setPassword('PremiumUser123!');
     setError(null);
     setLoading(true);
@@ -365,15 +365,15 @@ export default function AuthView({
     try {
       let userCred;
       try {
-        userCred = await signInWithEmailAndPassword(auth, 'premium.student@noteit.ai', 'PremiumUser123!');
+        userCred = await signInWithEmailAndPassword(auth, 'premium.student@kuma.ai', 'PremiumUser123!');
       } catch (err: any) {
-        userCred = await createUserWithEmailAndPassword(auth, 'premium.student@noteit.ai', 'PremiumUser123!');
+        userCred = await createUserWithEmailAndPassword(auth, 'premium.student@kuma.ai', 'PremiumUser123!');
       }
 
       const userRef = doc(db, 'users', userCred.user.uid);
       await setDoc(userRef, {
         role: 'student',
-        email: 'premium.student@noteit.ai',
+        email: 'premium.student@kuma.ai',
         fullName: 'Alex Morgan (Scholar Pro)',
         first_name: 'Alex',
         last_name: 'Morgan',
@@ -400,7 +400,7 @@ export default function AuthView({
       setTimeout(() => {
         onLoginSuccess({
           fullName: 'Alex Morgan (Scholar Pro)',
-          emailAddress: 'premium.student@noteit.ai',
+          emailAddress: 'premium.student@kuma.ai',
           role: 'student'
         });
       }, 1000);
@@ -516,7 +516,7 @@ export default function AuthView({
             <AILogo size={32} theme="light" />
           </div>
           <div>
-            <div className="font-heading font-extrabold text-lg text-[var(--text-primary)] tracking-tight">NOTEIT</div>
+            <div className="font-heading font-extrabold text-lg text-[var(--text-primary)] tracking-tight">KUMA</div>
             <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-[2px]">
               {isFacultyMode ? 'FACULTY ACADEMIC PORTAL' : 'SCHOLAR WORKSPACE'}
             </div>
@@ -548,7 +548,7 @@ export default function AuthView({
           <p className="text-sm font-mono text-[var(--text-secondary)] leading-relaxed border-l-4 border-[#FFC400] pl-3 py-1">
             {isFacultyMode
               ? 'Empower your teaching with live course metrics, student doubt management, real-time quiz performance analytics, and AI-driven Class Learning Alerts.'
-              : 'NoteIT captures lectures, extracts structural text, generates dynamic notes, flashcards, interactive quizzes, and designs beautiful presentation decks in one unified workspace.'}
+              : 'Kuma captures lectures, extracts structural text, generates dynamic notes, flashcards, interactive quizzes, and designs beautiful presentation decks in one unified workspace.'}
           </p>
 
           {/* Preview Card */}
@@ -581,7 +581,7 @@ export default function AuthView({
 
         {/* Footer info */}
         <div className="text-xs font-mono text-[var(--text-secondary)]">
-          © 2026 NoteIT Labs. Powered by BRUTE.
+          © 2026 Kuma Labs. Powered by BRUTE.
         </div>
       </div>
 
@@ -818,7 +818,7 @@ export default function AuthView({
           </Card>
 
           <p className="text-center text-[10px] font-mono text-[var(--text-secondary)]">
-            Private academic workspace protected by decentralized key signatures.<br />Powered by NoteIT Labs.
+            Private academic workspace protected by decentralized key signatures.<br />Powered by Kuma Labs.
           </p>
         </div>
       </div>

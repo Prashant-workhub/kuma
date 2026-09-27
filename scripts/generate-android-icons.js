@@ -84,7 +84,7 @@ function createSplashSvg(width, height) {
     <circle cx="71" cy="33.5" r="9.5" fill="#5F6DF8" stroke="#0c0e17" stroke-width="2" />
     <path d="M71 29 V38 M66.5 33.5 H75.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
   </g>
-  <text x="${width / 2}" y="${iconY + iconSize + 50}" fill="#FFFFFF" font-family="system-ui, sans-serif" font-weight="900" font-size="${Math.max(24, iconSize * 0.22)}" text-anchor="middle" letter-spacing="-0.5">NoteIT</text>
+  <text x="${width / 2}" y="${iconY + iconSize + 50}" fill="#FFFFFF" font-family="system-ui, sans-serif" font-weight="900" font-size="${Math.max(24, iconSize * 0.22)}" text-anchor="middle" letter-spacing="-0.5">Kuma</text>
   <text x="${width / 2}" y="${iconY + iconSize + 80}" fill="#5F6DF8" font-family="system-ui, sans-serif" font-weight="700" font-size="${Math.max(12, iconSize * 0.1)}" text-anchor="middle" letter-spacing="3">SCHOLAR AI</text>
 </svg>
 `);

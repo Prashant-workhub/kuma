@@ -170,6 +170,6 @@ export function showDeduplicatedAlert(message: string, cooldownMs = 4000): void 
   }, cooldownMs);
 
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('noteit-ui-error', { detail: { message } }));
+    window.dispatchEvent(new CustomEvent('kuma-ui-error', { detail: { message } }));
   }
 }

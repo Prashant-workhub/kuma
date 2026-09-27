@@ -397,7 +397,7 @@ export const buildAndDownloadPPTX = async (
       });
       
       // 3. Subtitle / Objective
-      slide.addText(s.objective || "Study presentation synthesized by NoteIT", {
+      slide.addText(s.objective || "Study presentation synthesized by Kuma", {
         x: 0.5, y: 3.5, w: 9.0, h: 0.8,
         fontSize: bodySize + 1, fontFace: colors.fontBody,
         color: colors.primary, align: "center", italic: true
@@ -845,7 +845,7 @@ export const buildAndDownloadPPTX = async (
         color: colors.text, lineSpacing: 20
       });
 
-      slide.addText("Synthesized dynamically by NoteIT Presentation Architect", {
+      slide.addText("Synthesized dynamically by Kuma Presentation Architect", {
         x: 0.5, y: 4.8, w: 9.0, h: 0.4,
         fontSize: 10, fontFace: colors.fontBody, color: colors.primary, align: "center", italic: true
       });

@@ -23,7 +23,7 @@ const DEFAULT_SUBJECTS: Subject[] = [
 
 function getDeletedSubjectIds(userId?: string): string[] {
   try {
-    const key = `noteit_deleted_subjects_${userId || 'guest'}`;
+    const key = `kuma_deleted_subjects_${userId || 'guest'}`;
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
@@ -33,7 +33,7 @@ function getDeletedSubjectIds(userId?: string): string[] {
 
 function recordDeletedSubjectId(id: string, userId?: string) {
   try {
-    const key = `noteit_deleted_subjects_${userId || 'guest'}`;
+    const key = `kuma_deleted_subjects_${userId || 'guest'}`;
     const existing = getDeletedSubjectIds(userId);
     if (!existing.includes(id)) {
       const updated = [...existing, id];

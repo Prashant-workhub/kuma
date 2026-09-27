@@ -1,5 +1,5 @@
 /**
- * Non-Intrusive Notification Permission Banner for NoteIT AI
+ * Non-Intrusive Notification Permission Banner for Kuma AI
  * Only prompts for browser permission after explicit user click on [Enable Notifications].
  */
 
@@ -22,7 +22,7 @@ export default function NotificationPermissionBanner() {
     const currentState = getNotificationPermissionState();
     setPermissionState(currentState);
 
-    const dismissedInSession = sessionStorage.getItem('noteit_notification_prompt_dismissed') === 'true';
+    const dismissedInSession = sessionStorage.getItem('kuma_notification_prompt_dismissed') === 'true';
     if (dismissedInSession) {
       setIsDismissed(true);
     }
@@ -54,7 +54,7 @@ export default function NotificationPermissionBanner() {
 
   const handleDismiss = () => {
     setIsDismissed(true);
-    sessionStorage.setItem('noteit_notification_prompt_dismissed', 'true');
+    sessionStorage.setItem('kuma_notification_prompt_dismissed', 'true');
   };
 
   // If permission is already granted, dismissed in session, or unsupported: do not show prompt banner
@@ -68,7 +68,7 @@ export default function NotificationPermissionBanner() {
           <div>
             <div className="uppercase tracking-wide font-extrabold">Notifications Enabled!</div>
             <div className="text-[10px] font-bold opacity-90 mt-0.5">
-              You'll get lecture reminders and important learning updates even when NoteIT is closed.
+              You'll get lecture reminders and important learning updates even when Kuma is closed.
             </div>
           </div>
         </div>
@@ -81,18 +81,18 @@ export default function NotificationPermissionBanner() {
     <div className="w-full bg-[#0c0e17] border-b-2 border-[#FFC400] text-white px-4 py-3 shadow-paper-md relative z-40 transition-all select-none">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs">
         
-        {/* Left Info Column with NoteIT Logo Branding */}
+        {/* Left Info Column with Kuma Logo Branding */}
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-[6px] bg-[#242834] border border-[#FFC400]/40 flex items-center justify-center shrink-0 p-1">
-            <img src="/favicon.svg" alt="NoteIT Logo" className="h-full w-full object-contain" />
+            <img src="/favicon.svg" alt="Kuma Logo" className="h-full w-full object-contain" />
           </div>
           <div>
             <div className="font-heading font-extrabold text-sm uppercase text-[#FFC400] tracking-wide flex items-center gap-1.5">
               <Bell className="h-4 w-4 text-[#FFC400]" />
-              <span>Enable NoteIT Notifications</span>
+              <span>Enable Kuma Notifications</span>
             </div>
             <p className="text-[11px] font-bold text-gray-300 mt-0.5 max-w-2xl leading-tight">
-              Get revision reminders, lecture processing updates and important learning alerts even when NoteIT is closed.
+              Get revision reminders, lecture processing updates and important learning alerts even when Kuma is closed.
             </p>
           </div>
         </div>

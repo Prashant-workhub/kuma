@@ -208,12 +208,12 @@ export default function GuidedTour({
   };
 
   const handleSkip = () => {
-    localStorage.setItem('noteit_guided_tour_completed', 'true');
+    localStorage.setItem('kuma_guided_tour_completed', 'true');
     onClose();
   };
 
   const handleFinish = () => {
-    localStorage.setItem('noteit_guided_tour_completed', 'true');
+    localStorage.setItem('kuma_guided_tour_completed', 'true');
     onClose();
   };
 

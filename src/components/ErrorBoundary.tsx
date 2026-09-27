@@ -36,7 +36,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   };
 
   private handleContactSupport = () => {
-    window.location.href = 'mailto:support@noteit.ai?subject=NoteIT%20AI%20Support%20Request';
+    window.location.href = 'mailto:support@kuma.ai?subject=Kuma%20AI%20Support%20Request';
   };
 
   public render() {

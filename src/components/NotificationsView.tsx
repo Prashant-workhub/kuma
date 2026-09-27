@@ -68,7 +68,7 @@ export default function NotificationsView({
       <div className="relative rounded-[6px] border-2 border-[#111111] bg-white p-6 md:p-8 shadow-paper-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="section-label text-[10px] font-bold text-[#666666] uppercase tracking-[3px] block">
-            NOTEIT LOG SYSTEM
+            KUMA LOG SYSTEM
           </span>
           <h1 className="font-heading font-extrabold text-3xl md:text-4xl text-[#111111] uppercase tracking-tight mt-1">
             ACTIVITY CENTER

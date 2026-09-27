@@ -108,7 +108,7 @@ export default function Navbar({
             className="hidden sm:inline-block bg-[var(--border-main)] text-[var(--card-bg)] px-2 py-0.5 rounded-[4px] cursor-pointer hover:bg-[#FFC400] hover:text-[#111111] transition-colors"
             onClick={() => setActivePage('dashboard')}
           >
-            NOTEIT
+            KUMA
           </span>
           <ChevronRight className="hidden sm:inline-block h-3.5 w-3.5 text-[var(--text-primary)]" />
           <span className="bg-[#FFC400] text-[#111111] px-2 py-0.5 sm:px-2.5 rounded-[4px] font-bold border border-[var(--border-main)] shadow-paper-sm uppercase tracking-wider text-[11px] sm:text-xs">
@@ -264,7 +264,7 @@ export default function Navbar({
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
-                    window.dispatchEvent(new CustomEvent('noteit_start_guided_tour'));
+                    window.dispatchEvent(new CustomEvent('kuma_start_guided_tour'));
                   }}
                   className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 font-bold text-left hover:bg-[#FFC400] hover:text-[#111111] transition-colors cursor-pointer"
                 >

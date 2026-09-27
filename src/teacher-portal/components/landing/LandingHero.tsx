@@ -113,7 +113,7 @@ export function LandingHero() {
             <div className="flex items-center gap-3 text-white">
               <AILogo size={34} showText={false} theme="dark" />
               <div className="flex flex-col leading-tight">
-                <span className="text-lg font-bold tracking-tight text-white">NoteIT</span>
+                <span className="text-lg font-bold tracking-tight text-white">Kuma</span>
                 <span className="text-[11px] font-medium tracking-wider text-white/60 lowercase">faculty portal</span>
               </div>
             </div>

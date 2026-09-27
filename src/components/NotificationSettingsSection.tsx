@@ -1,6 +1,6 @@
 /**
  * Notification Settings Section Component
- * Embedded in NoteIT SettingsView page to control push notification preferences.
+ * Embedded in Kuma SettingsView page to control push notification preferences.
  */
 
 import React, { useState, useEffect } from 'react';

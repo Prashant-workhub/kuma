@@ -156,7 +156,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
 
   const getAsset = (sourceId: string | null | undefined, type: string, mode: string = '') => {
     if (!sourceId) return null;
-    const cacheKey = `noteit_asset_${sourceId}_${type}${mode ? '_' + mode : ''}`;
+    const cacheKey = `kuma_asset_${sourceId}_${type}${mode ? '_' + mode : ''}`;
     if (localAssets[cacheKey]) return localAssets[cacheKey];
 
     // Check sessionStorage and localStorage synchronously for instant session retrieval
@@ -175,7 +175,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
 
   const loadAsset = async (sourceId: string, assetType: string, mode: string = '') => {
     if (!sourceId || !auth.currentUser) return;
-    const cacheKey = `noteit_asset_${sourceId}_${assetType}${mode ? '_' + mode : ''}`;
+    const cacheKey = `kuma_asset_${sourceId}_${assetType}${mode ? '_' + mode : ''}`;
 
     // 1. Check local & session storage cache
     const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
@@ -359,7 +359,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
     if (source.id && userId) {
       // 1. Instant 0ms local storage check FIRST
       try {
-        const localKey = `noteit_transcript_${userId}_${source.id}`;
+        const localKey = `kuma_transcript_${userId}_${source.id}`;
         const rawLocal = localStorage.getItem(localKey);
         if (rawLocal) {
           const parsed = JSON.parse(rawLocal);
@@ -393,7 +393,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
     await new Promise(r => setTimeout(r, 20));
 
     try {
-      const cacheKey = `noteit_asset_${activeSourceId}_notes_${format}`;
+      const cacheKey = `kuma_asset_${activeSourceId}_notes_${format}`;
       if (localAssets[cacheKey]) {
         setIsGeneratingNotes(false);
         return;
@@ -439,7 +439,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
     await new Promise(r => setTimeout(r, 20));
 
     try {
-      const cacheKey = `noteit_asset_${activeSourceId}_summary_${format}`;
+      const cacheKey = `kuma_asset_${activeSourceId}_summary_${format}`;
       if (localAssets[cacheKey]) {
         setIsGeneratingSummary(false);
         return;
@@ -504,7 +504,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
       const docRef = doc(db, 'users', userId, 'sources', activeSourceId, 'assets', `flashcards`);
       await setDoc(docRef, { data: generated, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeSourceId}_flashcards`;
+      const cacheKey = `kuma_asset_${activeSourceId}_flashcards`;
       localStorage.setItem(cacheKey, JSON.stringify(generated));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: generated }));
     } catch (err: any) {
@@ -531,7 +531,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
       const docRef = doc(db, 'users', userId, 'sources', activeSourceId, 'assets', `quiz`);
       await setDoc(docRef, { data: generated, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeSourceId}_quiz`;
+      const cacheKey = `kuma_asset_${activeSourceId}_quiz`;
       localStorage.setItem(cacheKey, JSON.stringify(generated));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: generated }));
     } catch (err: any) {
@@ -562,7 +562,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
       const newData = [...existing, ...generated];
       await setDoc(docRef, { data: newData, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeSourceId}_quiz`;
+      const cacheKey = `kuma_asset_${activeSourceId}_quiz`;
       localStorage.setItem(cacheKey, JSON.stringify(newData));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: newData }));
     } catch (err: any) {
@@ -591,7 +591,7 @@ export default function KnowledgeStudioView({ userId, theme, setActivePage }: Kn
       const docRef = doc(db, 'users', userId, 'sources', activeSourceId, 'assets', `mindmap`);
       await setDoc(docRef, { data: generated, updatedAt: serverTimestamp() });
 
-      const cacheKey = `noteit_asset_${activeSourceId}_mindmap`;
+      const cacheKey = `kuma_asset_${activeSourceId}_mindmap`;
       localStorage.setItem(cacheKey, JSON.stringify(generated));
       setLocalAssets((prev: any) => ({ ...prev, [cacheKey]: generated }));
     } catch (err: any) {
@@ -1984,9 +1984,9 @@ ${queryText}`;
           <script>
             window.onload = function() {
               if (window.AndroidPrint && typeof window.AndroidPrint.printDocument === 'function') {
-                window.AndroidPrint.printDocument('${title ? title.replace(/'/g, "\\'") : 'NoteIT_Document'}');
+                window.AndroidPrint.printDocument('${title ? title.replace(/'/g, "\\'") : 'Kuma_Document'}');
               } else if (window.opener && window.opener.AndroidPrint && typeof window.opener.AndroidPrint.printDocument === 'function') {
-                window.opener.AndroidPrint.printDocument('${title ? title.replace(/'/g, "\\'") : 'NoteIT_Document'}');
+                window.opener.AndroidPrint.printDocument('${title ? title.replace(/'/g, "\\'") : 'Kuma_Document'}');
               } else {
                 window.print();
               }

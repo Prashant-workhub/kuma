@@ -1,8 +1,8 @@
 # KUMA AI
 
-NoteIT AI is an academic learning workspace that turns lectures, documents, website links, and YouTube resources into study material. Students can capture resources, generate notes and quizzes, practise concepts, track learning progress, and ask faculty doubts. A separate faculty workspace supports teaching-focused views of doubts, courses, and analytics.
+Kuma AI is an academic learning workspace that turns lectures, documents, website links, and YouTube resources into study material. Students can capture resources, generate notes and quizzes, practise concepts, track learning progress, and ask faculty doubts. A separate faculty workspace supports teaching-focused views of doubts, courses, and analytics.
 
-> NoteIT uses BYOK (bring your own key). A user-provided AI key is sent only in an authenticated setup request, encrypted with AES-256-GCM on the backend, and saved in that user's server-side vault. It is not persisted in browser storage.
+> Kuma uses BYOK (bring your own key). A user-provided AI key is sent only in an authenticated setup request, encrypted with AES-256-GCM on the backend, and saved in that user's server-side vault. It is not persisted in browser storage.
 
 ## Feature overview
 
@@ -173,8 +173,8 @@ The smoke-test script checks provider utilities, API authentication guards, rout
 
 `render.yaml` defines two services:
 
-1. `noteit-api`: the Node/Express backend; configure all secret values here.
-2. `noteit-web`: the Vite static frontend; configure Firebase web settings and `VITE_API_URL` here.
+1. `kuma-api`: the Node/Express backend; configure all secret values here.
+2. `kuma-web`: the Vite static frontend; configure Firebase web settings and `VITE_API_URL` here.
 
 Deployment checklist:
 
@@ -187,7 +187,7 @@ Deployment checklist:
 
 ### Vercel note
 
-`vercel.json` deploys the static frontend only. `server.ts` must run on a Node backend such as the `noteit-api` Render service. A `GEMINI_API_KEY` placed only in a static Vercel project is not available to the Express API.
+`vercel.json` deploys the static frontend only. `server.ts` must run on a Node backend such as the `kuma-api` Render service. A `GEMINI_API_KEY` placed only in a static Vercel project is not available to the Express API.
 
 ## Security and production notes
 

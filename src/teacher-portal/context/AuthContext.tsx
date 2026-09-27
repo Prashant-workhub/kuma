@@ -37,7 +37,7 @@ export function AuthProvider({
   const [profile, setProfile] = useState<FacultyProfile | null>(() => {
     if (initialProfile) return initialProfile
     try {
-      const saved = localStorage.getItem('noteit_faculty_profile')
+      const saved = localStorage.getItem('kuma_faculty_profile')
       if (saved) return JSON.parse(saved)
     } catch (e) {
       console.warn('[AuthContext] Failed reading saved faculty profile:', e)
@@ -57,7 +57,7 @@ export function AuthProvider({
     const newProf = makeFacultyProfile(input)
     setProfile(newProf)
     try {
-      localStorage.setItem('noteit_faculty_profile', JSON.stringify(newProf))
+      localStorage.setItem('kuma_faculty_profile', JSON.stringify(newProf))
     } catch (e) {
       console.warn('[AuthContext] Failed saving faculty profile:', e)
     }
@@ -72,7 +72,7 @@ export function AuthProvider({
   const initProfile = useCallback((prof: FacultyProfile) => {
     setProfile(prof)
     try {
-      localStorage.setItem('noteit_faculty_profile', JSON.stringify(prof))
+      localStorage.setItem('kuma_faculty_profile', JSON.stringify(prof))
     } catch (e) {
       console.warn('[AuthContext] Failed saving faculty profile:', e)
     }
@@ -88,7 +88,7 @@ export function AuthProvider({
         next.avatarInitials = initialsFrom(next.firstName, next.surname)
       }
       try {
-        localStorage.setItem('noteit_faculty_profile', JSON.stringify(next))
+        localStorage.setItem('kuma_faculty_profile', JSON.stringify(next))
       } catch (e) {
         console.warn('[AuthContext] Failed saving updated faculty profile:', e)
       }

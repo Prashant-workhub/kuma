@@ -450,15 +450,15 @@ export async function createDoubtInFirestore(
 
   // 1. Always record in localStorage immediately for reliable zero-latency backup
   try {
-    const existingStr = localStorage.getItem('noteit_local_doubts') || '[]';
+    const existingStr = localStorage.getItem('kuma_local_doubts') || '[]';
     const existing = JSON.parse(existingStr);
     existing.unshift(completeLocalDoubt);
-    localStorage.setItem('noteit_local_doubts', JSON.stringify(existing.slice(0, 100)));
+    localStorage.setItem('kuma_local_doubts', JSON.stringify(existing.slice(0, 100)));
   } catch (e) {}
 
   // 2. Broadcast custom window event so open teacher interfaces update live
   try {
-    window.dispatchEvent(new CustomEvent('noteit_doubt_created', { detail: completeLocalDoubt }));
+    window.dispatchEvent(new CustomEvent('kuma_doubt_created', { detail: completeLocalDoubt }));
   } catch (e) {}
 
   // 3. Save to Firestore 'doubts' collection
@@ -502,7 +502,7 @@ export function getWhatsAppDeepLink(
   const directLink = `${baseUrl}/?portal=teacher&view=doubts&doubtId=${encodeURIComponent(doubtId)}`;
 
   const textMessage = 
-`🎓 *ACADEMIC DOUBT NOTIFICATION* • NoteIT
+`🎓 *ACADEMIC DOUBT NOTIFICATION* • Kuma
 
 Greetings *${teacher}*,
 
@@ -524,10 +524,10 @@ A student has submitted an academic doubt regarding your class:
 🆔 *REF UID*: \`${doubtId}\`
 
 ---------------------------------------
-🔗 *RESPOND DIRECTLY ON NOTEIT AI*:
+🔗 *RESPOND DIRECTLY ON KUMA AI*:
 ${directLink}
 ---------------------------------------
-Click the link above to open NoteIT AI Student Doubts section & post your response.`;
+Click the link above to open Kuma AI Student Doubts section & post your response.`;
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(textMessage)}`;
 }
@@ -579,7 +579,7 @@ export function subscribeFacultyDoubts(
 
     // Merge with local storage backup doubts
     try {
-      const rawLocal = localStorage.getItem('noteit_local_doubts');
+      const rawLocal = localStorage.getItem('kuma_local_doubts');
       if (rawLocal) {
         const parsed = JSON.parse(rawLocal);
         if (Array.isArray(parsed)) {

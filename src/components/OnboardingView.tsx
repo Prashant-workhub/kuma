@@ -417,10 +417,10 @@ export default function OnboardingView({
 
       if (keyValidated) {
         // Provider/model preferences & fallback keys for offline/mobile usage
-        localStorage.setItem('noteit_active_ai_provider', selectedProvider);
-        localStorage.setItem('noteit_active_ai_model', selectedModel);
-        localStorage.setItem(`noteit_user_api_key_${selectedProvider}`, trimmedKey);
-        localStorage.setItem('noteit_user_api_key', trimmedKey);
+        localStorage.setItem('kuma_active_ai_provider', selectedProvider);
+        localStorage.setItem('kuma_active_ai_model', selectedModel);
+        localStorage.setItem(`kuma_user_api_key_${selectedProvider}`, trimmedKey);
+        localStorage.setItem('kuma_user_api_key', trimmedKey);
 
         // Save onboarding_completed: true and credentials in Firestore database
         if (userId) {
@@ -959,7 +959,7 @@ export default function OnboardingView({
                     </div>
 
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed bg-[#F8FAFC] dark:bg-[#0D1117] p-3 rounded-xl border border-slate-300 dark:border-slate-800">
-                      In the key creation popup, type a key name (e.g. NoteIT Key), select your project, and click the blue <strong className="text-[#2563EB]">"Create key"</strong> button.
+                      In the key creation popup, type a key name (e.g. Kuma Key), select your project, and click the blue <strong className="text-[#2563EB]">"Create key"</strong> button.
                     </p>
                   </div>
 
@@ -985,7 +985,7 @@ export default function OnboardingView({
                     </div>
 
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed bg-[#F8FAFC] dark:bg-[#0D1117] p-3 rounded-xl border border-slate-300 dark:border-slate-800">
-                      Click the blue <strong className="text-[#2563EB]">"Copy key"</strong> button to copy your secret key to clipboard, return to NoteIT, paste it into <strong className="text-[#2563EB]">Card 2 on the left</strong>, and click <strong className="text-[#2563EB]">"Complete Setup"</strong>!
+                      Click the blue <strong className="text-[#2563EB]">"Copy key"</strong> button to copy your secret key to clipboard, return to Kuma, paste it into <strong className="text-[#2563EB]">Card 2 on the left</strong>, and click <strong className="text-[#2563EB]">"Complete Setup"</strong>!
                     </p>
                   </div>
 

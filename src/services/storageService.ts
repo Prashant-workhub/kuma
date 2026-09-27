@@ -348,7 +348,7 @@ async function fallbackClientUrlExtraction(url: string, type: 'youtube' | 'websi
       } catch (e) {}
 
       if (!text || text.trim().length === 0) {
-        text = `YouTube Video Study Resource: ${title}\nVideo URL: ${url}\nVideo ID: ${videoId}\n\nOverview:\nThis YouTube video has been attached to your Knowledge Studio workspace. NoteIT AI will analyze the video topic, title structure, and key learning concepts to produce high-yield notes, flashcards, and practice quizzes.`;
+        text = `YouTube Video Study Resource: ${title}\nVideo URL: ${url}\nVideo ID: ${videoId}\n\nOverview:\nThis YouTube video has been attached to your Knowledge Studio workspace. Kuma AI will analyze the video topic, title structure, and key learning concepts to produce high-yield notes, flashcards, and practice quizzes.`;
       }
 
       return { text, title };
@@ -424,7 +424,7 @@ export const saveTranscriptMultiTier = async (
   const cleanTranscriptData = transcriptData || {};
 
   try {
-    const localKey = `noteit_transcript_${userId}_${lectureId}`;
+    const localKey = `kuma_transcript_${userId}_${lectureId}`;
     localStorage.setItem(localKey, JSON.stringify({
       timestamp: Date.now(),
       ...cleanTranscriptData
@@ -511,7 +511,7 @@ export const getTranscriptMultiTier = async (
   }
 
   try {
-    const localKey = `noteit_transcript_${userId}_${lectureId}`;
+    const localKey = `kuma_transcript_${userId}_${lectureId}`;
     const rawLocal = localStorage.getItem(localKey);
     if (rawLocal) {
       const parsed = JSON.parse(rawLocal);

@@ -21,7 +21,7 @@ interface MascotFloatingAnimationProps {
 const CORNERS: CornerLocation[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
 
 export default function MascotFloatingAnimation({
-  videoSrc = '/mascots/noteit-mascot.mp4',
+  videoSrc = '/mascots/kuma-mascot.mp4',
   onClick,
   disabled = false
 }: MascotFloatingAnimationProps) {

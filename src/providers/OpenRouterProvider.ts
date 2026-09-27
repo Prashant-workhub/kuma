@@ -40,8 +40,8 @@ export async function postOpenRouterWithCreditFallback(
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://noteit.ai',
-        'X-Title': 'NoteIT'
+        'HTTP-Referer': 'https://kuma.ai',
+        'X-Title': 'Kuma'
       },
       body: JSON.stringify(body)
     });

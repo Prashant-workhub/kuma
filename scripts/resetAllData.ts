@@ -15,7 +15,7 @@ async function resetAllData() {
 
   // 1. Initialize Firebase Admin
   let adminApp;
-  const serviceAccountPath = path.resolve('noteit-3bb0f-firebase-adminsdk-fbsvc-da3b34008c.json');
+  const serviceAccountPath = path.resolve('kuma-3bb0f-firebase-adminsdk-fbsvc-da3b34008c.json');
   if (fs.existsSync(serviceAccountPath)) {
     const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
     adminApp = initializeApp({

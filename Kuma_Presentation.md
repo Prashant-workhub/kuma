@@ -1,7 +1,7 @@
-# NoteIT AI: Transforming Academic Learning with Intelligent Workspaces
+# Kuma AI: Transforming Academic Learning with Intelligent Workspaces
 
 ## 🚀 Project Vision
-NoteIT AI is a next-generation academic learning workspace designed to bridge the gap between raw educational content and deep conceptual mastery. By leveraging advanced AI, it transforms lectures, documents, and web resources into structured, personalized study materials, while providing educators with real-time diagnostic insights.
+Kuma AI is a next-generation academic learning workspace designed to bridge the gap between raw educational content and deep conceptual mastery. By leveraging advanced AI, it transforms lectures, documents, and web resources into structured, personalized study materials, while providing educators with real-time diagnostic insights.
 
 ---
 
@@ -14,7 +14,7 @@ Students today are overwhelmed by information but underserved by structured lear
 
 ---
 
-## ✨ The Solution: NoteIT AI
+## ✨ The Solution: Kuma AI
 An integrated ecosystem consisting of a **Student Knowledge Studio** and a **Faculty Command Center**.
 
 ### 🎓 Student Workspace
@@ -47,7 +47,7 @@ An integrated ecosystem consisting of a **Student Knowledge Studio** and a **Fac
 ---
 
 ## 🧠 Educational Innovation: The Bloom Engine
-Unlike basic note-takers, NoteIT AI uses an internal **Bloom's Taxonomy Engine** to map student mastery across six cognitive levels:
+Unlike basic note-takers, Kuma AI uses an internal **Bloom's Taxonomy Engine** to map student mastery across six cognitive levels:
 1. **Remember:** Recalling facts and basic concepts.
 2. **Understand:** Explaining ideas or concepts.
 3. **Apply:** Using information in new situations.
@@ -85,4 +85,4 @@ The system analyzes quiz telemetry to build a **Bloom Profile** for each student
 
 ---
 
-**NoteIT AI** – *Not just taking notes, but making sense of them.*
+**Kuma AI** – *Not just taking notes, but making sense of them.*

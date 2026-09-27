@@ -89,7 +89,7 @@ export default function Sidebar({
           {!isCollapsed && (
             <div className="flex flex-col">
               <div className="font-heading font-bold text-base tracking-tight text-[var(--text-primary)] flex items-center gap-1.5">
-                NOTEIT
+                KUMA
                 <span className="rounded-[3px] bg-[#FFC400] px-1 py-0.2 text-[9px] font-bold text-[#111111] border border-[var(--border-main)] font-mono">
                   v2.0
                 </span>

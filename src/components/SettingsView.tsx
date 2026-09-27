@@ -283,7 +283,7 @@ export default function SettingsView({
     const todayStr = new Date().toISOString().split('T')[0];
     if (typeof window !== 'undefined') {
       try {
-        const raw = localStorage.getItem('noteit_ai_telemetry');
+        const raw = localStorage.getItem('kuma_ai_telemetry');
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed.lastResetDate !== todayStr) {
@@ -346,7 +346,7 @@ export default function SettingsView({
             lastResetDate: todayStr
           };
           if (typeof window !== 'undefined') {
-            localStorage.setItem('noteit_ai_telemetry', JSON.stringify(updated));
+            localStorage.setItem('kuma_ai_telemetry', JSON.stringify(updated));
           }
           return updated;
         }
@@ -373,7 +373,7 @@ export default function SettingsView({
     };
     setTelemetry(resetState);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('noteit_ai_telemetry', JSON.stringify(resetState));
+      localStorage.setItem('kuma_ai_telemetry', JSON.stringify(resetState));
     }
   };
 
@@ -609,17 +609,17 @@ export default function SettingsView({
       }
     } catch (err) {
       console.error('Error fetching AI config status:', err);
-      const localProvider = localStorage.getItem('noteit_active_ai_provider') || 'gemini';
-      const hasLocalKey = !!(localStorage.getItem(`noteit_user_api_key_${localProvider}`) || localStorage.getItem('noteit_user_api_key'));
+      const localProvider = localStorage.getItem('kuma_active_ai_provider') || 'gemini';
+      const hasLocalKey = !!(localStorage.getItem(`kuma_user_api_key_${localProvider}`) || localStorage.getItem('kuma_user_api_key'));
       if (hasLocalKey) {
         setConfigStatus({
           configured: true,
           provider: localProvider,
           maskedKey: '••••••••',
-          selectedModel: localStorage.getItem('noteit_active_ai_model') || 'gemini-3.6-flash'
+          selectedModel: localStorage.getItem('kuma_active_ai_model') || 'gemini-3.6-flash'
         });
         setAiProvider(localProvider);
-        setSelectedModel(localStorage.getItem('noteit_active_ai_model') || 'gemini-3.6-flash');
+        setSelectedModel(localStorage.getItem('kuma_active_ai_model') || 'gemini-3.6-flash');
       }
     } finally {
       setIsLoadingConfig(false);
@@ -640,7 +640,7 @@ export default function SettingsView({
         if (Array.isArray(data.savedKeys)) {
           setSavedKeys(data.savedKeys);
           setNewKeyRank(data.savedKeys.length + 1);
-          localStorage.setItem('noteit_ranked_saved_keys', JSON.stringify(data.savedKeys));
+          localStorage.setItem('kuma_ranked_saved_keys', JSON.stringify(data.savedKeys));
         }
         if (data.allowEmergencyPlatformQuota !== undefined) {
           setAllowEmergencyQuota(data.allowEmergencyPlatformQuota);
@@ -688,7 +688,7 @@ export default function SettingsView({
 
     const updatedWithRanks = newKeys.map((k, i) => ({ ...k, rank: i + 1 }));
     setSavedKeys(updatedWithRanks);
-    localStorage.setItem('noteit_ranked_saved_keys', JSON.stringify(updatedWithRanks));
+    localStorage.setItem('kuma_ranked_saved_keys', JSON.stringify(updatedWithRanks));
 
     const keyRanks = updatedWithRanks.map(k => ({ id: k.id, rank: k.rank }));
 
@@ -728,9 +728,9 @@ export default function SettingsView({
       });
       if (res.ok) {
         const data = await res.json();
-        localStorage.setItem('noteit_active_ai_provider', data.provider);
-        localStorage.setItem('noteit_active_ai_model', data.model);
-        localStorage.setItem('noteit_selected_model', data.model);
+        localStorage.setItem('kuma_active_ai_provider', data.provider);
+        localStorage.setItem('kuma_active_ai_model', data.model);
+        localStorage.setItem('kuma_selected_model', data.model);
         triggerSaveNotification();
         await fetchConfigStatus();
         await fetchSavedKeys();
@@ -778,7 +778,7 @@ export default function SettingsView({
   // storage. Provider/model preferences remain intact.
   useEffect(() => {
     Object.keys(localStorage)
-      .filter((key) => /^noteit_.+_api_key$/i.test(key))
+      .filter((key) => /^kuma_.+_api_key$/i.test(key))
       .forEach((key) => localStorage.removeItem(key));
   }, []);
 
@@ -887,12 +887,12 @@ export default function SettingsView({
       }
 
       if (keyValid) {
-        localStorage.setItem('noteit_active_ai_provider', aiProvider);
+        localStorage.setItem('kuma_active_ai_provider', aiProvider);
         const activeModel = selectedModel.trim() || PROVIDER_METADATA[aiProvider]?.defaultModel || 'gemini-3.6-flash';
-        localStorage.setItem('noteit_active_ai_model', activeModel);
-        localStorage.setItem('noteit_selected_model', activeModel);
-        localStorage.setItem(`noteit_user_api_key_${aiProvider}`, newKey.trim());
-        localStorage.setItem('noteit_user_api_key', newKey.trim());
+        localStorage.setItem('kuma_active_ai_model', activeModel);
+        localStorage.setItem('kuma_selected_model', activeModel);
+        localStorage.setItem(`kuma_user_api_key_${aiProvider}`, newKey.trim());
+        localStorage.setItem('kuma_user_api_key', newKey.trim());
         setNewKey('');
         setShowReplaceForm(false);
         triggerSaveNotification();
@@ -1001,7 +1001,7 @@ export default function SettingsView({
                   Theme & Visual Appearance
                 </h3>
                 <p className="text-xs font-mono font-bold text-[var(--text-secondary)] mt-1">
-                  Customize the color palette and interface format for NoteIT. Choose between our Dark Navy Blue Bauhaus theme and Classic Light Bauhaus theme.
+                  Customize the color palette and interface format for Kuma. Choose between our Dark Navy Blue Bauhaus theme and Classic Light Bauhaus theme.
                 </p>
               </div>
 
@@ -1127,8 +1127,8 @@ export default function SettingsView({
                 <button
                   type="button"
                   onClick={() => {
-                    localStorage.removeItem('noteit_guided_tour_completed');
-                    window.dispatchEvent(new CustomEvent('noteit_start_guided_tour'));
+                    localStorage.removeItem('kuma_guided_tour_completed');
+                    window.dispatchEvent(new CustomEvent('kuma_start_guided_tour'));
                   }}
                   className="px-4 py-2 bg-[#2F6BFF] text-white hover:bg-[#255CD9] font-mono text-xs font-bold uppercase rounded-[4px] border-2 border-[var(--border-main)] shadow-paper-sm shrink-0 transition-all cursor-pointer"
                 >
@@ -1259,7 +1259,7 @@ export default function SettingsView({
                   Ranked Multi-API Key & Automatic Failover Management
                 </h3>
                 <p className="text-xs font-mono font-bold text-[var(--text-secondary)] mt-1">
-                  Configure priority-ranked API keys with automatic zero-downtime failover. If Rank #1 encounters rate limits (429) or quota errors, NoteIT seamlessly switches to Rank #2, Rank #3, and so on.
+                  Configure priority-ranked API keys with automatic zero-downtime failover. If Rank #1 encounters rate limits (429) or quota errors, Kuma seamlessly switches to Rank #2, Rank #3, and so on.
                 </p>
               </div>
 
@@ -1429,7 +1429,7 @@ export default function SettingsView({
                           </span>
                         </div>
                         <p className="text-[10px] font-mono text-[var(--text-secondary)] leading-relaxed">
-                          If all of your connected API keys reach their rate limit or daily quota, automatically allow NoteIT to use emergency platform quota fallback so your note generation never fails.
+                          If all of your connected API keys reach their rate limit or daily quota, automatically allow Kuma to use emergency platform quota fallback so your note generation never fails.
                         </p>
                       </div>
 

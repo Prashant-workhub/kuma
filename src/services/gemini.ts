@@ -64,13 +64,13 @@ export const getAIConfig = () => {
   const envOpenAiKey = getEnv('VITE_OPENAI_API_KEY') || '';
   const envOpenRouterKey = getEnv('VITE_OPENROUTER_API_KEY') || '';
 
-  const provider = isBrowser ? (localStorage.getItem('noteit_active_ai_provider') || localStorage.getItem('noteit_ai_provider') || (envOpenRouterKey ? 'openrouter' : 'gemini')) : 'gemini';
+  const provider = isBrowser ? (localStorage.getItem('kuma_active_ai_provider') || localStorage.getItem('kuma_ai_provider') || (envOpenRouterKey ? 'openrouter' : 'gemini')) : 'gemini';
 
-  const customGeminiKey = isBrowser ? (localStorage.getItem('noteit_user_api_key_gemini') || localStorage.getItem('noteit_user_api_key') || envGeminiKey) : envGeminiKey;
-  const customOpenAiKey = isBrowser ? (localStorage.getItem('noteit_user_api_key_openai') || localStorage.getItem('noteit_user_api_key') || envOpenAiKey) : envOpenAiKey;
-  const customOpenRouterKey = isBrowser ? (localStorage.getItem('noteit_user_api_key_openrouter') || envOpenRouterKey) : envOpenRouterKey;
+  const customGeminiKey = isBrowser ? (localStorage.getItem('kuma_user_api_key_gemini') || localStorage.getItem('kuma_user_api_key') || envGeminiKey) : envGeminiKey;
+  const customOpenAiKey = isBrowser ? (localStorage.getItem('kuma_user_api_key_openai') || localStorage.getItem('kuma_user_api_key') || envOpenAiKey) : envOpenAiKey;
+  const customOpenRouterKey = isBrowser ? (localStorage.getItem('kuma_user_api_key_openrouter') || envOpenRouterKey) : envOpenRouterKey;
 
-  const model = isBrowser ? (localStorage.getItem('noteit_active_ai_model') || getEnv('VITE_OPENROUTER_MODEL') || 'gemini-3.6-flash') : 'gemini-3.6-flash';
+  const model = isBrowser ? (localStorage.getItem('kuma_active_ai_model') || getEnv('VITE_OPENROUTER_MODEL') || 'gemini-3.6-flash') : 'gemini-3.6-flash';
 
   return {
     provider,
@@ -145,7 +145,7 @@ import { API_BASE_URL } from '../config';
 
 export const getFallbackOpenRouterKey = (): string => {
   const isBrowser = typeof window !== 'undefined';
-  const customKey = isBrowser ? (localStorage.getItem('noteit_user_api_key_openrouter') || localStorage.getItem('noteit_user_api_key')) : '';
+  const customKey = isBrowser ? (localStorage.getItem('kuma_user_api_key_openrouter') || localStorage.getItem('kuma_user_api_key')) : '';
   if (customKey && customKey.trim()) return customKey.trim();
 
   let envKey = '';
@@ -262,8 +262,8 @@ export const executeOpenRouterFallbackCall = async (
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${openrouterKey}`,
-        'HTTP-Referer': 'https://noteit.ai',
-        'X-Title': 'NoteIT'
+        'HTTP-Referer': 'https://kuma.ai',
+        'X-Title': 'Kuma'
       },
       body: JSON.stringify(payload)
     });

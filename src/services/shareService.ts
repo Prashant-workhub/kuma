@@ -8,7 +8,7 @@ import { db, auth } from '../firebaseConfig';
 import { Lecture } from '../types';
 
 /**
- * Shares a lecture note with another student using NoteIT by recipient email.
+ * Shares a lecture note with another student using Kuma by recipient email.
  * If the student exists, writes directly to their lectures collection.
  * If not yet registered, stores in pendingShares for automatic claim on registration.
  */
@@ -17,7 +17,7 @@ export async function shareLectureWithEmail(lecture: Lecture, recipientEmail: st
   if (!cleanEmail) throw new Error('Recipient email is required');
 
   const currentUser = auth.currentUser;
-  const senderEmail = currentUser?.email || 'peer@noteit.ai';
+  const senderEmail = currentUser?.email || 'peer@kuma.ai';
   const senderName = currentUser?.displayName || senderEmail.split('@')[0] || 'Peer Scholar';
 
   const sharedLecturePayload = {

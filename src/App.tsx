@@ -115,7 +115,7 @@ export default function App() {
   // Theme state defaulting to dark for premium dark blue academic vibes
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('noteit_theme') as 'light' | 'dark';
+      const saved = localStorage.getItem('kuma_theme') as 'light' | 'dark';
       if (saved) return saved;
     }
     return 'dark';
@@ -129,7 +129,7 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem('noteit_theme', theme);
+    localStorage.setItem('kuma_theme', theme);
   }, [theme]);
 
   // Persist theme preference in localStorage
@@ -151,7 +151,7 @@ export default function App() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('navigator' in window)) return;
     const handleServiceWorkerMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'NOTEIT_NOTIFICATION_NAVIGATE') {
+      if (event.data?.type === 'KUMA_NOTIFICATION_NAVIGATE') {
         const r = (event.data.route || '').toLowerCase().trim();
         if (r.includes('knowledge') || r.includes('studio')) setActivePage('knowledge-studio');
         else if (r.includes('setting')) setActivePage('settings');
@@ -183,14 +183,14 @@ export default function App() {
   // Listen for manual Guided Tour start triggers
   useEffect(() => {
     const handleStartTour = () => setIsGuidedTourOpen(true);
-    window.addEventListener('noteit_start_guided_tour', handleStartTour);
-    return () => window.removeEventListener('noteit_start_guided_tour', handleStartTour);
+    window.addEventListener('kuma_start_guided_tour', handleStartTour);
+    return () => window.removeEventListener('kuma_start_guided_tour', handleStartTour);
   }, []);
 
   // Auto-trigger Guided Tour for new users upon login & onboarding completion
   useEffect(() => {
     if (sessionUser && userRole === 'student' && !isOnboarding) {
-      const tourCompleted = localStorage.getItem('noteit_guided_tour_completed');
+      const tourCompleted = localStorage.getItem('kuma_guided_tour_completed');
       if (tourCompleted !== 'true') {
         const timer = setTimeout(() => {
           setIsGuidedTourOpen(true);
@@ -262,15 +262,15 @@ export default function App() {
 
             // Load AI credentials from database into localStorage for instant API usage
             if (data.ai_provider) {
-              localStorage.setItem('noteit_active_ai_provider', data.ai_provider);
+              localStorage.setItem('kuma_active_ai_provider', data.ai_provider);
             }
             if (data.selected_model) {
-              localStorage.setItem('noteit_active_ai_model', data.selected_model);
+              localStorage.setItem('kuma_active_ai_model', data.selected_model);
             }
             if (data.api_key) {
-              localStorage.setItem('noteit_user_api_key', data.api_key);
+              localStorage.setItem('kuma_user_api_key', data.api_key);
               if (data.ai_provider) {
-                localStorage.setItem(`noteit_user_api_key_${data.ai_provider}`, data.api_key);
+                localStorage.setItem(`kuma_user_api_key_${data.ai_provider}`, data.api_key);
               }
             }
 
@@ -633,7 +633,7 @@ export default function App() {
   const handleUpdateSettings = async (newSettings: UserSettings) => {
     setSettings(newSettings);
     try {
-      localStorage.setItem('noteit_user_settings', JSON.stringify(newSettings));
+      localStorage.setItem('kuma_user_settings', JSON.stringify(newSettings));
     } catch (e) {
       console.warn('[Settings] Failed to save settings to localStorage:', e);
     }
@@ -764,11 +764,11 @@ export default function App() {
           const data = userDocSnap.data();
           if (data.onboarding_completed) {
             setIsOnboarding(false);
-            if (data.ai_provider) localStorage.setItem('noteit_active_ai_provider', data.ai_provider);
-            if (data.selected_model) localStorage.setItem('noteit_active_ai_model', data.selected_model);
+            if (data.ai_provider) localStorage.setItem('kuma_active_ai_provider', data.ai_provider);
+            if (data.selected_model) localStorage.setItem('kuma_active_ai_model', data.selected_model);
             if (data.api_key) {
-              localStorage.setItem('noteit_user_api_key', data.api_key);
-              if (data.ai_provider) localStorage.setItem(`noteit_user_api_key_${data.ai_provider}`, data.api_key);
+              localStorage.setItem('kuma_user_api_key', data.api_key);
+              if (data.ai_provider) localStorage.setItem(`kuma_user_api_key_${data.ai_provider}`, data.api_key);
             }
             const detectedRole = data.role === 'faculty' || user.role === 'faculty' ? 'faculty' : 'student';
             setUserRole(detectedRole);

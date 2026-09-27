@@ -41,7 +41,7 @@ export default function FeedbackWidget({ theme }: FeedbackWidgetProps) {
         type,
         subject: subject.trim(),
         description: description.trim(),
-        email: currentUser?.email || email.trim() || 'anonymous@noteit.ai',
+        email: currentUser?.email || email.trim() || 'anonymous@kuma.ai',
         userId: currentUser?.uid || 'anonymous',
         deviceInfo: {
           userAgent: navigator.userAgent,
@@ -213,7 +213,7 @@ export default function FeedbackWidget({ theme }: FeedbackWidgetProps) {
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder={type === 'bug' ? 'Describe the issue, step-by-step to reproduce, or any error messages.' : 'Describe your feature idea and how it would improve NoteIT.'}
+                  placeholder={type === 'bug' ? 'Describe the issue, step-by-step to reproduce, or any error messages.' : 'Describe your feature idea and how it would improve Kuma.'}
                   className={`w-full rounded-xl border px-3 py-2 text-xs outline-none transition-all resize-none ${
                     isDark
                       ? 'bg-[#18191e] border-neutral-800 text-white placeholder-neutral-500 focus:border-indigo-500'

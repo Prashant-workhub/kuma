@@ -713,7 +713,7 @@ export default function LectureProcessingView({
               Compiling Lecture Workspace
             </h2>
             <p className="text-xs font-mono font-bold text-[#666666]">
-              Please keep this page open while NoteIT translates, indexes, and publishes your course materials.
+              Please keep this page open while Kuma translates, indexes, and publishes your course materials.
             </p>
           </div>
 

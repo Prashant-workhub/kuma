@@ -96,7 +96,7 @@ export default function FacultyLayout({
             </div>
             <div>
               <div className="font-heading font-extrabold text-base tracking-tight leading-none text-[var(--app-text)]">
-                NOTEIT
+                KUMA
               </div>
               <div className="text-[10px] font-mono font-bold text-[var(--app-brand)] tracking-wider">
                 TEACHER PORTAL

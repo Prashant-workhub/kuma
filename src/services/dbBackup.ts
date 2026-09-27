@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-const DB_NAME = 'NoteIT_Backup_DB';
+const DB_NAME = 'Kuma_Backup_DB';
 const DB_VERSION = 1;
 const STORE_NAME = 'recordings';
 
