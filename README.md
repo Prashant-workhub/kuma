@@ -1,4 +1,4 @@
-# NoteIT AI
+# KUMA AI
 
 NoteIT AI is an academic learning workspace that turns lectures, documents, website links, and YouTube resources into study material. Students can capture resources, generate notes and quizzes, practise concepts, track learning progress, and ask faculty doubts. A separate faculty workspace supports teaching-focused views of doubts, courses, and analytics.
 
