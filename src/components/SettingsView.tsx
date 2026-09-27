@@ -1896,7 +1896,7 @@ export default function SettingsView({
                     <span className="text-[10px] font-mono font-extrabold text-[#111111] bg-[#FFC400] border border-[#111111] px-2.5 py-0.5 rounded-[4px] uppercase tracking-wide">
                       ACTIVE TIER
                     </span>
-                    <h4 className="font-heading font-extrabold text-xl mt-2 text-[#111111]">Note-IT {settings.subscription.planName} Plan</h4>
+                    <h4 className="font-heading font-extrabold text-xl mt-2 text-[#111111]">Kuma {settings.subscription.planName} Plan</h4>
                     <p className="text-xs font-mono font-bold text-[#666666] mt-0.5">Renews automatically on <strong className="text-[#111111]">{settings.subscription.nextBillDate}</strong></p>
                   </div>
                   <div className="text-right font-mono">

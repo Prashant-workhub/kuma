@@ -960,7 +960,7 @@ export default function App() {
         <div className={`min-h-screen flex items-center justify-center ${
           theme === 'dark' ? 'bg-[#0a0a0c]' : 'bg-[#FAF9F5]'
         }`}>
-          <BruteLoader size="lg" message="Loading Note-IT AI Interface..." />
+          <BruteLoader size="lg" message="Loading Kuma Capacity Connect..." />
         </div>
         <FeedbackWidget theme={theme} />
       </ErrorBoundary>
@@ -1125,7 +1125,7 @@ export default function App() {
   }
 
   if (notesLoading && lecturesLoading) {
-    return <BruteLoader message="Initializing Note-IT Cognitive Workspace..." />;
+    return <BruteLoader message="Initializing Kuma Capacity Connect Workspace..." />;
   }
 
   // TEACHER PORTAL WORKSPACE (Integrated from teachers-LMS-portal)

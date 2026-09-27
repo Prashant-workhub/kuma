@@ -302,23 +302,23 @@ export const INITIAL_SETTINGS: UserSettings = {
 export const FAQ_ITEMS: FAQItem[] = [
   {
     id: 'faq1',
-    question: 'How secure is my academic data and research outputs?',
-    answer: 'We run isolated storage sandboxes. Your documents, transcripts, and session outputs are encrypted in transit and at rest using AES-256. We strictly enforce a proprietary policy: your uploaded papers and personal annotations are NEVER passed into public models for training.'
+    question: 'How secure is my learning data and capacity building records?',
+    answer: 'We run isolated storage sandboxes. Your training documents, transcripts, and session outputs are encrypted in transit and at rest using AES-256. We strictly enforce a proprietary policy: your uploaded resources and personal annotations are NEVER passed into public models for training.'
   },
   {
     id: 'faq2',
-    question: 'Can I export my synthesized materials to standard formats like LaTeX or Markdown?',
-    answer: 'Absolutely. Every note, summary, research outline, or flashcard deck you generate inside Note-IT AI is exportable. You can click "Export" on the workspace headers and select LaTeX (.tex) for mathematical typesetting or clean GitHub-flavored Markdown (.md).'
+    question: 'Can I export my synthesized training materials to standard formats like LaTeX or Markdown?',
+    answer: 'Absolutely. Every competency note, executive summary, training outline, or assessment module you generate inside Kuma AI is exportable. You can click "Export" on the workspace headers and select LaTeX (.tex) or clean GitHub-flavored Markdown (.md).'
   },
   {
     id: 'faq3',
-    question: 'Does Note-IT AI cite and match statements back to my exact source material?',
-    answer: 'Yes! That is one of our fundamental design objectives. When you read an AI Summary or work through the Research Hub, any claims or synthesized bullet points generate clickable citation numbers. Clicking a number scrolls your file preview directly to the matching paragraph block or specific timestamp inside raw transcribing logs.'
+    question: 'Does Kuma AI cite and match statements back to my exact source material?',
+    answer: 'Yes! That is one of our fundamental design objectives. When you read an AI Summary or work through the Knowledge Studio, any claims or synthesized bullet points generate clickable citation numbers. Clicking a number scrolls your resource preview directly to the matching paragraph block or specific timestamp inside raw transcribing logs.'
   },
   {
     id: 'faq4',
-    question: 'How does the "Weak Topic Tracking" radar work?',
-    answer: 'Note-IT AI aggregates telemetry from your generated quizzes, lecture reviews, and recall sessions. It uses custom semantic mapping to trace concepts back to centralized fields, analyzes error rates, and identifies cognitive gaps, helping you schedule optimal review plans.'
+    question: 'How does the "Skill Gap Analysis" radar work?',
+    answer: 'Kuma AI aggregates telemetry from your competency assessments, training completions, and evaluation sessions. It uses custom semantic mapping to trace skills back to organizational competencies, analyzes proficiency levels, and identifies skill gaps, helping you recommend optimal training paths.'
   }
 ];
 
