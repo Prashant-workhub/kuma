@@ -1,0 +1,1035 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Cpu, 
+  CheckCircle, 
+  AlertCircle,
+  BookMarked,
+  CloudLightning,
+  Brain,
+  Settings,
+  RotateCcw,
+  FileText,
+  CloudUpload
+} from 'lucide-react';
+import { PageId } from '../types';
+import { blobToBase64, generateLectureContent, generateResourcesFromTranscript, getAIConfig } from '../services/gemini';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../firebaseConfig';
+import { API_BASE_URL } from '../config';
+import { formatUserFriendlyErrorMessage } from '../utils/errorSanitizer';
+import { saveTranscriptMultiTier, getTranscriptMultiTier } from '../services/azure';
+import BruteLoader from './BruteLoader';
+
+
+
+
+interface LectureProcessingViewProps {
+  userId: string | undefined;
+  lectureId: string | null;
+  audioBlob: Blob | null;
+  documentFile?: File | null;
+  uploadLectureAudio: (lectureId: string, audioBlob: Blob, onProgress: (progress: number) => void) => Promise<string>;
+  uploadLectureDocument?: (lectureId: string, file: File, onProgress: (progress: number) => void) => Promise<{ audioUrl: string; blobPath: string }>;
+  updateLecture: (id: string, data: any) => Promise<void>;
+  setActivePage: (page: PageId) => void;
+  theme: 'light' | 'dark';
+  setActiveLectureId?: (id: string | null) => void;
+}
+
+const COMPILATION_STEPS = [
+  { label: "Uploading Audio", description: "Saving raw audio bytes to Local Storage." },
+  { label: "Deciphering Speech", description: "Transcribing audio using Gemini AI and processing speech text." },
+  { label: "Cleaning Transcript", description: "Removing stutters, filler words, and converting to professional academic prose." },
+  { label: "Generating Study Assets", description: "Segmenting chapters, writing study notes, flashcards, quizzes & mindmaps." },
+  { label: "Saving Results", description: "Persisting the completed academic workspace directly to Firestore." }
+];
+
+const DOCUMENT_COMPILATION_STEPS = [
+  { label: "Uploading Document", description: "Uploading document file payload to Local Storage." },
+  { label: "Extracting Content", description: "Extracting structural text data from file format (PDF/DOCX/PPTX)." },
+  { label: "Cleaning Transcript", description: "Formatting text and generating transcript lines." },
+  { label: "Generating Study Assets", description: "Segmenting chapters, writing study notes, flashcards, quizzes & mindmaps." },
+  { label: "Saving Results", description: "Persisting the completed academic workspace directly to Firestore." }
+];
+
+const determineLectureTitle = (existingTitle: string | undefined, aiData: any): string => {
+  const trimmed = (existingTitle || '').trim();
+  const isGeneric = !trimmed ||
+    trimmed === 'Untitled Lecture' ||
+    trimmed === 'Auto-Detecting Topic...' ||
+    trimmed === 'Deep Neural Optimization - Captured Live' ||
+    trimmed === 'Enter the lecture topic...' ||
+    trimmed.toLowerCase().includes('deep neural optimization');
+
+  if (!isGeneric) {
+    return trimmed;
+  }
+
+  const rootConcept = aiData.keyConcepts?.find((k: any) => k.id === 'root')?.label;
+  const firstSectionTitle = aiData.sections?.[0]?.title;
+  const firstTimelineTitle = aiData.timeline?.[0]?.title;
+
+  if (rootConcept && rootConcept !== 'Core Topic' && rootConcept !== 'Lecture' && rootConcept !== 'Central Topic') {
+    return rootConcept.toUpperCase();
+  }
+  if (firstSectionTitle) {
+    return firstSectionTitle.toUpperCase();
+  }
+  if (firstTimelineTitle) {
+    return firstTimelineTitle.toUpperCase();
+  }
+  
+  const text = aiData.cleanTranscript || aiData.transcript || '';
+  if (text) {
+    const cleanText = text.replace(/\[\d{2}:\d{2}\]/g, '').replace(/[^a-zA-Z0-9\s]/g, '').trim();
+    const words = cleanText.split(/\s+/).slice(0, 5).join(' ');
+    if (words) return words.toUpperCase();
+  }
+
+  return 'CAPTURED LECTURE TOPIC';
+};
+
+export default function LectureProcessingView({
+  userId,
+  lectureId,
+  audioBlob,
+  documentFile,
+  uploadLectureAudio,
+  uploadLectureDocument,
+  updateLecture,
+  setActivePage,
+  theme,
+  setActiveLectureId
+}: LectureProcessingViewProps) {
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<'uploading' | 'uploaded' | 'transcribing' | 'generating_notes' | 'saving' | 'completed' | 'failed' | 'extracting' | 'analyzing'>('uploading');
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isGeminiBusy, setIsGeminiBusy] = useState<boolean>(false);
+  const [processingMessage, setProcessingMessage] = useState('Preparing the processing pipeline…');
+  const [retryTrigger, setRetryTrigger] = useState(0);
+  const [savedTranscript, setSavedTranscript] = useState<string | null>(null);
+  const [copiedTranscriptToast, setCopiedTranscriptToast] = useState<boolean>(false);
+
+  const steps = documentFile ? DOCUMENT_COMPILATION_STEPS : COMPILATION_STEPS;
+
+  useEffect(() => {
+    if (!lectureId) {
+      setErrorMsg("Missing lecture reference. Please try again.");
+      setUploadStatus('failed');
+      return;
+    }
+
+    let isSubscribed = true;
+
+    const startProcessing = async () => {
+      try {
+        if (!userId || !lectureId) return;
+
+        const lectureRef = doc(db, 'users', userId, 'lectures', lectureId);
+        const lectureSnap = await getDoc(lectureRef);
+        const existingData = lectureSnap.exists() ? lectureSnap.data() : null;
+
+        let existingTranscript = existingData?.cleanTranscript || existingData?.transcript || '';
+        let remoteRes: any = null;
+        if (userId && lectureId) {
+          remoteRes = await getTranscriptMultiTier(userId, lectureId).catch(() => null);
+          if (!existingTranscript && remoteRes?.cleanTranscript) {
+            existingTranscript = remoteRes.cleanTranscript;
+          }
+        }
+
+        if (existingTranscript) {
+          setSavedTranscript(existingTranscript);
+        }
+
+        if (remoteRes?.transcriptData) {
+          const tData = remoteRes.transcriptData;
+          const hasBlobGeneratedContent = tData.summary || 
+            (Array.isArray(tData.notes) && tData.notes.length > 0) ||
+            (Array.isArray(tData.quizzes) && tData.quizzes.length > 0) ||
+            (Array.isArray(tData.sections) && tData.sections.length > 0) ||
+            tData.storedInBlob;
+
+          if (hasBlobGeneratedContent) {
+            console.log('[LectureProcessingView] Found saved generated content in Azure Blob storage. Loading content directly from Blob Storage without regenerating...');
+            await updateLecture(lectureId, {
+              summary: tData.summary || existingData?.summary || '',
+              summaries: tData.summaries || existingData?.summaries || {},
+              notes: tData.notes || existingData?.notes || [],
+              quizzes: tData.quizzes || existingData?.quizzes || [],
+              flashcards: tData.flashcards || existingData?.flashcards || [],
+              mindMap: tData.mindMap || existingData?.mindMap || null,
+              timeline: tData.timeline || existingData?.timeline || [],
+              sections: tData.sections || existingData?.sections || [],
+              resourceGenerationStatus: 'completed',
+              status: 'generated',
+              storedInBlob: true
+            });
+
+            if (!isSubscribed) return;
+            setUploadStatus('completed');
+            setCurrentStepIndex(steps.length);
+            if (setActiveLectureId && lectureId) {
+              setActiveLectureId(lectureId);
+            }
+            setTimeout(() => {
+              if (isSubscribed) {
+                setActivePage('lecture-capture');
+              }
+            }, 1000);
+            return;
+          }
+        }
+
+        let audioUrl = existingData?.audioUrl || '';
+        let blobPath = existingData?.blobPath || '';
+
+        if (existingTranscript && existingTranscript.trim().length > 20) {
+          const hasExistingResources = existingData?.status === 'generated' || 
+            existingData?.resourceGenerationStatus === 'completed' ||
+            (existingData?.sections && existingData.sections.length > 0);
+
+          if (hasExistingResources) {
+            console.log('[LectureProcessingView] Found saved transcript and completed resources. Fast-tracking to workspace...');
+            setUploadStatus('completed');
+            setCurrentStepIndex(steps.length);
+            if (setActiveLectureId && lectureId) {
+              setActiveLectureId(lectureId);
+            }
+            setTimeout(() => {
+              if (isSubscribed) {
+                setActivePage('lecture-capture');
+              }
+            }, 1000);
+            return;
+          }
+
+          console.log('[LectureProcessingView] Found saved transcript in Firestore. Generating missing resources...');
+          setUploadStatus('analyzing');
+          setCurrentStepIndex(3);
+
+          try {
+            await generateResourcesFromTranscript(lectureId, existingTranscript, { mode: 'academic', modeType: 'missing' });
+            
+            await updateLecture(lectureId, {
+              resourceGenerationStatus: 'completed',
+              status: 'generated',
+              generationFinishedAt: serverTimestamp(),
+              processingCompletedAt: serverTimestamp()
+            });
+
+            if (!isSubscribed) return;
+            setUploadStatus('completed');
+            setCurrentStepIndex(steps.length);
+
+            if (setActiveLectureId && lectureId) {
+              setActiveLectureId(lectureId);
+            }
+            setTimeout(() => {
+              if (isSubscribed) {
+                setActivePage('lecture-capture');
+              }
+            }, 1500);
+            return;
+          } catch (resErr: any) {
+            console.error("Resource generation stage failed from saved transcript:", resErr);
+            if (isSubscribed) {
+              setErrorMsg(formatUserFriendlyErrorMessage(resErr, "AI resource generation failed"));
+              setUploadStatus('failed');
+            }
+            return;
+          }
+        }
+
+        // If no saved transcript exists AND no file payload is provided, error out
+        if (!audioBlob && !documentFile) {
+          setErrorMsg("Missing lecture reference or file payload. Please try again.");
+          setUploadStatus('failed');
+          return;
+        }
+
+        if (documentFile) {
+          if (!uploadLectureDocument) {
+            throw new Error("Document upload handler is missing.");
+          }
+          // --- DOCUMENT WORKFLOW ---
+          // 1. UPLOADING DOCUMENT
+          let uploadResult = { audioUrl, blobPath };
+          if (!audioUrl || !blobPath) {
+            setUploadStatus('uploading');
+            setCurrentStepIndex(0);
+            setProcessingMessage('Uploading document payload...');
+            await updateLecture(lectureId, { 
+              status: 'uploading',
+              uploadStartedAt: serverTimestamp()
+            });
+
+            uploadResult = await uploadLectureDocument(lectureId, documentFile, (progress) => {
+              if (isSubscribed) {
+                const p = Math.round(progress);
+                setUploadProgress(p);
+                setProcessingMessage(`Uploading document payload (${p}%)...`);
+              }
+            });
+            if (!isSubscribed) return;
+
+            await updateLecture(lectureId, {
+              uploadFinishedAt: serverTimestamp()
+            });
+          } else {
+            console.log('Skipping document upload, file already exists in local storage:', blobPath);
+            setUploadProgress(100);
+            setUploadStatus('uploaded');
+          }
+
+          // 2. EXTRACTING CONTENT
+          setUploadStatus('extracting');
+          setCurrentStepIndex(1);
+          setProcessingMessage('Extracting text and structure from document...');
+          await updateLecture(lectureId, { 
+            status: 'extracting',
+            transcriptionStartedAt: serverTimestamp(),
+            processingStartedAt: serverTimestamp()
+          });
+
+          const { extractTextFromDocument } = await import('../services/storageService');
+          const extractedText = await extractTextFromDocument(uploadResult.blobPath);
+          if (!isSubscribed) return;
+
+          await updateLecture(lectureId, {
+            transcriptionFinishedAt: serverTimestamp()
+          });
+
+          // 3. AI ANALYSIS & SYNTHESIS
+          setUploadStatus('analyzing');
+          setCurrentStepIndex(2);
+          setProcessingMessage('Analyzing concepts and generating study assets...');
+          await updateLecture(lectureId, { 
+            status: 'analyzing',
+            generationStartedAt: serverTimestamp()
+          });
+
+          const startTime = Date.now();
+          const { generateLectureContentFromText } = await import('../services/gemini');
+          
+          const aiData = await generateLectureContentFromText(
+            extractedText,
+            (isBusy) => {
+              if (isSubscribed) {
+                setIsGeminiBusy(isBusy);
+              }
+            },
+            'academic',
+            (stepNum, msg) => {
+              if (isSubscribed) {
+                if (msg) setProcessingMessage(msg);
+                if (stepNum === 1) setCurrentStepIndex(2); // Cleaning Transcript
+              }
+            }
+          );
+          if (!isSubscribed) return;
+
+          const processingTimeMs = Date.now() - startTime;
+
+          if (isSubscribed) {
+            setCurrentStepIndex(3); // Generating Study Assets
+            setProcessingMessage('Generating study notes, flashcards & quizzes...');
+            await new Promise(r => setTimeout(r, 1200));
+          }
+          if (isSubscribed) {
+            setCurrentStepIndex(4); // Saving Results
+            setUploadStatus('saving');
+            setProcessingMessage('Persisting academic workspace to database...');
+            await updateLecture(lectureId, { status: 'saving' });
+          }
+
+          // Save Stage 1 and Stage 2 results to Azure Blob Storage (with Local & Firebase fallbacks)
+          const transcriptText = aiData.cleanTranscript || aiData.transcript || '';
+          setSavedTranscript(transcriptText);
+
+          const transcriptWordCount = transcriptText.trim().split(/\s+/).length;
+          const resolvedDocTitle = determineLectureTitle(existingData?.title, aiData);
+
+          const storageRes = await saveTranscriptMultiTier(userId, lectureId, {
+            cleanTranscript: aiData.cleanTranscript || '',
+            transcript: aiData.transcript || '',
+            sections: aiData.sections || [],
+            summary: aiData.summary || '',
+            summaries: aiData.summaries || {},
+            notes: aiData.notes || [],
+            quizzes: aiData.quizzes || [],
+            flashcards: aiData.flashcards || [],
+            mindMap: aiData.mindMap || null,
+            timeline: aiData.timeline || [],
+            title: resolvedDocTitle,
+            storedInBlob: true
+          }).catch(err => {
+            console.warn('[LectureProcessingView] Multi-tier transcript save warning:', err);
+            return { success: false, storageProvider: 'client' as const, blobPath: undefined, blobUrl: undefined };
+          });
+
+
+          await updateLecture(lectureId, {
+            title: aiData.lectureTopic || resolvedDocTitle,
+            lectureTopic: aiData.lectureTopic || resolvedDocTitle,
+            highlightedTopics: aiData.highlightedTopics || [],
+            importantConcepts: aiData.importantConcepts || [],
+            recordingStatus: 'uploaded',
+            transcriptionStatus: 'completed',
+            resourceGenerationStatus: 'processing',
+            transcript: aiData.transcript || '',
+            cleanTranscript: aiData.cleanTranscript || '',
+            transcriptStorageProvider: storageRes.storageProvider,
+            transcriptBlobPath: storageRes.blobPath || null,
+            sections: aiData.sections || [],
+            timeline: aiData.timeline || [],
+            sourceIntelligence: aiData.sourceIntelligence || null,
+            keyConcepts: [],
+            geminiModel: getAIConfig().model || 'gemini-3.6-flash',
+            processingTimeMs,
+            transcriptionFinishedAt: serverTimestamp(),
+            storedInBlob: true
+          });
+
+
+          // Call RAG grounding engine
+          try {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+              const idToken = await currentUser.getIdToken(true);
+              const requestUrl = `${API_BASE_URL}/api/storage/ground-source`;
+              await fetch(requestUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${idToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  sourceId: lectureId,
+                  sourceType: 'lecture',
+                  text: transcriptText || extractedText || ''
+                })
+              });
+            }
+          } catch (ragErr) {
+            console.error('[RAG] Grounding failed for lecture document:', ragErr);
+          }
+
+          // Stage 3: AI Resource Generation
+          try {
+            setUploadStatus('analyzing');
+            setCurrentStepIndex(3); // Detecting Chapters / Generating Resources
+            const genResult = await generateResourcesFromTranscript(lectureId, transcriptText, { mode: 'academic', modeType: 'all' });
+            
+            await updateLecture(lectureId, {
+              resourceGenerationStatus: 'completed',
+              status: 'generated',
+              generationFinishedAt: serverTimestamp(),
+              processingCompletedAt: serverTimestamp()
+            });
+
+            if (!isSubscribed) return;
+            setUploadStatus('completed');
+            setCurrentStepIndex(DOCUMENT_COMPILATION_STEPS.length);
+
+            if (setActiveLectureId && lectureId) {
+              setActiveLectureId(lectureId);
+            }
+            setTimeout(() => {
+              if (isSubscribed) {
+                setActivePage('lecture-capture');
+              }
+            }, 2000);
+          } catch (resErr: any) {
+            console.warn("Resource generation stage fallback engaged:", resErr);
+            if (isSubscribed) {
+              const { generateFastDocumentAssets } = await import('../services/gemini');
+              const fallbackAssets = generateFastDocumentAssets(transcriptText || extractedText || 'Lecture Content');
+              await updateLecture(lectureId, {
+                summary: fallbackAssets.cleanTranscript || '',
+                sections: fallbackAssets.sections || [],
+                timeline: fallbackAssets.timeline || [],
+                sourceIntelligence: fallbackAssets.sourceIntelligence || null,
+                resourceGenerationStatus: 'completed',
+                status: 'generated',
+                processingCompletedAt: serverTimestamp()
+              }).catch(console.error);
+
+              setUploadStatus('completed');
+              setCurrentStepIndex(DOCUMENT_COMPILATION_STEPS.length);
+              if (setActiveLectureId && lectureId) {
+                setActiveLectureId(lectureId);
+              }
+              setTimeout(() => {
+                if (isSubscribed) {
+                  setActivePage('lecture-capture');
+                }
+              }, 1200);
+            }
+          }
+
+        } else {
+          // --- AUDIO WORKFLOW ---
+          if (!audioUrl || !blobPath) {
+            setUploadStatus('uploading');
+            setCurrentStepIndex(0);
+            setProcessingMessage('Uploading audio recording...');
+            await updateLecture(lectureId, { 
+              status: 'uploading',
+              recordingStatus: 'recording',
+              uploadStartedAt: serverTimestamp()
+            });
+
+            await uploadLectureAudio(lectureId, audioBlob!, (progress) => {
+              if (isSubscribed) {
+                const p = Math.round(progress);
+                setUploadProgress(p);
+                setProcessingMessage(`Uploading audio recording (${p}%)...`);
+              }
+            });
+            if (!isSubscribed) return;
+
+            await updateLecture(lectureId, {
+              recordingStatus: 'uploaded',
+              uploadFinishedAt: serverTimestamp()
+            });
+          } else {
+            console.log('Skipping audio upload, file already exists in local storage:', blobPath);
+            setUploadProgress(100);
+            setUploadStatus('uploaded');
+          }
+
+          setUploadStatus('transcribing');
+          setCurrentStepIndex(1);
+          setProcessingMessage('Deciphering speech & generating academic transcript...');
+          await updateLecture(lectureId, { 
+            status: 'transcribing',
+            transcriptionStatus: 'processing',
+            transcriptionStartedAt: serverTimestamp(),
+            processingStartedAt: serverTimestamp()
+          });
+
+          const base64Audio = await blobToBase64(audioBlob!);
+          if (!isSubscribed) return;
+
+          const startTime = Date.now();
+
+          const engineChoice = existingData?.transcriptionEngine || 'auto';
+          const liveText = existingData?.browserLiveTranscript || '';
+
+          const aiData = await generateLectureContent(
+            base64Audio,
+            audioBlob?.type || 'audio/webm',
+            (isBusy) => {
+              if (isSubscribed) {
+                setIsGeminiBusy(isBusy);
+              }
+            },
+            'academic',
+            (stepNum, msg) => {
+              if (isSubscribed) {
+                if (msg) setProcessingMessage(msg);
+                if (stepNum === 1) {
+                  setCurrentStepIndex(1); // Deciphering Speech
+                }
+                else if (stepNum === 2) {
+                  setCurrentStepIndex(3); // Generating Study Assets
+                  updateLecture(lectureId, { transcriptionFinishedAt: serverTimestamp() }).catch(console.error);
+                }
+              }
+            },
+            engineChoice,
+            liveText
+          );
+          if (!isSubscribed) return;
+
+          const processingTimeMs = Date.now() - startTime;
+
+          if (isSubscribed) {
+            setCurrentStepIndex(4); // Saving Results
+            setUploadStatus('saving');
+            setProcessingMessage('Persisting academic workspace to database...');
+            await updateLecture(lectureId, { status: 'saving' });
+          }
+
+          const resolvedTitle = determineLectureTitle(existingData?.title, aiData);
+
+          const transcriptText = aiData.cleanTranscript || aiData.transcript || '';
+          setSavedTranscript(transcriptText);
+
+          console.log('==================================================');
+          console.log('[LECTURE PROCESSING TRANSCRIPT AUDIT LOG]');
+          console.log(`- Platform/Provider Used: ${(aiData.transcriptionProvider || 'GEMINI').toUpperCase()}`);
+          console.log(`- Transcribed Audio Content:\n${transcriptText}`);
+          console.log('==================================================');
+
+          const audioStorageRes = await saveTranscriptMultiTier(userId, lectureId, {
+            cleanTranscript: aiData.cleanTranscript || '',
+            transcript: aiData.transcript || '',
+            sections: aiData.sections || [],
+            summary: aiData.summary || '',
+            summaries: aiData.summaries || {},
+            notes: aiData.notes || [],
+            quizzes: aiData.quizzes || [],
+            flashcards: aiData.flashcards || [],
+            mindMap: aiData.mindMap || null,
+            timeline: aiData.timeline || [],
+            title: resolvedTitle,
+            storedInBlob: true
+          }).catch(err => {
+            console.warn('[LectureProcessingView] Multi-tier audio transcript save warning:', err);
+            return { success: false, storageProvider: 'client' as const, blobPath: undefined, blobUrl: undefined };
+          });
+
+
+          await updateLecture(lectureId, {
+            title: aiData.lectureTopic || resolvedTitle,
+            lectureTopic: aiData.lectureTopic || resolvedTitle,
+            highlightedTopics: aiData.highlightedTopics || [],
+            importantConcepts: aiData.importantConcepts || [],
+            recordingStatus: 'uploaded',
+            transcriptionStatus: 'completed',
+            resourceGenerationStatus: 'processing',
+            transcript: aiData.transcript || '',
+            cleanTranscript: aiData.cleanTranscript || '',
+            transcriptStorageProvider: audioStorageRes.storageProvider,
+            transcriptBlobPath: audioStorageRes.blobPath || null,
+            sections: aiData.sections || [],
+            timeline: aiData.timeline || [],
+            sourceIntelligence: aiData.sourceIntelligence || null,
+            keyConcepts: [],
+            geminiModel: getAIConfig().model || 'gemini-3.6-flash',
+            transcriptionProvider: aiData.transcriptionProvider || 'gemini',
+            processingTimeMs,
+            transcriptionFinishedAt: serverTimestamp(),
+            storedInBlob: true
+          });
+
+
+          // Call RAG grounding engine
+          try {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+              const idToken = await currentUser.getIdToken(true);
+              const requestUrl = `${API_BASE_URL}/api/storage/ground-source`;
+              await fetch(requestUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${idToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  sourceId: lectureId,
+                  sourceType: 'lecture',
+                  text: aiData.cleanTranscript || aiData.transcript || ''
+                })
+              });
+            }
+          } catch (ragErr) {
+            console.error('[RAG] Grounding failed for lecture audio:', ragErr);
+          }
+
+          // Stage 3: AI Resource Generation
+          try {
+            setUploadStatus('analyzing');
+            await generateResourcesFromTranscript(lectureId, aiData.cleanTranscript || aiData.transcript, { mode: 'academic', modeType: 'all' });
+            
+            await updateLecture(lectureId, {
+              resourceGenerationStatus: 'completed',
+              status: 'generated',
+              generationFinishedAt: serverTimestamp(),
+              processingCompletedAt: serverTimestamp()
+            });
+
+            if (!isSubscribed) return;
+            setUploadStatus('completed');
+            setCurrentStepIndex(COMPILATION_STEPS.length);
+
+            if (setActiveLectureId && lectureId) {
+              setActiveLectureId(lectureId);
+            }
+            setTimeout(() => {
+              if (isSubscribed) {
+                setActivePage('lecture-capture');
+              }
+            }, 2000);
+          } catch (resErr: any) {
+            console.warn("Resource generation stage fallback engaged:", resErr);
+            if (isSubscribed) {
+              const { generateFastDocumentAssets } = await import('../services/gemini');
+              const fallbackAssets = generateFastDocumentAssets(aiData.cleanTranscript || aiData.transcript || 'Lecture Audio Transcript');
+              await updateLecture(lectureId, {
+                summary: fallbackAssets.cleanTranscript || '',
+                sections: fallbackAssets.sections || [],
+                timeline: fallbackAssets.timeline || [],
+                sourceIntelligence: fallbackAssets.sourceIntelligence || null,
+                resourceGenerationStatus: 'completed',
+                status: 'generated',
+                processingCompletedAt: serverTimestamp()
+              }).catch(console.error);
+
+              setUploadStatus('completed');
+              setCurrentStepIndex(COMPILATION_STEPS.length);
+              if (setActiveLectureId && lectureId) {
+                setActiveLectureId(lectureId);
+              }
+              setTimeout(() => {
+                if (isSubscribed) {
+                  setActivePage('lecture-capture');
+                }
+              }, 1200);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error("Lecture compilation sequence failed:", err);
+        if (isSubscribed) {
+          setErrorMsg(formatUserFriendlyErrorMessage(err, "Lecture processing failed"));
+          setUploadStatus('failed');
+        }
+      }
+    };
+
+    startProcessing();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [lectureId, retryTrigger]);
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 text-left p-4 sm:p-6">
+      
+      {/* Header Card */}
+      <div className="rounded-[6px] border-2 border-[#111111] bg-white p-6.5 shadow-paper-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#FFC400] border-2 border-[#111111] px-2.5 py-1 text-[10px] font-mono font-extrabold uppercase text-[#111111]">
+              <CloudLightning className="h-3.5 w-3.5" />
+              <span>COGNITIVE SYNTHESIS GATEWAY</span>
+            </span>
+            <h2 className="font-heading font-extrabold text-2xl md:text-3xl text-[#111111] uppercase tracking-tight">
+              Compiling Lecture Workspace
+            </h2>
+            <p className="text-xs font-mono font-bold text-[#666666]">
+              Please keep this page open while NoteIT translates, indexes, and publishes your course materials.
+            </p>
+          </div>
+
+          <div className="flex-shrink-0">
+            {uploadStatus === 'failed' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#FF4D4D] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-white shadow-paper-sm uppercase">
+                <AlertCircle className="h-4 w-4" />
+                PIPELINE PAUSED
+              </span>
+            )}
+            {uploadStatus === 'uploading' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#2F6BFF] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-white shadow-paper-sm uppercase animate-pulse">
+                <Cpu className="h-4 w-4 animate-spin text-white" />
+                UPLOADING ({uploadProgress}%)
+              </span>
+            )}
+            {uploadStatus === 'uploaded' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#FFC400] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-[#111111] shadow-paper-sm uppercase">
+                <CheckCircle className="h-4 w-4 text-[#111111]" />
+                UPLOADED
+              </span>
+            )}
+            {uploadStatus === 'transcribing' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#2F6BFF] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-white shadow-paper-sm uppercase animate-pulse">
+                <Brain className="h-4 w-4 animate-bounce text-white" />
+                TRANSCRIBING LECTURE
+              </span>
+            )}
+            {uploadStatus === 'extracting' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#2F6BFF] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-white shadow-paper-sm uppercase animate-pulse">
+                <Cpu className="h-4 w-4 animate-spin text-white" />
+                EXTRACTING TEXT
+              </span>
+            )}
+            {uploadStatus === 'analyzing' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#FFC400] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-[#111111] shadow-paper-sm uppercase animate-pulse">
+                <Brain className="h-4 w-4 animate-bounce text-[#111111]" />
+                AI SYNTHESIZING
+              </span>
+            )}
+            {uploadStatus === 'generating_notes' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#FFC400] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-[#111111] shadow-paper-sm uppercase animate-pulse">
+                <Cpu className="h-4 w-4 animate-spin text-[#111111]" />
+                GENERATING ASSETS
+              </span>
+            )}
+            {uploadStatus === 'saving' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#FFC400] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-[#111111] shadow-paper-sm uppercase animate-pulse">
+                <Cpu className="h-4 w-4 animate-spin text-[#111111]" />
+                SAVING RESULTS
+              </span>
+            )}
+            {uploadStatus === 'completed' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[#FFC400] border-2 border-[#111111] px-3.5 py-2 text-xs font-mono font-bold text-[#111111] shadow-paper-sm uppercase">
+                <CheckCircle className="h-4 w-4 text-[#111111]" />
+                COMPILED & RESOLVED
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Global Progress Bar */}
+        <div className="mt-6.5 relative">
+          <div className="h-3 w-full rounded-[4px] bg-[#F6F2EA] border-2 border-[#111111] overflow-hidden">
+            <div 
+              style={{ 
+                width: uploadStatus === 'completed' 
+                  ? '100%' 
+                  : uploadStatus === 'failed'
+                    ? '0%'
+                    : uploadStatus === 'uploading'
+                      ? `${Math.max(5, uploadProgress)}%`
+                      : `${Math.max(5, Math.round(((currentStepIndex + 1) / steps.length) * 100))}%` 
+              }}
+              className={`h-full transition-all duration-500 ease-out ${
+                uploadStatus === 'failed' 
+                  ? 'bg-[#FF4D4D]' 
+                  : uploadStatus === 'completed'
+                    ? 'bg-[#FFC400]'
+                    : 'bg-[#2F6BFF]'
+              }`}
+            />
+          </div>
+        </div>
+      </div>
+ 
+      {/* Main Process Checklist Card */}
+      <div className="rounded-[6px] border-2 border-[#111111] bg-white p-6.5 space-y-6 shadow-paper-lg">
+        <div className="flex items-center justify-between border-b-2 border-[#111111] pb-4">
+          <span className="text-xs font-mono font-extrabold uppercase tracking-wider text-[#111111]">
+            PIPELINE COMPILATION SEQUENCE
+          </span>
+          <span className="text-xs font-mono font-extrabold text-[#2F6BFF] uppercase">
+            STEP {Math.min(steps.length, currentStepIndex + 1)} OF {steps.length}
+          </span>
+        </div>
+
+        {uploadStatus !== 'completed' && uploadStatus !== 'failed' && (
+          <div className="py-4 flex justify-center border-b-2 border-[#111111]">
+            <BruteLoader size="md" message={processingMessage || `Current Phase: ${steps[currentStepIndex]?.label || 'Processing'}`} />
+          </div>
+        )}
+ 
+        {errorMsg ? (
+          <div className="p-6 rounded-[6px] border-2 border-[#FF4D4D] bg-[#F6F2EA] text-center space-y-4 shadow-paper-sm">
+            <AlertCircle className="h-10 w-10 text-[#FF4D4D] mx-auto animate-pulse" />
+            <div className="text-base font-heading font-extrabold text-[#111111] uppercase">AI Resource Generation Paused</div>
+            <div className="text-xs font-mono font-bold text-[#111111] bg-[#FFC400] border-2 border-[#111111] rounded-[4px] p-3 max-w-md mx-auto flex items-center justify-center gap-2 shadow-paper-sm">
+              <CheckCircle className="h-4 w-4 text-[#111111]" />
+              <span>Your lecture recording and transcript are safe.</span>
+            </div>
+            <p className="text-xs font-mono font-bold text-[#666666] leading-relaxed max-w-md mx-auto">{errorMsg}</p>
+
+            {/* RECORDED TRANSCRIPT RECOVERY & COPY BOX */}
+            {savedTranscript && (
+              <div className="p-4 rounded-[6px] border-2 border-[#111111] bg-white text-left space-y-2 shadow-paper-sm max-w-xl mx-auto">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-extrabold uppercase text-[#111111] flex items-center gap-1.5">
+                    <FileText className="h-4 w-4 text-[#2563EB]" />
+                    Recorded Transcript (Saved in Database)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(savedTranscript);
+                      setCopiedTranscriptToast(true);
+                      setTimeout(() => setCopiedTranscriptToast(false), 2500);
+                    }}
+                    className="px-3 py-1 rounded-[4px] border-2 border-[#111111] bg-[#FFC400] text-[#111111] text-[10px] font-mono font-extrabold uppercase hover:bg-[#ffe066] cursor-pointer"
+                  >
+                    {copiedTranscriptToast ? '✓ Copied!' : 'Copy Transcript'}
+                  </button>
+                </div>
+                <div className="max-h-48 overflow-y-auto p-3 rounded bg-[#F6F2EA] border border-[#111111] text-xs font-mono font-bold text-[#111111] whitespace-pre-line leading-relaxed select-text">
+                  {savedTranscript}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!lectureId) return;
+                  setErrorMsg(null);
+                  setUploadStatus('analyzing');
+                  try {
+                    await generateResourcesFromTranscript(lectureId, savedTranscript || undefined, { mode: 'academic', modeType: 'all' });
+                    await updateLecture(lectureId, {
+                      resourceGenerationStatus: 'completed',
+                      status: 'generated',
+                      generationFinishedAt: serverTimestamp(),
+                      processingCompletedAt: serverTimestamp()
+                    });
+                    setUploadStatus('completed');
+                    if (setActiveLectureId) setActiveLectureId(lectureId);
+                    setTimeout(() => setActivePage('lecture-capture'), 1500);
+                  } catch (err: any) {
+                    console.error("Retry failed:", err);
+                    setErrorMsg(formatUserFriendlyErrorMessage(err, "AI resource generation failed"));
+                    setUploadStatus('failed');
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-[6px] border-2 border-[#111111] bg-[#2F6BFF] text-white px-5 py-3 text-xs font-mono font-extrabold uppercase hover:bg-[#255cd9] transition-all shadow-paper-sm cursor-pointer"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>RETRY AI GENERATION</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePage('settings')}
+                className="inline-flex items-center gap-2 rounded-[6px] border-2 border-[#111111] bg-[#FFC400] text-[#111111] px-5 py-3 text-xs font-mono font-extrabold uppercase hover:bg-[#ffe066] transition-all shadow-paper-sm cursor-pointer"
+              >
+                <Settings className="h-4 w-4" />
+                <span>CHANGE AI PROVIDER</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (setActiveLectureId && lectureId) {
+                    setActiveLectureId(lectureId);
+                  }
+                  setActivePage('lecture-capture');
+                }}
+                className="inline-flex items-center gap-2 rounded-[6px] border-2 border-[#111111] bg-white text-[#111111] px-5 py-3 text-xs font-mono font-extrabold uppercase hover:bg-[#F6F2EA] transition-all shadow-paper-sm cursor-pointer"
+              >
+                <span>OPEN WORKSPACE</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {steps.map((step, idx) => {
+              const isPending = idx > currentStepIndex;
+              const isActive = idx === currentStepIndex && uploadStatus !== 'completed';
+              const isFinished = idx < currentStepIndex || uploadStatus === 'completed';
+ 
+              return (
+                <div 
+                  key={idx}
+                  className={`flex items-start gap-4 p-4 rounded-[6px] border-2 border-[#111111] transition-all ${
+                    isActive 
+                      ? 'bg-[#FFC400] text-[#111111] shadow-paper-sm font-bold' 
+                      : isFinished
+                        ? 'bg-white text-[#111111]'
+                        : 'bg-[#F6F2EA] text-[#666666]'
+                  }`}
+                >
+                  <div className="flex-shrink-0 mt-0.5">
+                    {isFinished && (
+                      <div className="h-6 w-6 rounded-[4px] bg-white border border-[#111111] flex items-center justify-center text-[#111111]">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                    )}
+                    {isActive && (
+                      <div className="h-6 w-6 rounded-[4px] bg-white border border-[#111111] flex items-center justify-center text-[#111111]">
+                        <Cpu className="h-4 w-4 animate-spin" />
+                      </div>
+                    )}
+                    {isPending && (
+                      <div className="h-6 w-6 rounded-[4px] bg-white border border-[#111111] flex items-center justify-center text-[#666666] font-mono text-xs font-bold">
+                        {idx + 1}
+                      </div>
+                    )}
+                  </div>
+ 
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-heading font-extrabold uppercase flex items-center gap-2">
+                      <span>{step.label}</span>
+                      {isActive && idx === 0 && (
+                        <span className="font-mono text-[10px] text-[#111111]">({uploadProgress}%)</span>
+                      )}
+                      {isActive && idx === 2 && isGeminiBusy && (
+                        <span className="font-mono text-[10px] text-[#FF4D4D] animate-pulse">(Gemini is busy. Retrying...)</span>
+                      )}
+                    </div>
+                    <p className="text-xs font-mono text-[#666666] mt-1 leading-normal font-bold">
+                      {isActive && processingMessage
+                        ? processingMessage
+                        : isActive && idx === 2 && isGeminiBusy
+                        ? "Gemini is busy. Retrying AI synthesis..."
+                        : step.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            {isGeminiBusy && (
+              <div className="p-4 rounded-[6px] border-2 border-[#111111] bg-[#FFC400] text-center flex items-center justify-center gap-3 animate-pulse mt-2 shadow-paper-sm">
+                <Brain className="h-5 w-5 text-[#111111] animate-bounce" />
+                <span className="text-xs font-mono font-extrabold text-[#111111] uppercase">
+                  Gemini is busy. Retrying AI synthesis...
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sync completed CTA overlay panel */}
+        {uploadStatus === 'completed' && (
+          <div className="pt-4 border-t-2 border-[#111111] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <span className="text-xs font-mono font-extrabold text-[#111111] uppercase flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-[#2F6BFF]" />
+              WORKSPACE GENERATED SUCCESSFULLY!
+            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={async () => {
+                  if (!userId || !lectureId) return;
+                  try {
+                    const lectureRef = doc(db, 'users', userId, 'lectures', lectureId);
+                    const snap = await getDoc(lectureRef);
+                    const lecData = snap.exists() ? snap.data() : {};
+                    await saveTranscriptMultiTier(userId, lectureId, {
+                      cleanTranscript: lecData.cleanTranscript || savedTranscript || '',
+                      transcript: lecData.transcript || savedTranscript || '',
+                      summary: lecData.summary || '',
+                      summaries: lecData.summaries || {},
+                      notes: lecData.notes || [],
+                      quizzes: lecData.quizzes || [],
+                      flashcards: lecData.flashcards || [],
+                      mindMap: lecData.mindMap || null,
+                      sections: lecData.sections || [],
+                      timeline: lecData.timeline || [],
+                      title: lecData.title || '',
+                      storedInBlob: true
+                    });
+                    await updateLecture(lectureId, { storedInBlob: true });
+                    alert('✓ Generated lecture content & notes successfully stored in Azure Cloud Storage!');
+                  } catch (err: any) {
+                    alert(`Storage save warning: ${err.message || 'Failed to save to cloud storage'}`);
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-[6px] border-2 border-[#111111] bg-[#10B981] text-white px-4 py-3 text-xs font-mono font-extrabold uppercase hover:bg-emerald-600 transition-all shadow-paper-sm cursor-pointer"
+              >
+                <CloudUpload className="h-4 w-4" />
+                <span>STORE NOTE TO AZURE STORAGE</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (setActiveLectureId && lectureId) {
+                    setActiveLectureId(lectureId);
+                  }
+                  setActivePage('lecture-capture');
+                }}
+                className="inline-flex items-center gap-2 rounded-[6px] border-2 border-[#111111] bg-[#2F6BFF] text-white px-5 py-3 text-xs font-mono font-extrabold uppercase hover:bg-[#255cd9] transition-all shadow-paper-md cursor-pointer"
+              >
+                <span>Go to Active Review Workspace</span>
+                <BookMarked className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}

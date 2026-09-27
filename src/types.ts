@@ -1,0 +1,497 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export type PageId =
+  | 'landing'
+  | 'dashboard'
+  | 'notifications'
+  | 'settings'
+  | 'help-support'
+  | 'pricing'
+  | 'lecture-capture'
+  | 'lecture-processing'
+  | 'profile'
+  | 'knowledge-studio'
+  | 'auth'
+  | 'faculty-login'
+  | 'faculty-dashboard'
+  | 'faculty-courses'
+  | 'faculty-course-progress'
+  | 'faculty-doubts'
+  | 'faculty-quiz-analytics'
+  | 'faculty-insights'
+  | 'faculty-settings'
+  | 'faculty-learning-analytics'
+  | 'faculty-lecture-insights'
+  | 'faculty-announcements'
+  | 'faculty-activity-center';
+
+export interface Citation {
+  text: string;
+  sourceId: string;
+  page?: number;
+  timestamp?: string;
+  chapter?: string;
+}
+
+export interface ChatHistoryRecord {
+  lectureId: string;
+  chatHistory: { sender: 'user' | 'ai'; text: string; citations?: Citation[] }[];
+}
+
+export interface Source {
+  id: string;
+  name: string;
+  type: 'pdf' | 'text' | 'recording' | 'video';
+  size?: string;
+  url?: string;
+  addedAt: string;
+  wordCount?: number;
+}
+
+export type RecordingStatus = 'recording' | 'uploaded' | 'failed';
+export type TranscriptionStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ResourceGenerationStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ResourceGenerationError {
+  code?: string;
+  message?: string;
+  provider?: string;
+  timestamp?: any;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  color?: string;
+  icon?: string;
+  createdAt?: any;
+}
+
+export interface Subject {
+  id: string;
+  name: string;
+  code?: string;
+  professor?: string;
+  teacherCode?: string;
+  color?: string;
+  createdAt?: any;
+  archived?: boolean;
+}
+
+export interface Lecture {
+  id: string;
+  title: string;
+  subject: string;
+  subjectId?: string;
+  subjectCode?: string;
+  lectureNumber?: number;
+  mapOrder?: number;
+  reviewed?: boolean;
+  folderId?: string;
+  duration?: string;
+  pages?: number;
+  addedAt: string;
+  status: 'recording' | 'uploading' | 'uploaded' | 'transcribing' | 'generating_notes' | 'generated' | 'failed' | 'extracting' | 'analyzing' | 'completed';
+  recordingStatus?: RecordingStatus;
+  transcriptionStatus?: TranscriptionStatus;
+  resourceGenerationStatus?: ResourceGenerationStatus;
+  resourceGenerationError?: ResourceGenerationError | null;
+  type: 'recording' | 'pdf' | 'ppt' | 'text';
+  audioUrl?: string;
+  blobPath?: string;
+  storageProvider?: string;
+  storageVersion?: number;
+  geminiModel?: string;
+  transcriptionProvider?: 'gemini' | 'browser';
+  transcriptionEngine?: string;
+  browserLiveTranscript?: string;
+  processingTimeMs?: number;
+  createdAt?: any;
+  uploadedAt?: any;
+  processingStartedAt?: any;
+  processingCompletedAt?: any;
+  transcript?: string;
+  summary?: string;
+  summaries?: { [key: string]: string };
+  notes?: any;
+  flashcards?: { q: string; a: string; category?: 'Basic Recall' | 'Concept Understanding' | 'Application Based' }[];
+  quiz?: { question: string; options: string[]; correctAnswer: number; explanation: string; difficulty?: 'easy' | 'medium' | 'hard' | 'scenario' | 'application'; sourceCitation?: string }[];
+  quizzes?: any[];
+  mindMap?: any;
+  storedInBlob?: boolean;
+  keyConcepts?: { id: string; label: string; desc: string; parent?: string; x: number; y: number; group: string; examples?: string; formula?: string; applications?: string }[];
+  weakTopics?: WeakTopic[];
+  cleanTranscript?: string;
+  sections?: { id: string; title: string; startTime: string; endTime: string; content: string }[];
+  timeline?: { time: string; title: string; description: string }[];
+  sourceIntelligence?: { keyPeople: string[]; keyTerms: string[]; formulas: string[]; dates: string[]; statistics: string[]; references: string[] };
+  presentationBlueprint?: {
+    theme: string;
+    purpose: string;
+    regenerationLevel: 'quick' | 'balanced' | 'premium';
+    qualityScore: number;
+    slideCount: number;
+    blueprint: any[];
+  };
+  lastGenerationProvider?: string;
+  lastGenerationModel?: string;
+  lastGeneratedAt?: any;
+  isShared?: boolean;
+  sharedByEmail?: string;
+  sharedByName?: string;
+  sharedAt?: any;
+}
+
+export interface WeakTopic {
+  id: string;
+  topicName: string;
+  subject: string;
+  masteryScore: number; // percentage
+  lastAttempt: string;
+  aiDiagnosis: string;
+  actionPlan: string[];
+}
+
+export interface QuizQuestion {
+  id: string;
+  type?: 'mcq' | 'true_false' | 'fill_blank' | 'match_following' | 'assertion_reason' | 'scenario_based';
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  reason?: string;
+  scenario?: string;
+  matchLeft?: string[];
+  matchRight?: string[];
+  correctMatchPairs?: { [key: string]: string };
+  explanation?: string;
+  sourceCitation?: string;
+}
+
+export interface Quiz {
+  id: string;
+  title: string;
+  topic: string;
+  courseCode?: string;
+  courseName?: string;
+  description?: string;
+  questionsCount: number;
+  estimatedTime: string;
+  passingScore?: number;
+  competencyId?: string;
+  competencyName?: string;
+  competencyIds?: string[];
+  competencyNames?: string[];
+  questions: QuizQuestion[];
+  easyQuestions?: QuizQuestion[];
+  mediumQuestions?: QuizQuestion[];
+  hardQuestions?: QuizQuestion[];
+  score?: number;
+  scores?: {
+    easy?: number;
+    medium?: number;
+    hard?: number;
+  };
+  status: 'available' | 'completed';
+  contextText?: string;
+  createdAt?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  description: string;
+  timeLabel: string; // 'Today' | 'Yesterday' | '2 days ago'
+  category: 'ai-insights' | 'system' | 'collaboration';
+  read: boolean;
+  timestamp: string;
+  actionLabel?: string;
+  actionPage?: PageId;
+}
+
+export type SkillProficiencyLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
+export type CompetencyCategory = 
+  | 'Technical' 
+  | 'Professional' 
+  | 'Communication' 
+  | 'Leadership' 
+  | 'Management' 
+  | 'Digital' 
+  | 'Domain Specific';
+
+export interface CatalogCompetency {
+  id: string;
+  name: string;
+  category: CompetencyCategory;
+  description: string;
+  isActive: boolean;
+}
+
+export interface TraineeSkill {
+  id: string;
+  name: string;
+  level: SkillProficiencyLevel;
+}
+
+export interface CompetencyAttemptHistoryItem {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  subject?: string;
+  scorePercentage: number;
+  score: number;
+  totalQuestions: number;
+  assessedLevel: SkillProficiencyLevel;
+  assessedNumericLevel: 1 | 2 | 3 | 4;
+  passed: boolean;
+  attemptDate: string;
+}
+
+export interface TraineeCompetency {
+  id: string;
+  competencyId?: string;
+  name: string;
+  category?: CompetencyCategory;
+  level: SkillProficiencyLevel; // Declared level
+  numericLevel?: 1 | 2 | 3 | 4; // Declared numeric level
+  description?: string;
+  // Phase 3C: Assessed levels (kept strictly separate from declared level)
+  latestAssessedLevel?: SkillProficiencyLevel;
+  latestAssessedNumericLevel?: 1 | 2 | 3 | 4;
+  latestScorePercentage?: number;
+  lastAssessedDate?: string;
+  assessmentHistory?: CompetencyAttemptHistoryItem[];
+}
+
+export interface TraineeCertification {
+  id: string;
+  name: string;
+  issuingOrganization: string;
+  issueDate: string;
+  expiryDate?: string;
+  credentialId?: string;
+}
+
+export interface UserSettings {
+  profile: {
+    fullName: string;
+    emailAddress: string;
+    bio: string;
+    avatarUrl: string;
+    institution: string;
+    role: string;
+    organization?: string;
+    department?: string;
+    designation?: string;
+    yearsOfExperience?: number;
+    skills?: TraineeSkill[];
+    competencies?: TraineeCompetency[];
+    certifications?: TraineeCertification[];
+    degree?: string;
+    semester?: string;
+    subjects?: string[];
+    theme?: 'light' | 'dark';
+    firstName?: string;
+    lastName?: string;
+    countryCode?: string;
+    phoneNumber?: string;
+    uid?: string;
+    onboardingCompleted?: boolean;
+    teacherCode?: string;
+  };
+  subscription: {
+    planName: 'BYOK' | 'Premium' | 'Institution';
+    price: string;
+    billingCycle: 'monthly' | 'yearly';
+    nextBillDate: string;
+    features: string[];
+  };
+  integrations: {
+    canvasConnected: boolean;
+    blackboardConnected: boolean;
+    canvasUrl?: string;
+    lastSynced?: string;
+  };
+  aiLevels: {
+    proactiveConceptSuggestion: boolean;
+    automatedBibliography: boolean;
+    highIntensitySynthesis: boolean;
+  };
+}
+
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface PricingPlan {
+  name: string;
+  tierLabel: string;
+  price: string;
+  period: string;
+  tagline: string;
+  description: string;
+  ctaText: string;
+  features: string[];
+  isPopular: boolean;
+  highlighted: boolean;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  lectureId?: string;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface StudioSlide {
+  title: string;
+  bulletPoints: string[];
+  speakerNotes: string;
+  visualSuggestions: string;
+  keyTakeaways: string;
+  references: string;
+}
+
+export interface KnowledgeSource {
+  id: string;
+  title: string;
+  type: 'document' | 'media' | 'online' | 'research';
+  sourceType: string;
+  status: 'processing' | 'indexed' | 'failed' | 'ready';
+  content: string;
+  url?: string;
+  size?: string;
+  createdAt: any;
+  summary?: string;
+  notes?: { title: string; content: string }[];
+  flashcards?: { q: string; a: string }[];
+  quiz?: { question: string; options: string[]; correctAnswer: number; explanation: string }[];
+  keyConcepts?: { id: string; label: string; desc: string; parent?: string; x: number; y: number; group: string }[];
+  slides?: StudioSlide[];
+  podcastScript?: string;
+  cleanTranscript?: string;
+  sections?: { id: string; title: string; startTime: string; endTime: string; content: string }[];
+  timeline?: { time: string; title: string; description: string }[];
+  sourceIntelligence?: { keyPeople: string[]; keyTerms: string[]; formulas: string[]; dates: string[]; statistics: string[]; references: string[] };
+  presentationBlueprint?: {
+    theme: string;
+    purpose: string;
+    regenerationLevel: 'quick' | 'balanced' | 'premium';
+    qualityScore: number;
+    slideCount: number;
+    blueprint: any[];
+  };
+}
+
+export interface SlideBlueprint {
+  slideType: 'title' | 'hero' | 'timeline' | 'process' | 'comparison' | 'architecture' | 'hierarchy' | 'metrics' | 'quote' | 'case_study' | 'diagram' | 'mindmap' | 'conclusion';
+  title: string;
+  objective: string;
+  keyPoints: string[];
+  imageQuery: string;
+  imageUrl?: string;
+  layoutPriority: number;
+  visualImportance: string;
+  wordLimit: number;
+  designNotes: string;
+}
+
+export type UserRole = 'student' | 'faculty';
+
+export interface FacultyProfile {
+  uid: string;
+  fullName: string;
+  emailAddress: string;
+  role: 'faculty';
+  teacherCode?: string;
+  university: string;
+  department: string;
+  designation: string;
+  subjects: string[];
+  classes: string[];
+  whatsappNumber: string;
+  profilePhoto?: string;
+  createdAt?: any;
+}
+
+export interface TeacherAssignment {
+  id?: string;
+  teacherId: string;
+  teacherName: string;
+  teacherCode?: string;
+  teacherPhone?: string;
+  subjectId: string;
+  subjectName: string;
+  courseId?: string;
+  classId?: string;
+  university?: string;
+  assignedAt?: any;
+}
+
+export interface DoubtItem {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentUniversity?: string;
+  studentClass?: string;
+  subjectId: string;
+  subjectName: string;
+  teacherId: string;
+  teacherName?: string;
+  teacherCode?: string;
+  lectureId?: string;
+  lectureTitle?: string;
+  noteId?: string;
+  topic: string;
+  question: string;
+  selectedText?: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  attachmentName?: string;
+  attachmentSize?: number;
+  createdAt: any;
+  status: 'NEW' | 'IN REVIEW' | 'ANSWERED' | 'RESOLVED';
+  priority?: 'low' | 'medium' | 'high';
+  response?: string;
+  respondedAt?: any;
+}
+
+export interface ClassLearningAlert {
+  id: string;
+  subject: string;
+  topic: string;
+  doubtCount: number;
+  quizAccuracy: number;
+  recommendation: string;
+  severity: 'low' | 'medium' | 'high';
+  updatedAt: any;
+}
+
+export interface QuizAttemptRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  quizId: string;
+  quizTitle?: string;
+  subject: string;
+  topic: string;
+  competencyId?: string;
+  competencyName?: string;
+  competencyIds?: string[];
+  competencyNames?: string[];
+  score: number;
+  totalQuestions: number;
+  scorePercentage?: number;
+  accuracy: number;
+  passed?: boolean;
+  assessedLevel?: SkillProficiencyLevel;
+  assessedNumericLevel?: 1 | 2 | 3 | 4;
+  completedAt: any;
+}
