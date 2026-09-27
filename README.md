@@ -1,207 +1,156 @@
-# KUMA AI
+# KUMA (CAPACITY CONNECT) — DIGITAL CAPACITY BUILDING & LMS PORTAL
 
-Kuma AI is an academic learning workspace that turns lectures, documents, website links, and YouTube resources into study material. Students can capture resources, generate notes and quizzes, practise concepts, track learning progress, and ask faculty doubts. A separate faculty workspace supports teaching-focused views of doubts, courses, and analytics.
+**SIH Problem Statement**: SIH26075 — CAPACITY CONNECT: A Digital Capacity Building and Learning Management Portal  
+**Platform**: Kuma Capacity Connect  
+**License**: Apache-2.0 / SIH2026 Submission  
 
-> Kuma uses BYOK (bring your own key). A user-provided AI key is sent only in an authenticated setup request, encrypted with AES-256-GCM on the backend, and saved in that user's server-side vault. It is not persisted in browser storage.
+---
 
-## Feature overview
+## 1. PROJECT OVERVIEW
 
-### Student workspace
+Kuma (Capacity Connect) is a unified Digital Capacity Building and Learning Management Portal designed to help organizations build workforce competencies, identify skill gaps, deliver targeted training programs, and monitor organizational capacity in real time.
 
-| Feature | What it does | How it works |
-| --- | --- | --- |
-| Authentication and onboarding | Creates a student workspace and profile | Firebase Authentication identifies the user; Firestore stores profile and workspace data. |
-| AI provider vault | Lets a student choose and validate a provider/model | The Express API validates the key, encrypts it server-side, then uses it only for that user's future AI requests. |
-| Lecture Capture | Records or imports lecture material | Browser capture/upload produces audio or source data, then the backend handles authenticated processing. |
-| Resource import | Imports PDF, DOCX, PPTX, XLSX, CSV, TXT, Markdown, websites, and YouTube links | The API extracts usable text and stores/source-links it for study workflows. |
-| Lecture Processing | Converts raw material into learning resources | The selected AI provider processes transcript/source context into structured outputs. |
-| Academic Library | Organizes notes, sources, lectures, folders, and subjects | User-owned data is stored under Firebase/Firestore collections. |
-| Knowledge Studio | Works with a selected learning source in one workspace | Students can generate and review notes, summaries, flashcards, quizzes, mind-map content, and related source assets. |
-| Research Hub | Supports source-grounded academic exploration | Imported text/source context is used to support study and research interactions. |
-| Quiz and preparation modes | Provides practice activities and focused revision | AI-generated questions and local/user learning data drive practice flows. |
-| Weak-topic and progress tools | Highlights areas needing revision | Quiz/learning telemetry is used for targeted practice and dashboard displays. |
-| Streaks, XP, rewards, weekend challenges | Encourages consistent study habits | Daily activity, rewards, and challenge state are synchronized where possible and cached for resilience. |
-| Notifications | Supports browser push and in-app notification flows | Firebase Cloud Messaging can register devices and the backend can send scheduled/test pushes. |
-| Bhai Lang | Explains selected material in student-friendly Hinglish | An authenticated AI request generates a simpler contextual explanation. |
-| Ask Doubt | Lets a student submit a doubt tied to a topic or lecture | Doubts are stored in Firestore and surfaced to faculty. |
+---
 
-### Faculty workspace
+## 2. PROBLEM & SOLUTION
 
-Faculty users have dedicated screens for overview dashboards, courses, course progress, quiz performance, learning/lecture insights, announcements, activity, profile settings, and student doubts.
+### Problem Statement
+Organizations struggle to track workforce competencies, measure skill deficiencies, recommend relevant training programs, and verify training completions at scale.
 
-Several analytics/course views currently use packaged demo data. Present those as prototype analytics until they are connected to a live institutional source.
+### Solution Overview
+Kuma provides an end-to-end organizational capacity building platform that connects:
+- **Competency Catalog & Framework**: 5-tier proficiency modeling (Novice, Beginner, Intermediate, Advanced, Expert).
+- **Competency Assessments**: Interactive multi-question assessments with automated numeric scoring.
+- **Skill Gap Identification**: Algorithmic gap calculation separating declared, assessed, and target levels.
+- **Training Recommendation Engine**: Rule-based matching connecting skill gaps directly to relevant training programs.
+- **Multimodal Knowledge Studio**: AI-assisted note generation, summaries, flashcards, and resource players.
+- **Training Progress & Completion**: Module-by-module progress tracking and completion validation.
+- **Digital Certification**: Cryptographically verifiable certificates with unique IDs (`KUMA-2026-XXXXXXXX`) and public lookup verification (`/verify-certificate`).
+- **Organizational Capacity Analytics**: Real-time telemetry dashboards for executive administration.
 
-## How the main workflow works
+---
 
-```text
-Sign in -> Complete profile -> Select provider and validate key
-        -> Import/record lecture or add a source
-        -> Extract transcript/text
-        -> Generate notes, summaries, flashcards, quizzes, or mind maps
-        -> Save/review in Library and Knowledge Studio
-        -> Practise, track progress, ask doubts, and earn streak rewards
-```
+## 3. USER ROLES & CAPABILITIES
 
-The browser sends a Firebase ID token with protected requests. The Express API verifies it, reads only that user's encrypted provider credential when needed, calls the configured provider, and returns the generated result. User notes, lectures, settings, and related data are stored in Firebase/Firestore; Azure Blob Storage is optional durable file storage.
+### 1. Trainee (Scholar)
+- Manage professional profile (Organization, Department, Designation).
+- Declare current proficiency levels and set target competency goals.
+- Take competency-based assessments and receive real-time scores.
+- View calculated skill gaps and recommended training programs.
+- Enroll in training programs, complete learning modules, and track progress.
+- View, download, and share verified digital certificates.
 
-## Architecture
+### 2. Trainer (Instructor)
+- Manage assigned training programs and learning resources.
+- Monitor active trainee enrollments and module progress.
+- Publish competency assessments and evaluate participant performance.
+- Resolve trainee doubts and post course announcements.
 
-```text
-React + Vite frontend
-        | Firebase ID token
-        v
-Express API (server.ts) ---> AI providers (Gemini, OpenAI, Groq, Claude, ...)
-        |                         |
-        +--> Firebase Admin / Firestore
-        +--> Azure Blob Storage (optional)
-        +--> Firebase Cloud Messaging (optional)
+### 3. Admin (Organization Manager)
+- Manage organizational structure, departments, and user roles.
+- Create and edit organizational competencies and proficiency criteria.
+- Publish training programs and map courses to competencies.
+- View executive capacity analytics, skill gap distributions, and training completion telemetry.
+- Audit platform certificates and user records.
 
-Firebase Auth + Firestore <----> React app
-```
+---
 
-## Technology stack
-
-- Frontend: React 19, TypeScript, Vite, Tailwind CSS, Motion, Lucide
-- Backend: Node.js, Express, TypeScript/TSX
-- Identity/data: Firebase Authentication, Firestore, Firebase Cloud Messaging
-- Storage: Azure Blob Storage with a local development fallback
-- Parsers: PDF, DOCX, PPTX, XLSX/CSV, text, web articles, and YouTube transcript tools
-- AI integrations: Gemini, OpenAI, Groq, Anthropic/Claude, OpenRouter, DeepSeek, Mistral, xAI/Grok, NVIDIA NIM, and Notion where configured
-
-## Repository layout
+## 4. MAIN WORKFLOW
 
 ```text
-src/components/          Student UI
-src/components/faculty/  Faculty UI
-src/teacher-portal/      Faculty portal and demo-data views
-src/services/            AI, storage, notifications, streaks, doubts, sharing
-src/providers/           AI provider clients and validation adapters
-src/hooks/               Firestore-backed client hooks
-src/middleware/          Firebase token authentication
-src/server/              Server-only helper services
-server.ts                Express API and routes
-firestore.rules          Firestore access rules
-render.yaml              Render API + web deployment blueprint
-vercel.json              Static frontend deployment configuration
+Admin Setup           Trainer           Trainee Journey              System Logic           Certification & Analytics
+-----------         -----------      ----------------------         --------------         --------------------------
+Create Org     ---> Publish      ---> Create Profile          --->  Calculate Gap      ---> Issue Digital Certificate
+Create Competencies Training          Select Target Levels          (Target - Assessed)      (Unique Verification ID)
+Create Courses      Map to Comp      Take Assessment          --->  Recommend Course   ---> Refresh Admin Telemetry
 ```
 
-## Local setup
+---
+
+## 5. TECHNOLOGY STACK
+
+- **Frontend**: React 19, TypeScript, Vite, Vanilla CSS + Bauhaus styling tokens, Lucide icons.
+- **Backend API**: Node.js, Express, TypeScript (`server.ts`).
+- **Identity & Database**: Firebase Authentication (with Local Session fallback), Cloud Firestore.
+- **Storage**: Azure Blob Storage / Local fallback for documents & media assets.
+- **AI Integrations**: Gemini API (Multimodal transcript processing, automated notes, summary synthesis).
+- **Mobile Packaging**: Capacitor for Android/iOS cross-platform deployment.
+
+---
+
+## 6. REPOSITORY STRUCTURE
+
+```text
+src/
+├── components/          Trainee UI components (SkillGapView, ProfileView, CertificatesView, etc.)
+├── components/faculty/  Trainer & Admin UI components (FacultyOnboarding, etc.)
+├── teacher-portal/      Admin & Trainer Portal App (TeacherPortalApp, LearningAnalytics, etc.)
+├── services/            Firebase services, AI Gemini integration, doubt management
+├── utils/               Skill gap math, recommendation engine, certificate generation, demo seeder
+├── hooks/               Firestore real-time data hooks (useNotes, useLectures)
+├── types.ts             Unified TypeScript interfaces and data models
+├── firebaseConfig.ts    Firebase setup with fallback project credentials & try-catch guards
+server.ts                Express API server
+DEMO_GUIDE.md            Official SIH evaluation demonstration manual & script
+```
+
+---
+
+## 7. LOCAL SETUP & INSTALLATION
 
 ### Prerequisites
-
 - Node.js 18+ (Node 22 recommended)
-- Firebase project with Authentication and Firestore enabled
-- A supported AI-provider key for AI generation
+- `npm` package manager
 
-### Install
+### Installation Steps
 
-```bash
-npm install
-Copy-Item .env.example .env
-```
+1. Clone the repository and install dependencies:
+   ```bash
+   git clone https://github.com/Prashant-workhub/kuma.git
+   cd kuma
+   npm install
+   ```
 
-On macOS/Linux, use `cp .env.example .env`.
+2. Configure environment variables (optional for local testing; fallbacks are pre-configured):
+   ```bash
+   cp .env.example .env
+   ```
 
-### Core environment variables
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+   - Frontend app: `http://localhost:5173`
+   - Express backend: `http://localhost:3003`
 
-| Variable | Location | Purpose |
-| --- | --- | --- |
-| `GEMINI_API_KEY` | Backend only | Optional server-owned Gemini fallback key. |
-| `ENCRYPTION_SECRET` | Backend only | Unique production secret for encrypting user BYOK credentials. |
-| `FIREBASE_PROJECT_ID` | Backend | Firebase Admin project ID. |
-| `FIREBASE_CLIENT_EMAIL` | Backend | Firebase Admin service-account email. |
-| `FIREBASE_PRIVATE_KEY` | Backend | Firebase Admin service-account private key. |
-| `VITE_FIREBASE_*` | Frontend | Firebase web-app configuration. |
-| `VITE_API_URL` | Frontend | Public URL of the Express API, such as `https://your-api.onrender.com`. |
-| `VITE_FIREBASE_VAPID_KEY` | Frontend, optional | Web-push public key. |
-| `AZURE_STORAGE_*` | Backend, optional | Azure Blob Storage configuration. |
-| `ADMIN_API_SECRET` | Backend, optional | Additional protection for admin/debug endpoints. |
-| `AI_DAILY_LIMIT_PER_USER` | Backend, optional | Maximum authenticated AI operations per user per day; defaults to `20`. |
-| `AI_REQUESTS_PER_MINUTE` | Backend, optional | Per-user burst limit; defaults to `4`. |
-| `AI_MAX_OUTPUT_TOKENS` | Backend, optional | Gemini response cap; defaults to `8192` tokens. |
-| `ALLOW_SERVER_AI_FALLBACK` | Backend, optional | Keep `false` for BYOK-only operation. `true` permits explicit platform-quota requests only. |
+---
 
-Do not put a private AI key in a `VITE_*` variable. Vite embeds those values into the public browser bundle. Keep AI keys, Firebase Admin credentials, Azure credentials, and encryption secrets only on the API service.
+## 8. DEMONSTRATION WORKFLOW
 
-### Run locally
+For SIH evaluation, Kuma includes a complete demo environment and seeder:
+- **Demonstration Manual**: Refer to [`DEMO_GUIDE.md`](./DEMO_GUIDE.md) for the exact 8-step walkthrough script.
+- **Demo Seeder**: `src/utils/demoDataSeeder.ts` initializes realistic records for *Acme Digital Services*.
+- **Demo Accounts**:
+  - Admin: `admin@acme.com`
+  - Trainer: `trainer@acme.com`
+  - Trainee: `analyst@acme.com`
 
-Run both frontend and API:
+---
 
-```bash
-npm run dev
-```
+## 9. VERIFICATION & BUILD
 
-Or run separately:
+Run type checking and production bundling:
 
 ```bash
-npm run dev:server
-npm run dev:vite
-```
+# TypeScript type check
+npx tsc --noEmit
 
-- Frontend: `http://localhost:5173`
-- API: `http://localhost:3002` unless `PORT` is set
-- Health check: `http://localhost:3002/api/health`
-
-## Android app (Capacitor)
-
-The React application is packaged as an Android app with Capacitor. Install Android Studio, Android SDK Platform 36, and a full JDK 21 (not a JRE). The Android project is configured to use JDK 21 because Capacitor 8 requires it.
-
-```bash
-# Build the web app and copy it into the native Android project
-npm run android:sync
-
-# Open the native project in Android Studio
-npm run android:open
-
-# Or create a debug APK from the command line (Windows)
-npm run android:build
-```
-
-In Android Studio, open the `android` folder—not the repository root—and select a device or emulator before pressing Run. When you change the React app, run `npm run android:sync` again before launching it in Android Studio.
-
-## Verification
-
-```bash
-npm run lint
+# Production Vite build
 npm run build
-npx tsx test-all-features.ts
 ```
 
-The smoke-test script checks provider utilities, API authentication guards, route behaviour, and a local upload/extraction round trip. AI, Firebase, Azure, and notification checks can report configuration-dependent warnings when external credentials are absent.
+---
 
-## Deployment
+## 10. LICENSE
 
-`render.yaml` defines two services:
-
-1. `kuma-api`: the Node/Express backend; configure all secret values here.
-2. `kuma-web`: the Vite static frontend; configure Firebase web settings and `VITE_API_URL` here.
-
-Deployment checklist:
-
-1. Configure Firebase Authentication, Firestore, and optional Cloud Messaging/Storage.
-2. Deploy and review `firestore.rules` for your intended student/faculty data-sharing model.
-3. Configure backend secrets: Firebase Admin credentials, a unique `ENCRYPTION_SECRET`, provider/storage credentials, and restrictive `CORS_ORIGINS`.
-4. Set the frontend `VITE_API_URL` to the exact deployed API URL.
-5. Add the final frontend domain to Firebase Authentication's Authorized domains.
-6. Test sign-in, key setup, upload, one AI-generation flow, and a Firestore write after deployment.
-
-### Vercel note
-
-`vercel.json` deploys the static frontend only. `server.ts` must run on a Node backend such as the `kuma-api` Render service. A `GEMINI_API_KEY` placed only in a static Vercel project is not available to the Express API.
-
-## Security and production notes
-
-- Protected API routes verify Firebase ID tokens.
-- User provider keys are encrypted server-side; browser storage no longer retains them.
-- Every expensive AI route is protected by a centralized per-user daily quota, per-minute rate limit, payload-size limit, and text/audio input limit. Usage is recorded in a server-only `ai_rate_limits` collection; a local limiter is used only when Firebase Admin is unavailable during development.
-- BYOK is the default. A server-owned Gemini key is never selected automatically: it can be used only when `ALLOW_SERVER_AI_FALLBACK=true` and a request explicitly opts into platform quota. API responses and Settings identify the key source.
-- Upload routes enforce the authenticated user's filename prefix.
-- Admin debug/broadcast routes require Firebase authentication plus a server-side admin secret.
-- For production, prefer private blob storage and authorization-checked download URLs over publicly served local upload files.
-- Harden arbitrary URL import against SSRF before opening public access.
-- Review dependency-audit findings and update/replace vulnerable document parsers before a public launch.
-- AI output can be inaccurate; students should verify it against original source material.
-
-## License
-
-This repository is private. Add an explicit license before distributing or open-sourcing it.
+Apache-2.0 License. Developed for Smart India Hackathon 2026 (SIH26075).
