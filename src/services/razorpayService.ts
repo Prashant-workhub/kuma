@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export const RAZORPAY_KEY_ID = 'rzp_live_TOD97KDr57yuPX';
+export const RAZORPAY_KEY_ID = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_RAZORPAY_KEY_ID) || '';
 
 declare global {
   interface Window {

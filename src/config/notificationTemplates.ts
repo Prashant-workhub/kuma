@@ -20,7 +20,7 @@ export const SCHEDULER_CONFIG = {
   DEFAULT_MIN_NOTIFICATION_COOLDOWN_MINUTES: 240, // 4 hours
   DEFAULT_QUIET_HOURS_START: "22:30", // 10:30 PM
   DEFAULT_QUIET_HOURS_END: "08:00",   // 8:00 AM
-  DEFAULT_VAPID_KEY: "BARE_bsVoSaQGCqY4n21B6zdYP5oA2hBdk3u8yez4g022jKL1HBjxtiQ1-aLh-Pwny2WYh7fWRSpm41L9fl6JAc"
+  DEFAULT_VAPID_KEY: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_VAPID_KEY) || ""
 };
 
 export const NOTIFICATION_TEMPLATES: NotificationTemplate[] = [
