@@ -276,6 +276,75 @@ export function LearningAnalytics() {
           </table>
         </div>
       </Card>
+
+      {/* PHASE 3F: TRAINEE COMPLETION & CERTIFICATE RECORDS TABLE FOR TRAINERS */}
+      <Card padded={false} className="overflow-hidden space-y-3">
+        <div className="flex items-center justify-between border-b border-line p-5">
+          <div>
+            <h3 className="font-display text-base font-semibold text-ink flex items-center gap-2">
+              <Target size={16} className="text-[#9C27B0]" />
+              Trainee Training Completion & Certificate Records
+            </h3>
+            <p className="text-xs text-muted mt-0.5">
+              Real-time progress, completion timestamps, and certificate verification records.
+            </p>
+          </div>
+          <CodePill className="text-purple-500 border-purple-500/40">Phase 3F Credentials</CodePill>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-line bg-panel/50">
+                <th className="px-5 py-3 font-medium text-muted">Trainee</th>
+                <th className="px-4 py-3 font-medium text-muted">Training Program</th>
+                <th className="px-4 py-3 font-medium text-muted">Progress</th>
+                <th className="px-4 py-3 font-medium text-muted">Status</th>
+                <th className="px-4 py-3 font-medium text-muted">Completion Date</th>
+                <th className="px-4 py-3 font-medium text-muted">Certificate ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-line last:border-0 hover:bg-panel/40">
+                <td className="px-5 py-3 font-medium text-ink">Ananya Rao</td>
+                <td className="px-4 py-3 text-muted">Advanced Data Analytics & Insights (DA101)</td>
+                <td className="px-4 py-3 metric font-semibold text-emerald-500">100%</td>
+                <td className="px-4 py-3">
+                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                    Completed
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-xs text-faint">2026-09-25</td>
+                <td className="px-4 py-3 font-mono text-xs font-bold text-purple-500">KUMA-2026-DA10199X</td>
+              </tr>
+              <tr className="border-b border-line last:border-0 hover:bg-panel/40">
+                <td className="px-5 py-3 font-medium text-ink">Rohit Menon</td>
+                <td className="px-4 py-3 text-muted">Python Scripting & Core Algorithms (CS301)</td>
+                <td className="px-4 py-3 metric font-semibold text-amber-500">68%</td>
+                <td className="px-4 py-3">
+                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                    In Progress
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-xs text-faint">—</td>
+                <td className="px-4 py-3 text-xs text-faint">Pending Completion</td>
+              </tr>
+              <tr className="border-b border-line last:border-0 hover:bg-panel/40">
+                <td className="px-5 py-3 font-medium text-ink">Sneha Kulkarni</td>
+                <td className="px-4 py-3 text-muted">Digital Transformation & Cloud Workflows (DT100)</td>
+                <td className="px-4 py-3 metric font-semibold text-amber-500">30%</td>
+                <td className="px-4 py-3">
+                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                    In Progress
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-xs text-faint">—</td>
+                <td className="px-4 py-3 text-xs text-faint">Pending Completion</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   )
 }

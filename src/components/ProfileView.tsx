@@ -845,17 +845,28 @@ export default function ProfileView({
             <div className="flex items-center justify-between border-b-2 border-[var(--border-main)] pb-3">
               <h3 className="section-label text-xs font-bold text-[var(--text-primary)] uppercase tracking-[2px] flex items-center gap-2">
                 <Award className="h-4 w-4 text-[#9C27B0]" />
-                PROFESSIONAL CERTIFICATIONS
+                PROFESSIONAL CERTIFICATIONS & DIGITAL CREDENTIALS
               </h3>
-              <Button
-                type="button"
-                variant="tertiary"
-                size="sm"
-                onClick={() => setShowCertForm(!showCertForm)}
-                icon={<Plus className="h-3.5 w-3.5" />}
-              >
-                {showCertForm ? 'Cancel' : 'Add Certification'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setActivePage('certificates')}
+                  className="bg-[#9C27B0] text-white text-xs"
+                >
+                  View Digital Certificates (Phase 3F)
+                </Button>
+                <Button
+                  type="button"
+                  variant="tertiary"
+                  size="sm"
+                  onClick={() => setShowCertForm(!showCertForm)}
+                  icon={<Plus className="h-3.5 w-3.5" />}
+                >
+                  {showCertForm ? 'Cancel' : 'Add Manual Record'}
+                </Button>
+              </div>
             </div>
 
             {/* Add Certification Modal/Drawer Inline Form */}

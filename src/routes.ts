@@ -16,6 +16,8 @@ export const PAGE_TO_PATH_MAP: Record<PageId, string> = {
   'lecture-processing': '/lecture-processing',
   profile: '/profile',
   'skill-gap': '/skill-gap',
+  certificates: '/certificates',
+  'verify-certificate': '/verify/certificate',
   'knowledge-studio': '/knowledge-studio',
   auth: '/auth',
   'faculty-login': '/faculty/login',
@@ -52,6 +54,9 @@ export function pathToPageId(pathname: string): PageId {
   // Alias checks
   if (cleanPath === '/landing' || cleanPath === '') {
     return 'landing';
+  }
+  if (cleanPath.startsWith('/verify/certificate')) {
+    return 'verify-certificate';
   }
   if (cleanPath.startsWith('/faculty')) {
     const facultySubPath = cleanPath.replace('/faculty/', '');

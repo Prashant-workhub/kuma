@@ -13,6 +13,7 @@ import {
   GapStatus 
 } from '../utils/competencyUtils';
 import { getTrainingRecommendations } from '../utils/recommendationUtils';
+import { enrollInCourse, updateEnrollmentProgress } from '../utils/enrollmentUtils';
 import { COURSES } from '../teacher-portal/lib/mockData';
 import { INITIAL_COMPETENCY_CATALOG } from '../data';
 import { Card, Button, Badge } from './bauhaus';
@@ -458,7 +459,15 @@ export default function SkillGapView({
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleStartCourse(rec.course.id)}
+                      onClick={() => {
+                        handleStartCourse(rec.course.id);
+                        updateEnrollmentProgress(
+                          settings.profile.uid || 'user-demo-1',
+                          settings.profile,
+                          rec.course,
+                          Math.min(100, (courseProgressState[rec.course.id] || 25) + 25)
+                        );
+                      }}
                       className="flex items-center gap-1.5"
                     >
                       <PlayCircle className="h-4 w-4" />
@@ -468,11 +477,18 @@ export default function SkillGapView({
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => handleStartCourse(rec.course.id)}
+                      onClick={() => {
+                        enrollInCourse(
+                          settings.profile.uid || 'user-demo-1',
+                          settings.profile,
+                          rec.course
+                        );
+                        handleStartCourse(rec.course.id);
+                      }}
                       className="flex items-center gap-1.5 bg-[#9C27B0] hover:bg-[#8E24AA] text-white"
                     >
                       <BookOpen className="h-4 w-4" />
-                      <span>Start Training</span>
+                      <span>Enroll in Training</span>
                     </Button>
                   )}
                 </div>

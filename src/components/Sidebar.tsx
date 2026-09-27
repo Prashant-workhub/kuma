@@ -18,7 +18,9 @@ import {
   LogOut,
   User,
   ExternalLink,
-  Target
+  Target,
+  Award,
+  ShieldCheck
 } from 'lucide-react';
 import { PageId, UserSettings } from '../types';
 import AILogo from './AILogo';
@@ -53,6 +55,8 @@ export default function Sidebar({
   const workspaceItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Target },
+    { id: 'certificates', label: 'My Certificates', icon: Award },
+    { id: 'verify-certificate', label: 'Verify Certificate', icon: ShieldCheck },
     { id: 'lecture-capture', label: 'Capture Live', icon: Mic, badge: 'REC' },
     { id: 'knowledge-studio', label: 'Knowledge Studio', icon: Compass }
   ];

@@ -54,6 +54,8 @@ import PricingView from './components/PricingView';
 import AuthView from './components/AuthView';
 import ProfileView from './components/ProfileView';
 import SkillGapView from './components/SkillGapView';
+import CertificatesView from './components/CertificatesView';
+import CertificateVerificationView from './components/CertificateVerificationView';
 import LectureCaptureView from './components/LectureCaptureView';
 import LectureProcessingView from './components/LectureProcessingView';
 import LandingView from './components/LandingView';
@@ -850,6 +852,19 @@ export default function App() {
             onUpdateSettings={handleUpdateSettings}
             setActivePage={setActivePage}
             theme={theme}
+          />
+        );
+      case 'certificates':
+        return (
+          <CertificatesView
+            settings={settings}
+            setActivePage={setActivePage}
+          />
+        );
+      case 'verify-certificate':
+        return (
+          <CertificateVerificationView
+            setActivePage={setActivePage}
           />
         );
       case 'knowledge-studio':

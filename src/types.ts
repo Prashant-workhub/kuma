@@ -14,6 +14,8 @@ export type PageId =
   | 'lecture-processing'
   | 'profile'
   | 'skill-gap'
+  | 'certificates'
+  | 'verify-certificate'
   | 'knowledge-studio'
   | 'auth'
   | 'faculty-login'
@@ -518,3 +520,40 @@ export interface QuizAttemptRecord {
   assessedNumericLevel?: 1 | 2 | 3 | 4;
   completedAt: any;
 }
+
+export interface TrainingEnrollment {
+  id: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  subject?: string;
+  enrolledAt: string;
+  status: 'enrolled' | 'in_progress' | 'completed';
+  completionRate: number; // 0 to 100
+  completedAt?: string;
+  quizPassed?: boolean;
+  certificateId?: string;
+}
+
+export interface TrainingCertificate {
+  id: string; // e.g. "KUMA-2026-X89F2A1C"
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  organization: string;
+  department?: string;
+  designation?: string;
+  issueDate: string;
+  completionDate: string;
+  verified: boolean;
+  verificationUrl: string;
+  competenciesAddressed?: string[];
+  enrollmentId?: string;
+}
+
