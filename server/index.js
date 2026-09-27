@@ -115,7 +115,7 @@ app.post('/api/assessments/attempts', async (req, res) => {
 const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
 
-app.get('*', (req, res) => {
+app.use((req, res) => {
   const indexPath = path.join(distPath, 'index.html');
   res.sendFile(indexPath, (err) => {
     if (err) {
