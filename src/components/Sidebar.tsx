@@ -18,7 +18,7 @@ import {
   LogOut,
   User,
   ExternalLink,
-  HelpCircle
+  Target
 } from 'lucide-react';
 import { PageId, UserSettings } from '../types';
 import AILogo from './AILogo';
@@ -52,6 +52,7 @@ export default function Sidebar({
   // Grouped Menu Navigation
   const workspaceItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Target },
     { id: 'lecture-capture', label: 'Capture Live', icon: Mic, badge: 'REC' },
     { id: 'knowledge-studio', label: 'Knowledge Studio', icon: Compass }
   ];

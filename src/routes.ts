@@ -15,6 +15,7 @@ export const PAGE_TO_PATH_MAP: Record<PageId, string> = {
   'lecture-capture': '/lecture-capture',
   'lecture-processing': '/lecture-processing',
   profile: '/profile',
+  'skill-gap': '/skill-gap',
   'knowledge-studio': '/knowledge-studio',
   auth: '/auth',
   'faculty-login': '/faculty/login',

@@ -13,6 +13,7 @@ export type PageId =
   | 'lecture-capture'
   | 'lecture-processing'
   | 'profile'
+  | 'skill-gap'
   | 'knowledge-studio'
   | 'auth'
   | 'faculty-login'
@@ -264,6 +265,10 @@ export interface TraineeCompetency {
   latestScorePercentage?: number;
   lastAssessedDate?: string;
   assessmentHistory?: CompetencyAttemptHistoryItem[];
+
+  // Phase 3D: Target Competency Levels (kept strictly separate from declared & assessed levels)
+  targetLevel?: SkillProficiencyLevel;
+  targetNumericLevel?: 1 | 2 | 3 | 4;
 }
 
 export interface TraineeCertification {

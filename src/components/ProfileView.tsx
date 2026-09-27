@@ -206,6 +206,12 @@ export default function ProfileView({
     ));
   };
 
+  const handleUpdateTargetCompetencyLevel = (id: string, newTargetLevel: SkillProficiencyLevel) => {
+    setCompetencies(competencies.map(c => 
+      c.id === id ? { ...c, targetLevel: newTargetLevel, targetNumericLevel: LEVEL_TO_NUM[newTargetLevel] } : c
+    ));
+  };
+
   const handleRemoveCompetency = (id: string) => {
     setCompetencies(competencies.filter(c => c.id !== id));
   };
@@ -294,7 +300,7 @@ export default function ProfileView({
   };
 
   // Visual Step Progress Bar (1-4 blocks)
-  const renderProgressBar = (numLevel: number = 2) => {
+  const renderProgressBar = (numLevel: number = 2, activeColor: string = 'bg-[#FFC400]') => {
     const blocks = [1, 2, 3, 4];
     return (
       <div className="flex items-center gap-1.5 font-mono text-xs">
@@ -303,7 +309,7 @@ export default function ProfileView({
             <div
               key={b}
               className={`h-3 w-5 rounded-[2px] border border-[var(--border-main)] transition-all ${
-                b <= numLevel ? 'bg-[#FFC400] shadow-paper-xs' : 'bg-gray-200 dark:bg-neutral-800'
+                b <= numLevel ? `${activeColor} shadow-paper-xs` : 'bg-gray-200 dark:bg-neutral-800'
               }`}
             />
           ))}
@@ -641,8 +647,8 @@ export default function ProfileView({
                         </div>
                       </div>
 
-                      {/* Side by Side Levels: DECLARED vs ASSESSED */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      {/* 3 Columns: DECLARED LEVEL | ASSESSED LEVEL | TARGET LEVEL */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                         
                         {/* 1. DECLARED LEVEL (User Editable) */}
                         <div className="p-3 rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-1.5">
@@ -688,9 +694,31 @@ export default function ProfileView({
                             </div>
                           ) : (
                             <div className="text-[11px] font-mono text-[var(--text-secondary)] italic pt-1">
-                              No assessment taken yet for this competency.
+                              No assessment taken yet.
                             </div>
                           )}
+                        </div>
+
+                        {/* 3. TARGET LEVEL (User Configurable) */}
+                        <div className="p-3 rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">
+                              TARGET LEVEL
+                            </span>
+                            <span className="text-[9px] font-mono text-[#9C27B0] font-bold">Configurable</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            {renderProgressBar(comp.targetNumericLevel || LEVEL_TO_NUM[comp.targetLevel || 'Advanced'] || 3, 'bg-[#9C27B0]')}
+                            <select
+                              value={comp.targetLevel || 'Advanced'}
+                              onChange={(e) => handleUpdateTargetCompetencyLevel(comp.id, e.target.value as SkillProficiencyLevel)}
+                              className="rounded-[4px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] p-1 text-xs font-mono font-bold text-[var(--text-primary)] cursor-pointer outline-none"
+                            >
+                              {PROFICIENCY_LEVELS.map((lvl) => (
+                                <option key={lvl} value={lvl}>{lvl}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
 
                       </div>

@@ -123,9 +123,26 @@ export default function DashboardView({
       </div>
 
       {/* 2. DASHBOARD QUICK STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        {/* Stat Card 1: Sessions Recorded */}
+        {/* Stat Card 1: Skill Gap Matrix */}
+        <div 
+          onClick={() => setActivePage('skill-gap')}
+          className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm hover:border-[#FFC400] cursor-pointer transition-all flex items-center justify-between"
+        >
+          <div>
+            <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+              SKILL GAP ANALYSIS
+            </div>
+            <div className="text-xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
+              <Target className="h-5 w-5 text-[#FFC400]" />
+              <span>GAP MATRIX</span>
+            </div>
+          </div>
+          <Badge variant="yellow" size="sm">ANALYSIS</Badge>
+        </div>
+
+        {/* Stat Card 2: Sessions Recorded */}
         <div 
           onClick={() => setActivePage('knowledge-studio')}
           className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm hover:border-[#2F6BFF] cursor-pointer transition-all flex items-center justify-between"
@@ -134,7 +151,7 @@ export default function DashboardView({
             <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-wider">
               SAVED SESSIONS
             </div>
-            <div className="text-2xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
+            <div className="text-xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
               <BookOpen className="h-5 w-5 text-[#2F6BFF]" />
               <span>{lectures.length} SAVED</span>
             </div>
@@ -142,7 +159,7 @@ export default function DashboardView({
           <Badge variant="blue" size="sm">STUDIO</Badge>
         </div>
 
-        {/* Stat Card 2: Saved Notes */}
+        {/* Stat Card 3: Saved Notes */}
         <div 
           onClick={() => setActivePage('knowledge-studio')}
           className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm hover:border-[#FFC400] cursor-pointer transition-all flex items-center justify-between"
@@ -151,7 +168,7 @@ export default function DashboardView({
             <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-wider">
               SAVED NOTES
             </div>
-            <div className="text-2xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
+            <div className="text-xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
               <Sparkles className="h-5 w-5 text-[#FFC400]" />
               <span>{notes.length} DRAFTED</span>
             </div>
@@ -159,7 +176,7 @@ export default function DashboardView({
           <Badge variant="yellow" size="sm">NOTES</Badge>
         </div>
 
-        {/* Stat Card 3: Resources Indexed */}
+        {/* Stat Card 4: Resources Indexed */}
         <div 
           onClick={() => setActivePage('knowledge-studio')}
           className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm hover:border-[#19B56B] cursor-pointer transition-all flex items-center justify-between"

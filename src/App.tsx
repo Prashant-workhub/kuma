@@ -53,6 +53,7 @@ import SupportView from './components/SupportView';
 import PricingView from './components/PricingView';
 import AuthView from './components/AuthView';
 import ProfileView from './components/ProfileView';
+import SkillGapView from './components/SkillGapView';
 import LectureCaptureView from './components/LectureCaptureView';
 import LectureProcessingView from './components/LectureProcessingView';
 import LandingView from './components/LandingView';
@@ -836,6 +837,15 @@ export default function App() {
       case 'profile':
         return (
           <ProfileView
+            settings={settings}
+            onUpdateSettings={handleUpdateSettings}
+            setActivePage={setActivePage}
+            theme={theme}
+          />
+        );
+      case 'skill-gap':
+        return (
+          <SkillGapView
             settings={settings}
             onUpdateSettings={handleUpdateSettings}
             setActivePage={setActivePage}
