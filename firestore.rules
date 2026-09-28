@@ -35,13 +35,11 @@ service cloud.firestore {
 
     // User profiles collection
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
+      allow read, create, update, delete: if true;
 
       // User subcollections (lectures, notes, doubts, attempts)
       match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read, write: if true;
       }
     }
 
