@@ -4,7 +4,9 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { UserSettings, TraineeCompetency, SkillProficiencyLevel, RoleSkillGapRecord } from '../types';
+import { UserSettings, TraineeCompetency, SkillProficiencyLevel, RoleSkillGapRecord, TrainingCertificate, Quiz, TeacherAssignment } from '../types';
+import TrainingLifecycleModal from './TrainingLifecycleModal';
+import CertificateModal from './CertificateModal';
 import { 
   calculateSkillGap, 
   calculateDesignationSkillGaps,
@@ -44,6 +46,8 @@ interface SkillGapViewProps {
   onUpdateSettings: (newSettings: UserSettings) => void;
   setActivePage: (page: any) => void;
   theme: 'light' | 'dark';
+  onTakeAssessment?: (quiz: Quiz) => void;
+  onViewCertificate?: (cert: TrainingCertificate) => void;
 }
 
 const PROFICIENCY_LEVELS: SkillProficiencyLevel[] = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
@@ -66,13 +70,20 @@ export default function SkillGapView({
   settings,
   onUpdateSettings,
   setActivePage,
-  theme
+  theme,
+  onTakeAssessment,
+  onViewCertificate
 }: SkillGapViewProps) {
   const [competencies, setCompetencies] = useState<TraineeCompetency[]>(
     settings.profile.competencies || []
   );
 
   const [courseProgressState, setCourseProgressState] = useState<Record<string, number>>({});
+
+  // Training Program Lifecycle & Certificate Modal States
+  const [selectedCourseForLifecycle, setSelectedCourseForLifecycle] = useState<TeacherAssignment | null>(null);
+  const [showLifecycleModal, setShowLifecycleModal] = useState(false);
+  const [selectedCertForModal, setSelectedCertForModal] = useState<TrainingCertificate | null>(null);
 
   const handleUpdateTargetLevel = (id: string, newTargetLevel: SkillProficiencyLevel) => {
     const updated = competencies.map((c) => {
@@ -474,42 +485,27 @@ export default function SkillGapView({
                     Max Gap Addressed: <span className="font-bold text-red-500">{rec.maxGap} Level{rec.maxGap > 1 ? 's' : ''}</span>
                   </div>
 
-                  {rec.enrollmentStatus === 'in_progress' ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        handleStartCourse(rec.course.id);
-                        updateEnrollmentProgress(
-                          settings.profile.uid || 'user-demo-1',
-                          settings.profile,
-                          rec.course,
-                          Math.min(100, (courseProgressState[rec.course.id] || 25) + 25)
-                        );
-                      }}
-                      className="flex items-center gap-1.5"
-                    >
-                      <PlayCircle className="h-4 w-4" />
-                      <span>Continue Training</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        enrollInCourse(
-                          settings.profile.uid || 'user-demo-1',
-                          settings.profile,
-                          rec.course
-                        );
-                        handleStartCourse(rec.course.id);
-                      }}
-                      className="flex items-center gap-1.5 bg-[#9C27B0] hover:bg-[#8E24AA] text-white"
-                    >
-                      <BookOpen className="h-4 w-4" />
-                      <span>Enroll in Training</span>
-                    </Button>
-                  )}
+                  <Button
+                    variant={rec.enrollmentStatus === 'in_progress' ? 'secondary' : 'primary'}
+                    size="sm"
+                    onClick={() => {
+                      setSelectedCourseForLifecycle(rec.course);
+                      setShowLifecycleModal(true);
+                    }}
+                    className={`flex items-center gap-1.5 ${rec.enrollmentStatus === 'in_progress' ? '' : 'bg-[#9C27B0] hover:bg-[#8E24AA] text-white'}`}
+                  >
+                    {rec.enrollmentStatus === 'in_progress' ? (
+                      <>
+                        <PlayCircle className="h-4 w-4" />
+                        <span>Continue Training</span>
+                      </>
+                    ) : (
+                      <>
+                        <BookOpen className="h-4 w-4" />
+                        <span>Enroll & View Lifecycle</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
 
               </div>
@@ -554,6 +550,38 @@ export default function SkillGapView({
           </div>
         )}
       </Card>
+
+      {/* TRAINING PROGRAM LIFECYCLE MODAL */}
+      {showLifecycleModal && selectedCourseForLifecycle && (
+        <TrainingLifecycleModal
+          isOpen={showLifecycleModal}
+          onClose={() => setShowLifecycleModal(false)}
+          course={selectedCourseForLifecycle}
+          settings={settings}
+          onUpdateSettings={onUpdateSettings}
+          onTakeAssessment={(quiz) => {
+            if (onTakeAssessment) {
+              onTakeAssessment(quiz);
+            }
+          }}
+          onViewCertificate={(cert) => {
+            if (onViewCertificate) {
+              onViewCertificate(cert);
+            } else {
+              setSelectedCertForModal(cert);
+            }
+          }}
+        />
+      )}
+
+      {/* CERTIFICATE MODAL */}
+      {selectedCertForModal && (
+        <CertificateModal
+          certificate={selectedCertForModal}
+          onClose={() => setSelectedCertForModal(null)}
+        />
+      )}
+
     </div>
   );
 }

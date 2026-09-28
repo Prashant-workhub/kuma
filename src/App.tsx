@@ -41,6 +41,8 @@ import {
   INITIAL_QUIZZES,
   INITIAL_COMPETENCY_CATALOG
 } from './data';
+import { updateEnrollmentProgress } from './utils/enrollmentUtils';
+import { COURSES } from './teacher-portal/lib/mockData';
 
 // Component imports
 import Sidebar from './components/Sidebar';
@@ -546,6 +548,25 @@ export default function App() {
 
     setSettings(updatedSettings);
 
+    // Sync Course Enrollment & Issue Certificate when assessment is PASSED
+    if (attemptRecord.passed !== false) {
+      const targetCourse = COURSES.find(c => 
+        (c.courseCode && c.courseCode === attemptRecord.subject) ||
+        (c.competencyIds && c.competencyIds.includes(targetCompId)) ||
+        (c.competencyNames && c.competencyNames.some(cn => cn.toLowerCase() === targetCompName.toLowerCase()))
+      );
+
+      if (targetCourse) {
+        updateEnrollmentProgress(
+          sessionUser?.uid || 'user-demo-1',
+          settings.profile,
+          targetCourse,
+          100,
+          true
+        );
+      }
+    }
+
     const note: NotificationItem = {
       id: Math.random().toString(),
       title: `Assessment Completed: ${attemptRecord.quizTitle}`,
@@ -895,6 +916,7 @@ export default function App() {
             onUpdateSettings={handleUpdateSettings}
             setActivePage={setActivePage}
             theme={theme}
+            onTakeAssessment={(quizToTake) => setActiveAssessmentQuiz(quizToTake)}
           />
         );
       case 'certificates':

@@ -7,6 +7,7 @@ import { CodePill } from '../components/ui/Badge'
 import { Card, SectionHeading } from '../components/ui/Card'
 import { Avatar } from '../components/ui/Avatar'
 import { calculateSkillGap, LEVEL_TO_NUMERIC, NUMERIC_TO_LEVEL } from '../../utils/competencyUtils'
+import { getAllEnrollments } from '../../utils/enrollmentUtils'
 import { SkillProficiencyLevel, TraineeCompetency } from '../../types'
 
 const topics = Object.keys(COHORT[0]?.scores ?? {})
@@ -326,42 +327,28 @@ export function LearningAnalytics() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-line last:border-0 hover:bg-panel/40">
-                <td className="px-5 py-3 font-medium text-ink">Ananya Rao</td>
-                <td className="px-4 py-3 text-muted">Advanced Data Analytics & Insights (DA101)</td>
-                <td className="px-4 py-3 metric font-semibold text-emerald-500">100%</td>
-                <td className="px-4 py-3">
-                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
-                    Completed
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-faint">2026-09-25</td>
-                <td className="px-4 py-3 font-mono text-xs font-bold text-purple-500">KUMA-2026-DA10199X</td>
-              </tr>
-              <tr className="border-b border-line last:border-0 hover:bg-panel/40">
-                <td className="px-5 py-3 font-medium text-ink">Rohit Menon</td>
-                <td className="px-4 py-3 text-muted">Python Scripting & Core Algorithms (CS301)</td>
-                <td className="px-4 py-3 metric font-semibold text-amber-500">68%</td>
-                <td className="px-4 py-3">
-                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">
-                    In Progress
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-faint">—</td>
-                <td className="px-4 py-3 text-xs text-faint">Pending Completion</td>
-              </tr>
-              <tr className="border-b border-line last:border-0 hover:bg-panel/40">
-                <td className="px-5 py-3 font-medium text-ink">Sneha Kulkarni</td>
-                <td className="px-4 py-3 text-muted">Digital Transformation & Cloud Workflows (DT100)</td>
-                <td className="px-4 py-3 metric font-semibold text-amber-500">30%</td>
-                <td className="px-4 py-3">
-                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">
-                    In Progress
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-faint">—</td>
-                <td className="px-4 py-3 text-xs text-faint">Pending Completion</td>
-              </tr>
+              {getAllEnrollments().map((enr) => (
+                <tr key={enr.id} className="border-b border-line last:border-0 hover:bg-panel/40">
+                  <td className="px-5 py-3 font-medium text-ink">{enr.userName || 'Trainee Learner'}</td>
+                  <td className="px-4 py-3 text-muted">{enr.courseName} ({enr.courseCode})</td>
+                  <td className="px-4 py-3 metric font-semibold text-emerald-500">{enr.completionRate}%</td>
+                  <td className="px-4 py-3">
+                    {enr.status === 'completed' ? (
+                      <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 uppercase">
+                        Completed
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 uppercase">
+                        In Progress
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-faint">{enr.completedAt || '—'}</td>
+                  <td className="px-4 py-3 font-mono text-xs font-bold text-purple-500">
+                    {enr.certificateId || 'Pending Completion'}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
