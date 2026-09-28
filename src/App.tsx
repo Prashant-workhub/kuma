@@ -317,24 +317,16 @@ export default function App() {
               setIsOnboarding(false);
               setActivePage('admin-dashboard');
             } else if (detectedRole === 'faculty') {
-              if (!isCompleted || !data.teacherCode) {
-                setIsOnboarding(true);
-              } else {
-                setIsOnboarding(false);
-                setActivePage('faculty-dashboard');
-              }
-            } else if (!isCompleted) {
-              console.log("User onboarding incomplete. Directing to OnboardingView.");
-              setIsOnboarding(true);
+              setIsOnboarding(false);
+              setActivePage('faculty-dashboard');
             } else {
-              // Existing completed user: bypass onboarding and direct straight to dashboard!
               setIsOnboarding(false);
               setActivePage('dashboard');
             }
           } else {
-            console.log("User document missing in Firestore for UID:", user.uid, "- New registration detected!");
             setSessionUser(loggedUser);
-            setIsOnboarding(true);
+            setIsOnboarding(false);
+            setActivePage('dashboard');
           }
         } catch (err: any) {
           console.error("Error checking user status:", err);
@@ -1126,67 +1118,7 @@ export default function App() {
   }
 
   if (isOnboarding) {
-    if (userRole === 'faculty') {
-      return (
-        <ErrorBoundary theme={theme}>
-          <FacultyOnboardingView
-            userId={sessionUser.uid}
-            email={sessionUser.emailAddress}
-            initialFullName={sessionUser.fullName}
-            onComplete={(facultyData) => {
-              setSettings(prev => ({
-                ...prev,
-                profile: {
-                  ...prev.profile,
-                  fullName: facultyData.fullName,
-                  emailAddress: sessionUser.emailAddress,
-                  institution: facultyData.university,
-                  phoneNumber: facultyData.phoneNumber,
-                  role: 'faculty',
-                  teacherCode: facultyData.teacherCode,
-                  onboardingCompleted: true
-                }
-              }));
-              setIsOnboarding(false);
-              setActivePage('faculty-dashboard');
-            }}
-          />
-          <FeedbackWidget theme={theme} />
-        </ErrorBoundary>
-      );
-    }
-
-    return (
-      <ErrorBoundary theme={theme}>
-        <OnboardingView
-          userId={sessionUser.uid}
-          email={sessionUser.emailAddress}
-          fullName={sessionUser.fullName}
-          theme={theme}
-          initialStep={onboardingStep}
-          onComplete={(userData) => {
-            setSettings(prev => ({
-              ...prev,
-              profile: {
-                ...prev.profile,
-                fullName: `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || sessionUser.fullName,
-                firstName: userData.first_name || '',
-                lastName: userData.last_name || '',
-                emailAddress: userData.email || sessionUser.emailAddress,
-                institution: userData.school_or_university || '',
-                countryCode: userData.country_code || '',
-                phoneNumber: userData.phone_number || '',
-                avatarUrl: userData.profile_image_url || '',
-                onboardingCompleted: true
-              }
-            }));
-            setIsOnboarding(false);
-            setActivePage('dashboard');
-          }}
-        />
-        <FeedbackWidget theme={theme} />
-      </ErrorBoundary>
-    );
+    setIsOnboarding(false);
   }
 
   if (notesLoading && lecturesLoading) {
