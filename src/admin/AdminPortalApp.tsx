@@ -34,6 +34,7 @@ import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, 
 import { getAllCertificates } from '../utils/certificateUtils';
 import { calculateDesignationSkillGaps } from '../utils/competencyUtils';
 import { LearningAnalytics } from '../teacher-portal/views/LearningAnalytics';
+import AdminAnalyticsView from './AdminAnalyticsView';
 import { COURSES } from '../teacher-portal/lib/mockData';
 import { TeacherAssignment } from '../teacher-portal/types';
 
@@ -1062,7 +1063,13 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
 
           {/* ANALYTICS TAB */}
           {currentTab === 'analytics' && (
-            <LearningAnalytics />
+            <AdminAnalyticsView
+              departments={departments}
+              designations={designations}
+              competencies={competencies}
+              trainees={traineeList}
+              courses={coursesList}
+            />
           )}
 
           {/* CERTIFICATES TAB */}
