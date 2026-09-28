@@ -91,10 +91,10 @@ export default function LandingView({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-lg text-slate-900 dark:text-white tracking-tight block leading-none">CAPACITY CONNECT</span>
-              <span className="bg-purple-100 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200/50 dark:border-purple-800/50">SIH 2026</span>
+              <span className="font-extrabold text-xl text-slate-900 dark:text-white tracking-tight block leading-none">KUMA</span>
+              <span className="bg-purple-100 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200/50 dark:border-purple-800/50">CAPACITY CONNECT</span>
             </div>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide uppercase">Digital Capacity & Learning Portal</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide uppercase">DIGITAL CAPACITY & LEARNING PORTAL</span>
           </div>
         </div>
 
@@ -278,8 +278,8 @@ export default function LandingView({
             <div className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-950/60 flex items-center justify-center text-[#992e9d] dark:text-purple-300">
               <AILogo size={14} theme="light" />
             </div>
-            <span className="font-semibold text-slate-800 dark:text-slate-200">Capacity Connect</span>
-            <span>— SIH 2026 Prototype (SIH26075)</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">Kuma — Capacity Connect</span>
+            <span>(SIH 2026 Prototype SIH26075)</span>
           </div>
 
           <div className="flex items-center gap-6">
