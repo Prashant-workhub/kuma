@@ -239,6 +239,53 @@ export default function LandingView({
         </div>
       </section>
 
+      {/* Executive Analytics Section */}
+      <section id="analytics" className="py-20 bg-slate-50/60 dark:bg-[#060A17] border-y border-purple-100 dark:border-slate-800 px-6">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="text-center max-w-xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-semibold text-slate-900 dark:text-white">Executive Capacity Analytics</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              Real-time administrative control center with automated competency tracking and organizational ROI reporting.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white dark:bg-[#0C1220] p-6 rounded-[11px] border border-slate-200/80 dark:border-slate-800 space-y-3">
+              <div className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 tracking-wide">Skill Gap Reduction</div>
+              <div className="text-3xl font-bold text-[#992e9d] dark:text-purple-400">+38.5%</div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Average competency growth across IT, Operations, and Governance departments over 60-day cycles.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-[#0C1220] p-6 rounded-[11px] border border-slate-200/80 dark:border-slate-800 space-y-3">
+              <div className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 tracking-wide">Course Completion Rate</div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-white">92.4%</div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                High trainee engagement driven by personalized AI-recommended micro-learning modules and assessments.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-[#0C1220] p-6 rounded-[11px] border border-slate-200/80 dark:border-slate-800 space-y-3">
+              <div className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 tracking-wide">Certificates Issued</div>
+              <div className="text-3xl font-bold text-[#992e9d] dark:text-purple-400">1,420+</div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Authenticated digital credentials generated with verified competency metadata hashes.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-center pt-4">
+            <button
+              onClick={onEnterApp}
+              className="px-7 py-3 rounded-full bg-[#992e9d] hover:bg-[#832687] text-white font-medium text-sm shadow-md hover:shadow-lg transition-all inline-flex items-center gap-2"
+            >
+              Open Full Capacity Analytics Dashboard <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ Section */}
       <section id="faq" className="py-16 bg-slate-50/60 dark:bg-[#060A17] border-t border-purple-100 dark:border-slate-800 px-6">
         <div className="max-w-3xl mx-auto space-y-8">
@@ -285,6 +332,7 @@ export default function LandingView({
           <div className="flex items-center gap-6">
             <a href="#features" className="hover:text-slate-800 dark:hover:text-white transition-colors">Features</a>
             <a href="#workflow" className="hover:text-slate-800 dark:hover:text-white transition-colors">Workflow</a>
+            <a href="#analytics" className="hover:text-slate-800 dark:hover:text-white transition-colors">Analytics</a>
             <a href="#faq" className="hover:text-slate-800 dark:hover:text-white transition-colors">FAQ</a>
             <button onClick={onGetStarted} className="text-[#992e9d] dark:text-purple-400 font-semibold hover:underline">
               Enter Dashboard
