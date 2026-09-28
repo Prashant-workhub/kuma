@@ -4,6 +4,7 @@
  */
 
 import { TrainingCertificate, TeacherAssignment, UserSettings } from '../types';
+import { saveCertificateToCloudStorage } from '../services/storageService';
 
 const CERT_STORAGE_KEY = 'kuma_user_certificates';
 const ENROLLMENT_STORAGE_KEY = 'kuma_user_enrollments';
@@ -127,6 +128,11 @@ export function issueCertificateForCompletion(
       console.warn('Failed to save certificate record:', err);
     }
   }
+
+  // Asynchronously backup certificate metadata & verification payload to Azure Cloud Storage
+  saveCertificateToCloudStorage(newCertificate).catch((err) => {
+    console.warn('[Azure Storage] Background certificate cloud backup notice:', err);
+  });
 
   return newCertificate;
 }
