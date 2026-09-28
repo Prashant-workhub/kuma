@@ -170,11 +170,11 @@ export function calculateDesignationSkillGaps(
       else if (gap === 2) priority = 'High';
       else if (gap >= 3) priority = 'Critical';
 
-      const catalogComp = catalog.find(c => c.id === comp.competencyId || c.name.toLowerCase() === comp.name.toLowerCase());
+      const catalogComp = catalog.find(c => c && (c.id === comp.competencyId || (c.name && comp.name && c.name.toLowerCase() === comp.name.toLowerCase())));
 
       return {
         competencyId: comp.competencyId || comp.id,
-        competencyName: comp.name,
+        competencyName: comp.name || 'General Competency',
         category: comp.category || catalogComp?.category || 'Technical',
         requiredLevel: reqLevel,
         requiredNumericLevel: reqNumeric,
@@ -192,8 +192,8 @@ export function calculateDesignationSkillGaps(
   return designation.requiredCompetencies.map((req) => {
     // Search trainee records for matching competency (by ID or exact name)
     const match = (traineeCompetencies || []).find(
-      (c) => (c.competencyId && c.competencyId === req.competencyId) ||
-             c.name.toLowerCase() === req.competencyName.toLowerCase()
+      (c) => c && ((c.competencyId && c.competencyId === req.competencyId) ||
+             (c.name && req.competencyName && c.name.toLowerCase() === req.competencyName.toLowerCase()))
     );
 
     let currentNumericLevel: 0 | 1 | 2 | 3 | 4 = 0;

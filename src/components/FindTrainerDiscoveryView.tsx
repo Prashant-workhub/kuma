@@ -100,11 +100,19 @@ export default function FindTrainerDiscoveryView({
     const modes = new Set<string>();
 
     trainers.forEach(t => {
+      if (!t) return;
       if (t.department) depts.add(t.department);
       if (t.designation) desigs.add(t.designation);
       if (t.preferredTrainingMode) modes.add(t.preferredTrainingMode);
-      if (t.skills) t.skills.forEach(s => sks.add(s));
-      if (t.competencies) t.competencies.forEach(c => comps.add(c.name));
+      if (t.skills && Array.isArray(t.skills)) {
+        t.skills.forEach(s => { if (typeof s === 'string') sks.add(s); });
+      }
+      if (t.competencies && Array.isArray(t.competencies)) {
+        t.competencies.forEach(c => {
+          if (c && typeof c === 'object' && c.name) comps.add(c.name);
+          else if (typeof c === 'string') comps.add(c);
+        });
+      }
     });
 
     return {
@@ -119,17 +127,23 @@ export default function FindTrainerDiscoveryView({
   // Dynamic search & filtering
   const filteredTrainers = useMemo(() => {
     return trainers.filter(t => {
+      if (!t) return false;
+
       // 1. Search Query
       const q = searchQuery.toLowerCase().trim();
       if (q) {
-        const matchName = t.fullName.toLowerCase().includes(q);
+        const matchName = (t.fullName || '').toLowerCase().includes(q);
         const matchDept = (t.department || '').toLowerCase().includes(q);
         const matchDesig = (t.designation || '').toLowerCase().includes(q);
         const matchArea = (t.areaOfExpertise || '').toLowerCase().includes(q);
         const matchSpec = (t.specialization || '').toLowerCase().includes(q);
-        const matchSkill = t.skills?.some(s => s.toLowerCase().includes(q));
-        const matchComp = t.competencies?.some(c => c.name.toLowerCase().includes(q));
-        const matchProg = t.trainingPrograms?.some(p => p.toLowerCase().includes(q));
+        const matchSkill = t.skills?.some(s => typeof s === 'string' && s.toLowerCase().includes(q));
+        const matchComp = t.competencies?.some(c => {
+          if (!c) return false;
+          const cName = typeof c === 'string' ? c : c.name;
+          return cName && typeof cName === 'string' && cName.toLowerCase().includes(q);
+        });
+        const matchProg = t.trainingPrograms?.some(p => typeof p === 'string' && p.toLowerCase().includes(q));
 
         if (!matchName && !matchDept && !matchDesig && !matchArea && !matchSpec && !matchSkill && !matchComp && !matchProg) {
           return false;
@@ -143,13 +157,17 @@ export default function FindTrainerDiscoveryView({
       if (selectedDesignation && t.designation !== selectedDesignation) return false;
 
       // 4. Competency Filter
-      if (selectedCompetency && !t.competencies?.some(c => c.name === selectedCompetency)) return false;
+      if (selectedCompetency && !t.competencies?.some(c => {
+        if (!c) return false;
+        const cName = typeof c === 'string' ? c : c.name;
+        return cName === selectedCompetency;
+      })) return false;
 
       // 5. Skill Filter
       if (selectedSkill && !t.skills?.includes(selectedSkill)) return false;
 
       // 6. Proficiency Level Filter
-      if (selectedProficiency && !t.competencies?.some(c => c.level === selectedProficiency)) return false;
+      if (selectedProficiency && !t.competencies?.some(c => c && typeof c === 'object' && c.level === selectedProficiency)) return false;
 
       // 7. Training Mode Filter
       if (selectedTrainingMode && t.preferredTrainingMode !== selectedTrainingMode) return false;
@@ -394,9 +412,13 @@ export default function FindTrainerDiscoveryView({
           {filteredTrainers.map((t) => {
             const isSelected = activeTrainerId === t.uid;
             const highestProficiency = t.competencies?.reduce((max, c) => {
+              if (!c || !c.level) return max;
               const ranks: Record<SkillProficiencyLevel, number> = { Beginner: 1, Intermediate: 2, Advanced: 3, Expert: 4 };
               return (ranks[c.level] || 1) > (ranks[max] || 1) ? c.level : max;
             }, 'Intermediate' as SkillProficiencyLevel) || 'Advanced';
+
+            const nameStr = t.fullName || 'Trainer Faculty';
+            const initials = nameStr.split(' ').map(n => n[0] || '').join('').slice(0, 2) || 'TF';
 
             return (
               <div
@@ -415,20 +437,20 @@ export default function FindTrainerDiscoveryView({
                       {t.profilePhoto ? (
                         <img
                           src={t.profilePhoto}
-                          alt={t.fullName}
+                          alt={nameStr}
                           className="w-12 h-12 rounded-full object-cover border-2 border-purple-200 dark:border-purple-800"
                         />
                       ) : (
                         <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 font-bold text-sm flex items-center justify-center border border-purple-200 dark:border-purple-800">
-                          {t.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          {initials}
                         </div>
                       )}
                       <div>
                         <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-snug group-hover:text-[#992e9d] transition-colors">
-                          {t.fullName}
+                          {nameStr}
                         </h3>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t.designation || 'Senior Faculty'}</p>
-                        <p className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">{t.department}</p>
+                        <p className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">{t.department || 'Training'}</p>
                       </div>
                     </div>
 
@@ -455,9 +477,9 @@ export default function FindTrainerDiscoveryView({
                     <div className="space-y-1">
                       <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block">Top Skills</span>
                       <div className="flex flex-wrap gap-1">
-                        {t.skills.slice(0, 3).map(sk => (
-                          <span key={sk} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                            {sk}
+                        {t.skills.slice(0, 3).map((sk, idx) => (
+                          <span key={typeof sk === 'string' ? sk : idx} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {typeof sk === 'string' ? sk : (sk as any)?.name || 'Skill'}
                           </span>
                         ))}
                         {t.skills.length > 3 && (
@@ -475,11 +497,16 @@ export default function FindTrainerDiscoveryView({
                         <span className="text-purple-600 dark:text-purple-400 font-bold">{highestProficiency} Level</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {t.competencies.slice(0, 2).map(c => (
-                          <span key={c.id} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300">
-                            {c.name} ({c.level})
-                          </span>
-                        ))}
+                        {t.competencies.slice(0, 2).map((c, idx) => {
+                          if (!c) return null;
+                          const cName = typeof c === 'string' ? c : (c.name || 'Competency');
+                          const cLevel = typeof c === 'object' && c.level ? c.level : 'Intermediate';
+                          return (
+                            <span key={typeof c === 'object' && c.id ? c.id : idx} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300">
+                              {cName} ({cLevel})
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -535,13 +562,13 @@ export default function FindTrainerDiscoveryView({
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 font-bold text-xl flex items-center justify-center border-2 border-[#992e9d]">
-                    {inspectedTrainer.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    {(inspectedTrainer.fullName || 'Trainer Faculty').split(' ').map(n => n[0] || '').join('').slice(0, 2) || 'TF'}
                   </div>
                 )}
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{inspectedTrainer.fullName}</h2>
-                  <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold">{inspectedTrainer.designation} • {inspectedTrainer.department}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{inspectedTrainer.organization} ({inspectedTrainer.yearsOfExperience || 5} Yrs Experience)</p>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{inspectedTrainer.fullName || 'Trainer Faculty'}</h2>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold">{inspectedTrainer.designation || 'Senior Faculty'} • {inspectedTrainer.department || 'Training'}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{inspectedTrainer.organization || 'Capacity Connect'} ({inspectedTrainer.yearsOfExperience || 5} Yrs Experience)</p>
                 </div>
               </div>
               <button
@@ -578,9 +605,9 @@ export default function FindTrainerDiscoveryView({
                 <div className="space-y-1 pt-1">
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Technical Skills:</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {inspectedTrainer.skills.map(sk => (
-                      <span key={sk} className="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-semibold border border-blue-200/60 dark:border-blue-800/60">
-                        {sk}
+                    {inspectedTrainer.skills.map((sk, idx) => (
+                      <span key={typeof sk === 'string' ? sk : idx} className="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-semibold border border-blue-200/60 dark:border-blue-800/60">
+                        {typeof sk === 'string' ? sk : (sk as any)?.name || 'Skill'}
                       </span>
                     ))}
                   </div>
@@ -592,24 +619,32 @@ export default function FindTrainerDiscoveryView({
                 <div className="space-y-1.5 pt-2">
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Declared Competencies:</span>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                    {inspectedTrainer.competencies.map(c => (
-                      <div key={c.id} className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#080D1A] border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
-                        <div>
-                          <strong className="text-slate-900 dark:text-white">{c.name}</strong>
-                          {c.category && <span className="text-[10px] text-slate-400 ml-2">({c.category})</span>}
+                    {inspectedTrainer.competencies.map((c, idx) => {
+                      if (!c) return null;
+                      const cName = typeof c === 'string' ? c : (c.name || 'Competency');
+                      const cLevel = typeof c === 'object' && c.level ? c.level : 'Intermediate';
+                      const cCat = typeof c === 'object' ? c.category : null;
+                      const cCanTrain = typeof c === 'object' ? c.canTrain !== false : true;
+
+                      return (
+                        <div key={typeof c === 'object' && c.id ? c.id : idx} className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#080D1A] border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                          <div>
+                            <strong className="text-slate-900 dark:text-white">{cName}</strong>
+                            {cCat && <span className="text-[10px] text-slate-400 ml-2">({cCat})</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#992e9d] dark:text-purple-300 font-bold text-[10px]">
+                              {cLevel}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              cCanTrain ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {cCanTrain ? 'Can Train: Yes' : 'Can Train: No'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#992e9d] dark:text-purple-300 font-bold text-[10px]">
-                            {c.level}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            c.canTrain ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-600'
-                          }`}>
-                            {c.canTrain ? 'Can Train: Yes' : 'Can Train: No'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

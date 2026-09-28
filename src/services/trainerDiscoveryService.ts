@@ -5,7 +5,7 @@
 
 import { collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { TrainerProfile, TrainerAssignmentRecord, SkillProficiencyLevel } from '../types';
+import { TrainerProfile, TrainerCompetencyItem, TrainerAssignmentRecord, SkillProficiencyLevel } from '../types';
 
 const TRAINER_ASSIGNMENTS_STORAGE_KEY = 'kuma_trainer_assignments';
 
@@ -143,6 +143,38 @@ export const DEMO_TRAINERS: TrainerProfile[] = [
   }
 ];
 
+function sanitizeCompetencies(raw: any[]): TrainerCompetencyItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((c: any, idx: number) => {
+      if (!c) return null;
+      if (typeof c === 'string') {
+        return {
+          id: `comp-${idx}`,
+          name: c,
+          category: 'Technical',
+          description: c,
+          level: 'Intermediate' as SkillProficiencyLevel,
+          canTrain: true
+        };
+      }
+      if (typeof c === 'object') {
+        const compName = c.name || c.title || c.competencyName || c.label || '';
+        if (!compName) return null;
+        return {
+          id: c.id || `comp-${idx}`,
+          name: String(compName),
+          category: c.category || 'Technical',
+          description: c.description || '',
+          level: (c.level || c.proficiencyLevel || 'Intermediate') as SkillProficiencyLevel,
+          canTrain: c.canTrain !== false
+        };
+      }
+      return null;
+    })
+    .filter(Boolean) as TrainerCompetencyItem[];
+}
+
 /**
  * Fetches all available Trainers / Faculty from Firestore and local storage.
  */
@@ -150,7 +182,10 @@ export async function getAvailableTrainers(): Promise<TrainerProfile[]> {
   const trainersMap = new Map<string, TrainerProfile>();
 
   // 1. Load default demo trainers into map
-  DEMO_TRAINERS.forEach(t => trainersMap.set(t.uid, t));
+  DEMO_TRAINERS.forEach(t => trainersMap.set(t.uid, {
+    ...t,
+    competencies: sanitizeCompetencies(t.competencies)
+  }));
 
   // 2. Fetch from Firestore users collection
   try {
@@ -174,14 +209,14 @@ export async function getAvailableTrainers(): Promise<TrainerProfile[]> {
         bio: data.bio || '',
         areaOfExpertise: data.areaOfExpertise || 'Technical & Academic Training',
         specialization: data.specialization || 'Capacity Building',
-        skills: Array.isArray(data.skills) ? data.skills : ['Technical Training', 'Instructional Design'],
+        skills: Array.isArray(data.skills) ? data.skills.map((s: any) => typeof s === 'string' ? s : s?.name).filter(Boolean) : ['Technical Training', 'Instructional Design'],
         trainerExperience: data.trainerExperience || '',
         profilePhoto: data.profilePhoto || data.profile_image_url || '',
-        competencies: Array.isArray(data.competencies) ? data.competencies : [],
-        trainingPrograms: Array.isArray(data.trainingPrograms) ? data.trainingPrograms : [],
-        trainingTopics: Array.isArray(data.trainingTopics) ? data.trainingTopics : [],
+        competencies: sanitizeCompetencies(data.competencies),
+        trainingPrograms: Array.isArray(data.trainingPrograms) ? data.trainingPrograms.filter(p => typeof p === 'string') : [],
+        trainingTopics: Array.isArray(data.trainingTopics) ? data.trainingTopics.filter(t => typeof t === 'string') : [],
         preferredTrainingMode: data.preferredTrainingMode || 'Hybrid',
-        certifications: Array.isArray(data.certifications) ? data.certifications : []
+        certifications: Array.isArray(data.certifications) ? data.certifications.filter(c => typeof c === 'string') : []
       };
 
       trainersMap.set(uid, trainer);
@@ -197,7 +232,16 @@ export async function getAvailableTrainers(): Promise<TrainerProfile[]> {
       if (raw) {
         const localList: TrainerProfile[] = JSON.parse(raw);
         if (Array.isArray(localList)) {
-          localList.forEach(t => trainersMap.set(t.uid, t));
+          localList.forEach(t => {
+            if (t && t.uid) {
+              trainersMap.set(t.uid, {
+                ...t,
+                fullName: t.fullName || 'Trainer Faculty',
+                skills: Array.isArray(t.skills) ? t.skills.map((s: any) => typeof s === 'string' ? s : s?.name).filter(Boolean) : [],
+                competencies: sanitizeCompetencies(t.competencies)
+              });
+            }
+          });
         }
       }
     } catch (lsErr) {}
