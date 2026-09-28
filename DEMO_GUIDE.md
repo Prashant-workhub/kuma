@@ -1,113 +1,105 @@
-# KUMA (CAPACITY CONNECT) — SIH26075 DEMONSTRATION GUIDE
-
-**System**: Kuma Digital Capacity Building & LMS Portal (SIH26075)  
-**Target Organization**: Acme Digital Services  
-**Evaluation Standard**: Smart India Hackathon 2026 Core Workflow  
+# Project Kuma — SIH 2026 Judge Demonstration Guide
+**Problem Statement:** SIH26075 — *“CAPACITY CONNECT: A Digital Capacity Building and Learning Management Portal”*
 
 ---
 
-## 1. DEMO OVERVIEW
+## 1. Quick Start & Setup
 
-Kuma (Capacity Connect) is an AI-powered Digital Capacity Building and Learning Management Portal built for SIH26075. It connects competency assessment, skill-gap identification, training recommendations, progress tracking, and digital certificate verification into one unified platform.
+### Launch local development server
+```bash
+npm run dev
+```
+Open your browser at `http://localhost:5173`.
+
+### 1-Click SIH Demo Data Initialization
+On the login screen, click the **`⚡ Reset/Seed Demo`** button inside the **SIH 2026 JUDGE DEMO SELECTOR** card. This populates realistic organization hierarchy, designation competency baselines, trainee profiles, training programs, and assessment evaluations.
 
 ---
 
-## 2. DEMO ACCOUNTS & MODES
+## 2. SIH Judge Quick Demo Accounts
 
-You can demonstrate Kuma using either **Real Firebase Authentication** or **Local Session Mode**:
-
-| Role | Email | Display Name | Purpose |
+| Role | Quick Button | Account Email | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `admin@acme.com` | Dr. Rajesh Kumar | Organizational analytics, competency catalog, training & user management |
-| **Trainer** | `trainer@acme.com` | Prof. Anita Sharma | Training content delivery, module assignment & doubt management |
-| **Trainee** | `analyst@acme.com` | Demo Analyst | Profile setup, assessment, skill gap calculation, training & certification |
-
-*Note: In local session mode, clicking **"Continue in Guest / Local Mode"** on the auth view enters the app instantly without requiring remote server credentials.*
-
----
-
-## 3. STEP-BY-STEP SIH DEMONSTRATION SCRIPT
-
-### STEP 1: Admin Organization & Catalog Management
-1. Launch Kuma and sign in as **Admin / Faculty** (`admin@acme.com`).
-2. Navigate to the **Faculty / Admin Portal**.
-3. **Showcase**:
-   - **Organization Header**: *Acme Digital Services*.
-   - **Competency Catalog**: View competencies (*Data Analysis, Python, Communication, Leadership, Digital Literacy*).
-   - **Training Programs**: Inspect available courses (*Advanced Data Analytics, Python for Data Professionals, Professional Communication*).
+| **Admin** | `👑 Admin Login` | `admin@capacityconnect.in` | Org setup, department/designation requirements, and capacity analytics. |
+| **Trainer** | `👨‍🏫 Trainer Login` | `alex.rivera@capacityconnect.in` | Course administration and trainee monitoring. |
+| **Primary Judge Trainee** | `🎓 Primary Judge Demo Trainee` | `aarav.sharma@capacityconnect.in` | **Primary 10-step end-to-end judge demonstration.** |
+| **Trainee A (Significant Gaps)** | Quick Switcher | `priya.patel@capacityconnect.in` | Shows multiple critical gaps (React, JS, Node). |
+| **Trainee B (Moderate Gaps)** | Quick Switcher | `rohan.verma@capacityconnect.in` | Shows moderate single gap (Git). |
+| **Trainee C (Meets Targets)** | Quick Switcher | `neha.gupta@capacityconnect.in` | Shows resolved gaps & verified certificate. |
 
 ---
 
-### STEP 2: Organizational Skill Gap Analytics
-1. Click **Analytics / Learning Insights** in the top navigation.
-2. **Showcase**:
-   - **Total Trainees & Enrollments**.
-   - **Competency Breakdown & Priority Skill Gaps** across departments (*Data & Analytics, Technology, Human Resources*).
-   - **Training Coverage & Completion Telemetry**.
+## 3. Step-by-Step Judge Demonstration Flow (10-Step Story)
 
----
+### Step 1: Login & Organization Governance (Admin)
+1. On the login screen, click **`👑 Admin Login`**.
+2. Navigate to **Organization & Departments** tab (`/admin-organization`).
+3. Observe the three organization departments:
+   - **Engineering**
+   - **Data & Analytics**
+   - **Human Resources**
 
-### STEP 3: Trainee Profile & Target Competency Selection
-1. Switch user session and sign in as **Trainee** (`analyst@acme.com` / *Demo Analyst*).
-2. Open **Professional Profile**.
-3. **Showcase**:
-   - Organization: *Acme Digital Services*, Department: *Data & Analytics*.
-   - Current declared competencies and target proficiency levels (e.g. Target: *Advanced* for *Data Analysis*).
+### Step 2: Designation Competency Requirements (Admin)
+1. Under **Engineering**, locate the **Software Developer** designation.
+2. Click **View / Edit Required Competencies**.
+3. Observe the configured organizational baseline benchmarks:
+   - **React:** Required Level = `Advanced (3)` (High Priority)
+   - **JavaScript:** Required Level = `Advanced (3)` (High Priority)
+   - **Node.js:** Required Level = `Intermediate (2)` (Medium Priority)
+   - **Git & Version Control:** Required Level = `Intermediate (2)` (Medium Priority)
 
----
+### Step 3: Switch to Trainee Workspace
+1. Sign out or click **`🎓 Primary Judge Demo Trainee (Aarav)`** on the login page.
 
-### STEP 4: Competency Assessment & Gap Calculation
-1. Navigate to **Skill Gap Analysis**.
-2. Click **Take Assessment** under *Data Analysis*.
-3. Complete the interactive assessment module (e.g. Score 78%).
-4. **Showcase**:
-   - **Assessed Level**: *Intermediate* (Level 2).
-   - **Target Level**: *Advanced* (Level 3).
-   - **Calculated Skill Gap**: `1 Level` (`Priority: High`).
+### Step 4: Trainee Profile & Designation View (Trainee)
+1. Navigate to **My Profile** or **Skill Gaps** (`/skill-gaps`).
+2. Observe Aarav Sharma's assigned role:
+   - **Department:** `Engineering`
+   - **Designation:** `Software Developer`
 
----
+### Step 5: Automated Skill Gap Engine (Trainee)
+1. In the **Skill Gap Matrix**, observe the automated calculation comparing Required vs Current proficiency levels:
+   - **React:** Required Level 3 (`Advanced`) vs Current Level 2 (`Intermediate`) $\rightarrow$ **Skill Gap: 1 (High Priority)**
+   - **Node.js:** Required Level 2 vs Current Level 1 $\rightarrow$ **Skill Gap: 1**
+   - **Git & Version Control:** Required Level 2 vs Current Level 1 $\rightarrow$ **Skill Gap: 1**
+   - **JavaScript:** Required Level 3 vs Assessed Level 3 $\rightarrow$ **Skill Gap: 0 (Target Met)**
 
-### STEP 5: AI & Rule-Based Training Recommendation
+### Step 6: Training Recommendations Engine (Trainee)
 1. Scroll down to **Recommended Training Programs**.
-2. **Showcase**:
-   - Kuma automatically matches the calculated skill gap (`comp-data-analysis`) to the existing training catalog.
-   - Recommended Course: **→ Advanced Data Analytics & Insights**.
+2. Notice that the platform dynamically recommends **`Advanced React Development`** to address the detected React gap.
+3. Observe the data-driven match explanation: *"Directly targets your gap in React (Target: Level 3)"*.
+
+### Step 7: Training Enrollment & Progress (Trainee)
+1. Click **`Enroll in Training`** on **Advanced React Development**.
+2. The lifecycle modal opens. Click **`Start Training`**.
+3. Check off all module lessons to complete the syllabus (Progress increases to **100%**).
+
+### Step 8: Competency Assessment Execution (Trainee)
+1. Click **`Take Assessment`** to launch **React Advanced Competency Evaluation**.
+2. Answer the 5 multiple-choice questions ($\ge 70\%$ required to pass).
+3. Click **`Submit Assessment`**.
+
+### Step 9: Automated Competency Update, Gap Resolution & Certificate (Trainee)
+1. Upon passing ($\ge 70\%$), observe the immediate automated updates:
+   - **Assessed React Proficiency** updates from `Intermediate (2)` to **`Advanced (3)`**.
+   - **Skill Gap for React** recalculates from `1` to **`0 (Meets Target)`**.
+   - **Training Status** updates to `Completed`.
+   - **Certificate Issued:** A verified certificate with unique ID (e.g. `KUMA-2026-REACT-001`) becomes downloadable under **My Certificates**.
+
+### Step 10: Organizational Capacity Analytics (Admin)
+1. Log back in as **Admin**.
+2. Open **Admin Analytics** (`/admin-analytics`).
+3. Filter by **Department: Engineering**.
+4. Observe that the org-wide analytics reflect:
+   - Total Resolved Skill Gaps (+1)
+   - Verified Certificates Issued (+1)
+   - Updated competency coverage across the Software Developer designation.
 
 ---
 
-### STEP 6: Training Enrollment & Progress Tracking
-1. Click **Enroll Now** on the recommended training program.
-2. Open **Training Progress Tracker**.
-3. Complete the required training modules (Module 1, Module 2, Module 3).
-4. **Showcase**:
-   - Progress advances from `0%` → `50%` → `100%`.
-   - Status updates automatically to **Completed**.
+## 4. Reset & Reseed Instructions
 
----
-
-### STEP 7: Digital Certificate Generation & Verification
-1. Click **View Certificate** upon training completion.
-2. **Showcase**:
-   - Digital Certificate issued with non-sequential ID format `KUMA-2026-XXXXXXXX`.
-   - Download / Print options.
-3. Open **Public Certificate Verification** page (`/verify-certificate`).
-4. Enter the Certificate ID to verify cryptographic validity and public metadata.
-
----
-
-### STEP 8: Live Admin Analytics Update
-1. Return to the **Admin / Faculty Analytics Portal**.
-2. **Showcase**:
-   - Completion rate & total issued certificates increment live.
-   - The resolved skill gap reflects dynamically in the organizational capacity radar chart.
-
----
-
-## 4. DEMO DATA RESET
-
-To re-seed or reset demo records to initial state:
-- Open browser developer tools console and run:
-  ```javascript
-  import('./src/utils/demoDataSeeder.ts').then(m => m.resetDemoEnvironment());
-  ```
-- Or click **Reset Demo Data** in Settings -> System Utilities.
+To reset the demo back to its clean initial state for another judge evaluation:
+1. Open the login page (`/auth`).
+2. Click **`⚡ Reset/Seed Demo`** in the top selector card.
+3. A confirmation toast will confirm that demo data is refreshed to the initial clean state. Production records remain safe and untouched.

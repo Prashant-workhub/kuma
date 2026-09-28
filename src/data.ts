@@ -177,74 +177,60 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
 export const INITIAL_COMPETENCY_CATALOG: CatalogCompetency[] = [
   {
-    id: 'cat-comp-1',
-    name: 'Python Programming',
+    id: 'comp-react',
+    name: 'React',
     category: 'Technical',
-    description: 'Data manipulation, automation scripting, and backend development using Python.',
+    description: 'Component lifecycle, custom hooks, context state management, and virtual DOM performance.',
     isActive: true
   },
   {
-    id: 'cat-comp-2',
-    name: 'Data Analysis & Insights',
+    id: 'comp-js',
+    name: 'JavaScript',
     category: 'Technical',
-    description: 'Extracting actionable analytics, statistical modeling, and data visualization.',
+    description: 'Modern ES6+ syntax, asynchronous control flow, promises, and functional programming.',
     isActive: true
   },
   {
-    id: 'cat-comp-3',
-    name: 'SQL & Database Management',
+    id: 'comp-node',
+    name: 'Node.js',
     category: 'Technical',
-    description: 'Relational database query optimization, data modeling, and schema management.',
+    description: 'Server-side runtime, Express framework, REST API design, and asynchronous I/O handling.',
     isActive: true
   },
   {
-    id: 'cat-comp-4',
-    name: 'JavaScript & Web Technologies',
+    id: 'comp-db',
+    name: 'Database Management',
     category: 'Technical',
-    description: 'Frontend and full-stack interactive application development.',
+    description: 'Relational data modeling, SQL query formulation, indexing, and transaction ACID properties.',
     isActive: true
   },
   {
-    id: 'cat-comp-5',
-    name: 'Strategic Communication',
+    id: 'comp-git',
+    name: 'Git & Version Control',
+    category: 'Technical',
+    description: 'Branching strategies, interactive rebase, pull requests, and merge conflict resolution.',
+    isActive: true
+  },
+  {
+    id: 'comp-data-analysis',
+    name: 'Data Analysis',
+    category: 'Technical',
+    description: 'Statistical summary, data hygiene, exploratory visualization, and insight generation.',
+    isActive: true
+  },
+  {
+    id: 'comp-comm',
+    name: 'Communication',
     category: 'Communication',
-    description: 'Clear written, verbal, and executive presentation capabilities across stakeholder groups.',
+    description: 'Clear technical documentation, cross-functional reporting, and stakeholder messaging.',
     isActive: true
   },
   {
-    id: 'cat-comp-6',
-    name: 'Organizational Leadership',
+    id: 'comp-problem-solving',
+    name: 'Problem Solving',
     category: 'Leadership',
-    description: 'Guiding teams, setting strategic goals, and driving organizational transformation.',
+    description: 'Algorithmic reasoning, root-cause analysis, structured issue diagnosis, and solution design.',
     isActive: true
-  },
-  {
-    id: 'cat-comp-7',
-    name: 'Project & Operations Management',
-    category: 'Management',
-    description: 'Milestone tracking, resource allocation, and agile project delivery.',
-    isActive: true
-  },
-  {
-    id: 'cat-comp-8',
-    name: 'Public Policy Implementation',
-    category: 'Domain Specific',
-    description: 'Designing and executing public sector policies and governance frameworks.',
-    isActive: true
-  },
-  {
-    id: 'cat-comp-9',
-    name: 'Digital Literacy & Tech Adoption',
-    category: 'Digital',
-    description: 'Adopting digital platforms, cloud workflows, and AI toolchains across units.',
-    isActive: true
-  },
-  {
-    id: 'cat-comp-10',
-    name: 'Legacy Policy Frameworks',
-    category: 'Domain Specific',
-    description: 'Archived governance procedures for historical compliance audits.',
-    isActive: false
   }
 ];
 

@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import AILogo from './AILogo';
 import { Button, Card, Badge, Input } from './bauhaus';
+import { seedDemoEnvironment } from '../utils/demoDataSeeder';
 
 interface AuthViewProps {
   onLoginSuccess: (userData: { fullName: string; emailAddress: string; role?: string }) => void;
@@ -646,7 +647,7 @@ export default function AuthView({
                     {isFacultyMode ? (
                       mode === 'login' ? 'FACULTY PORTAL LOGIN' : 'FACULTY REGISTRATION'
                     ) : (
-                      mode === 'login' ? 'ACCESS AI WORKSPACE' : mode === 'signup' ? 'CREATE ACADEMIC IDENTITY' : 'DISCHARGE RESET TOKEN'
+                      mode === 'login' ? 'CAPACITY CONNECT PORTAL' : mode === 'signup' ? 'CREATE TRAINEE IDENTITY' : 'DISCHARGE RESET TOKEN'
                     )}
                   </h2>
                   {!isFacultyMode && mode === 'login' && (
@@ -656,7 +657,7 @@ export default function AuthView({
                       disabled={loading}
                       title="Quick Premium Access"
                       className="text-[#FFC400] hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1 rounded hover:bg-[#FFC400]/10"
-                      aria-label="Quick Premium Login"
+                      aria-label="Quick Access"
                     >
                       <Zap className="h-5 w-5 fill-[#FFC400] text-[#FFC400]" />
                     </button>
@@ -665,11 +666,54 @@ export default function AuthView({
               </div>
               <p className="text-xs font-mono text-[var(--text-secondary)]">
                 {isFacultyMode
-                  ? 'Authenticate with your official university credentials to enter the Teacher Portal.'
-                  : (mode === 'login' ? 'Authenticate to enter your research workspace.' : mode === 'signup' ? 'Register your scholar account to begin.' : 'Enter your email to receive a password reset link.')
+                  ? 'Authenticate with your official credentials to enter the Trainer Portal.'
+                  : (mode === 'login' ? 'Authenticate to enter the Capacity Connect portal.' : mode === 'signup' ? 'Register your trainee account to begin.' : 'Enter your email to receive a password reset link.')
                 }
               </p>
             </header>
+
+            {/* SIH JUDGE QUICK-DEMO ACCOUNTS & SEEDER */}
+            <div className="rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[#FFC400] text-[#111111]">
+                  SIH 2026 JUDGE DEMO SELECTOR
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const res = seedDemoEnvironment();
+                    setSuccessMsg(res.message);
+                  }}
+                  className="text-[10px] font-mono font-bold text-[var(--text-secondary)] hover:text-[#FFC400] underline cursor-pointer"
+                >
+                  ⚡ Reset/Seed Demo
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => onLoginSuccess({ fullName: 'Admin Governance User', emailAddress: 'admin@capacityconnect.in', role: 'admin' })}
+                  className="text-xs font-mono font-bold px-2 py-1.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)] hover:bg-[#9C27B0]/10 text-[var(--text-primary)] text-left truncate cursor-pointer"
+                >
+                  👑 Admin Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onLoginSuccess({ fullName: 'Alex Rivera', emailAddress: 'alex.rivera@capacityconnect.in', role: 'faculty' })}
+                  className="text-xs font-mono font-bold px-2 py-1.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)] hover:bg-[#38BDF8]/10 text-[var(--text-primary)] text-left truncate cursor-pointer"
+                >
+                  👨‍🏫 Trainer Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onLoginSuccess({ fullName: 'Aarav Sharma (Primary Demo Trainee)', emailAddress: 'aarav.sharma@capacityconnect.in', role: 'student' })}
+                  className="text-xs font-mono font-bold px-2.5 py-1.5 rounded border-2 border-[#FFC400] bg-[#FFC400]/15 text-[var(--text-primary)] text-left truncate col-span-2 cursor-pointer hover:bg-[#FFC400]/25 transition-colors flex items-center justify-between"
+                >
+                  <span>🎓 Primary Judge Demo Trainee (Aarav)</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 bg-[#FFC400] text-[#111111] rounded font-bold">START DEMO</span>
+                </button>
+              </div>
+            </div>
 
             {error && error.trim() && (
               <div className="p-3.5 rounded-[6px] bg-[#FF4D4D]/10 border-2 border-[#FF4D4D] text-[#FF4D4D] text-xs font-mono font-bold space-y-2.5">
