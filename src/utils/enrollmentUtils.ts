@@ -47,18 +47,48 @@ export function getAllEnrollments(): TrainingEnrollment[] {
 
 /**
  * Returns enrollments for a specific user ID.
+ * REAL AUTHENTICATED USERS: Returns only enrollments matching e.userId === userId or e.userEmail === userId.
+ * DEMO ACCOUNTS: Returns demo enrollment records.
  */
 export function getUserEnrollments(userId: string): TrainingEnrollment[] {
+  if (!userId) return [];
+
+  const cleanId = userId.trim().toLowerCase();
+  const isDemoAccount =
+    cleanId === 'user-demo-1' ||
+    cleanId === 'trainee-demo-aarav' ||
+    cleanId === 'aarav.sharma@capacityconnect.in' ||
+    cleanId === 'guest.student@kuma.ai' ||
+    cleanId === 'all';
+
   const list = getAllEnrollments();
-  return list.filter((e) => e.userId === userId || userId === 'all' || !e.userId);
+
+  if (isDemoAccount) {
+    return list.filter(
+      (e) =>
+        e.userId === userId ||
+        e.userId === 'user-demo-1' ||
+        e.userEmail === 'trainee@organization.gov.in' ||
+        e.userEmail === 'aarav.sharma@capacityconnect.in' ||
+        userId === 'all'
+    );
+  }
+
+  // Real authenticated user: filter strictly by matching userId or userEmail
+  return list.filter(
+    (e) =>
+      (e.userId && e.userId.toLowerCase() === cleanId) ||
+      (e.userEmail && e.userEmail.toLowerCase() === cleanId)
+  );
 }
 
 /**
  * Gets a single enrollment record for a user and course.
  */
 export function getEnrollmentByCourse(userId: string, courseId: string): TrainingEnrollment | null {
-  const list = getAllEnrollments();
-  return list.find((e) => (e.userId === userId || !e.userId) && e.courseId === courseId) || null;
+  if (!userId) return null;
+  const list = getUserEnrollments(userId);
+  return list.find((e) => e.courseId === courseId) || null;
 }
 
 /**

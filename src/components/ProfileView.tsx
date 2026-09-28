@@ -91,27 +91,23 @@ export default function ProfileView({
 }: ProfileViewProps) {
   
   // Basic Info State
-  const [firstName, setFirstName] = useState(settings.profile.firstName || (settings.profile.fullName ? settings.profile.fullName.split(' ')[0] : 'Trainee'));
-  const [lastName, setLastName] = useState(settings.profile.lastName || (settings.profile.fullName ? settings.profile.fullName.split(' ').slice(1).join(' ') : 'Learner'));
-  const [email, setEmail] = useState(settings.profile.emailAddress || 'trainee@organization.gov.in');
+  const [firstName, setFirstName] = useState(settings.profile.firstName || (settings.profile.fullName ? settings.profile.fullName.split(' ')[0] : ''));
+  const [lastName, setLastName] = useState(settings.profile.lastName || (settings.profile.fullName ? settings.profile.fullName.split(' ').slice(1).join(' ') : ''));
+  const [email, setEmail] = useState(settings.profile.emailAddress || '');
   const [countryCode, setCountryCode] = useState(settings.profile.countryCode || '+91');
-  const [phoneNumber, setPhoneNumber] = useState(settings.profile.phoneNumber || '9876543210');
+  const [phoneNumber, setPhoneNumber] = useState(settings.profile.phoneNumber || '');
   const [avatarUrl, setAvatarUrl] = useState(settings.profile.avatarUrl || '');
   
   // Professional Information State
-  const [organization, setOrganization] = useState(settings.profile.organization || settings.profile.institution || 'Ministry of Skill Development & Entrepreneurship');
-  const [department, setDepartment] = useState(settings.profile.department || 'Capacity Building & Training');
-  const [designation, setDesignation] = useState(settings.profile.designation || settings.profile.role || 'Senior Training Associate');
-  const [yearsOfExperience, setYearsOfExperience] = useState<number>(settings.profile.yearsOfExperience !== undefined ? settings.profile.yearsOfExperience : 4);
-  const [bio, setBio] = useState(settings.profile.bio || 'Dedicated professional focusing on capacity building, learning, and skill development.');
+  const [organization, setOrganization] = useState(settings.profile.organization || settings.profile.institution || '');
+  const [department, setDepartment] = useState(settings.profile.department || '');
+  const [designation, setDesignation] = useState(settings.profile.designation || settings.profile.role || '');
+  const [yearsOfExperience, setYearsOfExperience] = useState<number>(settings.profile.yearsOfExperience !== undefined ? settings.profile.yearsOfExperience : 0);
+  const [bio, setBio] = useState(settings.profile.bio || '');
 
   // Skills State
   const [skills, setSkills] = useState<TraineeSkill[]>(
-    settings.profile.skills || [
-      { id: 'sk-1', name: 'Data Analysis', level: 'Intermediate' },
-      { id: 'sk-2', name: 'Communication & Outreach', level: 'Advanced' },
-      { id: 'sk-3', name: 'Project Management', level: 'Beginner' }
-    ]
+    settings.profile.skills || []
   );
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillLevel, setNewSkillLevel] = useState<SkillProficiencyLevel>('Intermediate');
@@ -119,11 +115,7 @@ export default function ProfileView({
   // Competencies State & Catalog State
   const [competencyCatalog, setCompetencyCatalog] = useState<CatalogCompetency[]>(INITIAL_COMPETENCY_CATALOG);
   const [competencies, setCompetencies] = useState<TraineeCompetency[]>(
-    settings.profile.competencies || [
-      { id: 'comp-1', competencyId: 'cat-comp-6', name: 'Organizational Leadership', category: 'Leadership', level: 'Intermediate', numericLevel: 2, description: 'Guiding teams, setting strategic goals, and driving organizational transformation.' },
-      { id: 'comp-2', competencyId: 'cat-comp-8', name: 'Public Policy Implementation', category: 'Domain Specific', level: 'Advanced', numericLevel: 3, description: 'Designing and executing public sector policies and governance frameworks.' },
-      { id: 'comp-3', competencyId: 'cat-comp-9', name: 'Digital Literacy & Tech Adoption', category: 'Digital', level: 'Expert', numericLevel: 4, description: 'Adopting digital platforms, cloud workflows, and AI toolchains across units.' }
-    ]
+    settings.profile.competencies || []
   );
 
   const [selectedCatalogCompId, setSelectedCatalogCompId] = useState<string>('');
@@ -133,9 +125,7 @@ export default function ProfileView({
 
   // Certifications State
   const [certifications, setCertifications] = useState<TraineeCertification[]>(
-    settings.profile.certifications || [
-      { id: 'cert-1', name: 'Certified Professional in Learning & Performance', issuingOrganization: 'ATD', issueDate: '2024-03-15', credentialId: 'ATD-88492' }
-    ]
+    settings.profile.certifications || []
   );
   const [showCertForm, setShowCertForm] = useState(false);
   const [certName, setCertName] = useState('');

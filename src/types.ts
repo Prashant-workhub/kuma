@@ -353,6 +353,8 @@ export interface UserSettings {
     competencies?: TraineeCompetency[];
     certifications?: TraineeCertification[];
     degree?: string;
+    qualification?: string;
+    domain?: string;
     semester?: string;
     subjects?: string[];
     theme?: 'light' | 'dark';

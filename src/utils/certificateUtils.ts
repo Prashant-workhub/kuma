@@ -60,10 +60,39 @@ export function getAllCertificates(): TrainingCertificate[] {
 
 /**
  * Retrieves certificates for a specific user ID.
+ * REAL AUTHENTICATED USERS: Returns only certificates where c.userId === userId or c.userEmail === userId.
+ * DEMO ACCOUNTS: Returns demo certificate records.
  */
 export function getUserCertificates(userId: string): TrainingCertificate[] {
+  if (!userId) return [];
+
+  const cleanId = userId.trim().toLowerCase();
+  const isDemoAccount =
+    cleanId === 'user-demo-1' ||
+    cleanId === 'trainee-demo-aarav' ||
+    cleanId === 'aarav.sharma@capacityconnect.in' ||
+    cleanId === 'guest.student@kuma.ai' ||
+    cleanId === 'all';
+
   const certs = getAllCertificates();
-  return certs.filter((c) => c.userId === userId || userId === 'all' || !c.userId);
+
+  if (isDemoAccount) {
+    return certs.filter(
+      (c) =>
+        c.userId === userId ||
+        c.userId === 'user-demo-1' ||
+        c.userEmail === 'trainee@organization.gov.in' ||
+        c.userEmail === 'aarav.sharma@capacityconnect.in' ||
+        userId === 'all'
+    );
+  }
+
+  // Real authenticated user: filter strictly by their matching userId or userEmail
+  return certs.filter(
+    (c) =>
+      (c.userId && c.userId.toLowerCase() === cleanId) ||
+      (c.userEmail && c.userEmail.toLowerCase() === cleanId)
+  );
 }
 
 /**

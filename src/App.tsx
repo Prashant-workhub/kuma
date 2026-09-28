@@ -269,27 +269,51 @@ export default function App() {
               }
             }
 
+            const isDemoUser = user.uid === 'user-demo-1' || userEmail === 'aarav.sharma@capacityconnect.in' || userEmail === 'guest.student@kuma.ai';
             const fullNameFromDb = `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.fullName || loggedUser.fullName;
 
-            setSettings(prev => ({
-              ...prev,
+            // Cleanly parse user skills, competencies, and certifications without polluting real accounts with demo data
+            let parsedSkills = Array.isArray(data.skills)
+              ? data.skills.map((s: any, idx: number) => typeof s === 'string' ? { id: `sk-${idx}`, name: s, level: 'Intermediate' as const } : s)
+              : (isDemoUser ? (INITIAL_SETTINGS.profile.skills || []) : []);
+
+            let parsedCompetencies = Array.isArray(data.competencies)
+              ? data.competencies
+              : (isDemoUser ? (INITIAL_SETTINGS.profile.competencies || []) : []);
+
+            let parsedCertifications = Array.isArray(data.certifications)
+              ? data.certifications
+              : (isDemoUser ? (INITIAL_SETTINGS.profile.certifications || []) : []);
+
+            setSettings({
               profile: {
-                ...prev.profile,
+                uid: user.uid,
                 fullName: fullNameFromDb,
-                firstName: data.first_name || '',
-                lastName: data.last_name || '',
+                firstName: data.first_name || fullNameFromDb.split(' ')[0] || '',
+                lastName: data.last_name || fullNameFromDb.split(' ').slice(1).join(' ') || '',
                 emailAddress: data.email || loggedUser.emailAddress,
-                institution: data.school_or_university || '',
-                uid: data.uid || data.student_uid || '',
-                countryCode: data.country_code || '',
-                phoneNumber: data.phone_number || '',
-                avatarUrl: data.profile_image_url || '',
-                onboardingCompleted: isCompleted,
+                bio: data.bio !== undefined ? data.bio : (isDemoUser ? INITIAL_SETTINGS.profile.bio : ''),
+                avatarUrl: data.profile_image_url || data.avatarUrl || '',
+                institution: data.organization || data.school_or_university || (isDemoUser ? INITIAL_SETTINGS.profile.institution : ''),
                 role: detectedRole,
+                organization: data.organization !== undefined ? data.organization : (isDemoUser ? INITIAL_SETTINGS.profile.organization : ''),
+                department: data.department !== undefined ? data.department : (isDemoUser ? INITIAL_SETTINGS.profile.department : ''),
+                designation: data.designation !== undefined ? data.designation : (isDemoUser ? INITIAL_SETTINGS.profile.designation : ''),
+                yearsOfExperience: data.experienceYears !== undefined ? data.experienceYears : (data.yearsOfExperience !== undefined ? data.yearsOfExperience : (isDemoUser ? INITIAL_SETTINGS.profile.yearsOfExperience : 0)),
+                qualification: data.qualification || '',
+                degree: data.qualification || '',
+                skills: parsedSkills,
+                competencies: parsedCompetencies,
+                certifications: parsedCertifications,
+                countryCode: data.country_code || '',
+                phoneNumber: data.phone || data.phone_number || '',
+                onboardingCompleted: isCompleted,
                 teacherCode: calculatedCode
               },
-              subscription: data.subscription ? data.subscription : prev.subscription
-            }));
+              subscription: data.subscription ? data.subscription : INITIAL_SETTINGS.subscription,
+              integrations: INITIAL_SETTINGS.integrations,
+              aiLevels: INITIAL_SETTINGS.aiLevels
+            });
             setSessionUser({
               ...loggedUser,
               fullName: fullNameFromDb
@@ -723,6 +747,7 @@ export default function App() {
             notes={notes}
             quizzes={quizzes}
             onOpenAssessment={(quizToTake) => setActiveAssessmentQuiz(quizToTake)}
+            settings={settings}
           />
         );
       case 'profile':
@@ -824,6 +849,7 @@ export default function App() {
             }}
             theme={theme}
             notes={notes}
+            settings={settings}
           />
         );
     }

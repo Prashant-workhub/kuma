@@ -109,12 +109,27 @@ export default function SkillGapView({
 
   // Find trainee's organizational designation
   const traineeDesignation = useMemo(() => {
-    const desigName = (settings.profile.designation || '').toLowerCase();
-    const deptName = (settings.profile.department || '').toLowerCase();
-    return DEMO_ORG_DESIGNATIONS_FULL.find(
+    const desigName = (settings.profile.designation || '').toLowerCase().trim();
+    const deptName = (settings.profile.department || '').toLowerCase().trim();
+
+    if (!desigName && !deptName) return null;
+
+    const matched = DEMO_ORG_DESIGNATIONS_FULL.find(
       (d) => (desigName && d.name.toLowerCase() === desigName) ||
              (deptName && d.departmentName.toLowerCase() === deptName)
-    ) || DEMO_ORG_DESIGNATIONS_FULL[0];
+    );
+
+    if (matched) return matched;
+
+    // Return clean user designation without demo requirements
+    return {
+      id: `custom-desig-${desigName || 'trainee'}`,
+      name: settings.profile.designation || 'Trainee Designation',
+      departmentId: 'dept-custom',
+      departmentName: settings.profile.department || 'Capacity Building Unit',
+      isActive: true,
+      requiredCompetencies: []
+    };
   }, [settings.profile.designation, settings.profile.department]);
 
   // Dynamic Designation Skill Gap Calculations
@@ -261,8 +276,9 @@ export default function SkillGapView({
         </div>
 
         {designationGaps.length === 0 ? (
-          <div className="p-8 text-center font-mono text-xs text-[var(--text-secondary)]">
-            No required competencies found for your designation.
+          <div className="p-8 text-center font-mono text-xs text-[var(--text-secondary)] space-y-1">
+            <div className="font-bold text-sm text-[var(--text-primary)]">No skill gaps identified yet.</div>
+            <div>Add competencies to your profile or select training programs to calculate skill gaps.</div>
           </div>
         ) : (
           <div className="space-y-4">
