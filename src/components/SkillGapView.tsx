@@ -53,17 +53,17 @@ interface SkillGapViewProps {
 const PROFICIENCY_LEVELS: SkillProficiencyLevel[] = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
 const STATUS_BADGE_STYLE: Record<GapStatus, { bg: string; text: string; border: string }> = {
-  'Meets Target': { bg: 'bg-[#19B56B]/15', text: 'text-[#19B56B]', border: 'border-[#19B56B]/40' },
-  'Development Needed': { bg: 'bg-[#FFC400]/15', text: 'text-[#B78103] dark:text-[#FFD54F]', border: 'border-[#FFC400]/40' },
-  'Significant Development Needed': { bg: 'bg-orange-500/15', text: 'text-orange-600 dark:text-orange-400', border: 'border-orange-500/40' },
-  'High Development Need': { bg: 'bg-red-500/15', text: 'text-red-600 dark:text-red-400', border: 'border-red-500/40' }
+  'Meets Target': { bg: 'bg-emerald-50 dark:bg-emerald-950/50', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800' },
+  'Development Needed': { bg: 'bg-amber-50 dark:bg-amber-950/50', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800' },
+  'Significant Development Needed': { bg: 'bg-orange-50 dark:bg-orange-950/50', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800' },
+  'High Development Need': { bg: 'bg-rose-50 dark:bg-rose-950/50', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800' }
 };
 
 const PRIORITY_BADGE_STYLE: Record<GapPriority, { bg: string; text: string }> = {
-  Low: { bg: 'bg-gray-200 dark:bg-neutral-800 text-[var(--text-secondary)]', text: 'text-[var(--text-secondary)]' },
-  Medium: { bg: 'bg-[#FFC400] text-[#111111]', text: 'text-[#111111]' },
-  High: { bg: 'bg-orange-500 text-white', text: 'text-white' },
-  Critical: { bg: 'bg-red-600 text-white', text: 'text-white' }
+  Low: { bg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300', text: 'text-slate-600 dark:text-slate-300' },
+  Medium: { bg: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300', text: 'text-amber-700 dark:text-amber-300' },
+  High: { bg: 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300', text: 'text-rose-700 dark:text-rose-300' },
+  Critical: { bg: 'bg-purple-100 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300', text: 'text-[#992e9d] dark:text-purple-300' }
 };
 
 export default function SkillGapView({

@@ -9,18 +9,13 @@ import {
   Search, 
   Bell, 
   Settings, 
-  Plus, 
   ChevronRight,
-  Sparkles,
   User,
-  CreditCard,
-  HelpCircle,
   LogOut,
   Sun,
   Moon
 } from 'lucide-react';
 import { PageId, UserSettings } from '../types';
-import { Button, Badge } from './bauhaus';
 
 interface NavbarProps {
   activePage: PageId;
@@ -43,7 +38,6 @@ export default function Navbar({
   settings,
   searchQuery,
   setSearchQuery,
-  onNewAnalysis,
   theme,
   setTheme,
   onLogOut,
@@ -67,19 +61,21 @@ export default function Navbar({
   const getPageTitle = () => {
     switch (activePage) {
       case 'dashboard':
-        return 'OVERVIEW';
+        return 'Overview';
+      case 'skill-gap':
+        return 'Skill Gap Analysis';
+      case 'certificates':
+        return 'My Certificates';
+      case 'verify-certificate':
+        return 'Verify Certificate';
       case 'notifications':
-        return 'ACTIVITY CENTER';
+        return 'Activity Center';
       case 'settings':
-        return 'SETTINGS';
-      case 'help-support':
-        return 'HELP & SUPPORT';
-      case 'pricing':
-        return 'SUBSCRIPTION PLANS';
+        return 'Settings';
       case 'profile':
-        return 'MY PROFILE';
+        return 'My Profile';
       default:
-        return 'WORKSPACE';
+        return 'Workspace';
     }
   };
 
@@ -89,27 +85,27 @@ export default function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[var(--border-main)] bg-[var(--navbar-bg)] px-4 md:px-6 select-none">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-[#050814]/90 backdrop-blur-md px-4 md:px-6 select-none transition-colors">
       
       {/* Left items: Mobile trigger & Branded Breadcrumbs */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => setIsOpenMobile(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] text-[var(--text-primary)] shadow-paper-sm md:hidden focus:outline-none hover:bg-[#FFC400] hover:text-[#111111]"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 md:hidden hover:bg-slate-100 dark:hover:bg-slate-800"
           aria-label="Open navigation drawer"
         >
           <Menu className="h-4 w-4" />
         </button>
         
-        <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--text-secondary)]">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span 
-            className="hidden sm:inline-block bg-[var(--border-main)] text-[var(--card-bg)] px-2 py-0.5 rounded-[4px] cursor-pointer hover:bg-[#FFC400] hover:text-[#111111] transition-colors"
+            className="hidden sm:inline-block bg-purple-50 dark:bg-purple-950/50 text-[#992e9d] dark:text-purple-300 px-3 py-1 rounded-full cursor-pointer hover:bg-purple-100 border border-purple-200/50 dark:border-purple-800/50 transition-colors"
             onClick={() => setActivePage('dashboard')}
           >
             KUMA
           </span>
-          <ChevronRight className="hidden sm:inline-block h-3.5 w-3.5 text-[var(--text-primary)]" />
-          <span className="bg-[#FFC400] text-[#111111] px-2 py-0.5 sm:px-2.5 rounded-[4px] font-bold border border-[var(--border-main)] shadow-paper-sm uppercase tracking-wider text-[11px] sm:text-xs">
+          <ChevronRight className="hidden sm:inline-block h-3.5 w-3.5 text-slate-400" />
+          <span className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-3 py-1 rounded-full font-semibold border border-slate-200 dark:border-slate-700 text-xs">
             {getPageTitle()}
           </span>
         </div>
@@ -118,79 +114,76 @@ export default function Navbar({
       {/* Center Search Input */}
       <div className="hidden md:flex flex-1 max-w-sm mx-6 relative">
         <div className="relative w-full">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--text-secondary)]" />
+          <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search notes, summaries, transcripts..."
-            className="w-full rounded-[6px] border border-[var(--border-main)] bg-[var(--input-bg)] pl-9 pr-14 py-1.5 text-xs font-medium text-[var(--text-primary)] shadow-paper-sm placeholder:text-[var(--text-secondary)]/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC400]"
+            placeholder="Search competencies, courses, certificates..."
+            className="w-full rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0C1220] pl-10 pr-12 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#992e9d] dark:focus:border-purple-500 transition-colors"
           />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-[var(--panel-bg)] px-1.5 py-0.5 rounded-[3px] border border-[var(--border-main)] text-[10px] font-mono font-bold text-[var(--text-secondary)]">
-            <span>⌘</span>
-            <span>K</span>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-full text-[10px] font-mono text-slate-500 dark:text-slate-400">
+            <span>⌘K</span>
           </div>
         </div>
       </div>
 
       {/* Right widgets: Quick triggers, actions, theme toggle, profiles */}
-      <div className="flex items-center gap-2 relative">
+      <div className="flex items-center gap-2.5 relative">
+
+        {/* Network status indicator */}
+        {isOnline !== undefined && (
+          <div
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold border ${
+              isOnline
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400'
+            }`}
+            title={isOnline ? 'Network Connected' : 'No Connection'}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`} />
+            {isOnline ? 'Online' : 'Offline'}
+          </div>
+        )}
 
         {/* Theme Toggle Quick Button */}
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm text-[var(--text-primary)] hover:bg-[#FFC400] hover:text-[#111111] focus:outline-none cursor-pointer transition-colors"
-          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark Blue'} Theme`}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0C1220] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Theme`}
           aria-label="Toggle Theme"
         >
           {theme === 'dark' ? (
-            <Sun className="h-4 w-4 text-[#FFC400]" />
+            <Sun className="h-4 w-4 text-amber-400" />
           ) : (
-            <Moon className="h-4 w-4 text-[var(--text-primary)]" />
+            <Moon className="h-4 w-4 text-slate-600" />
           )}
         </button>
 
         {/* Activity Center indicator */}
         <button
           onClick={() => handleDropdownOption('notifications')}
-          className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm text-[var(--text-primary)] hover:bg-[var(--hover-bg)] focus:outline-none cursor-pointer"
+          className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0C1220] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           title="Activity Center"
         >
-          <Bell className="h-4 w-4" />
-          <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#FF4D4D] border border-[var(--border-main)]" />
+          <Bell className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[#992e9d] ring-2 ring-white dark:ring-slate-900" />
         </button>
 
-        <div className="h-6 w-[2px] bg-[var(--border-main)] mx-1 hidden sm:block" />
-
-        {/* Network status indicator */}
-        {isOnline !== undefined && (
-          <div
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] border text-[10px] font-mono font-bold ${
-              isOnline
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/30 text-red-400'
-            }`}
-            title={isOnline ? 'Connected' : 'No network connection'}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-red-400 animate-pulse'}`} />
-            {isOnline ? 'ONLINE' : 'OFFLINE'}
-          </div>
-        )}
-
         {/* User avatar - Dropdown */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative ml-1" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-1.5 focus:outline-none cursor-pointer"
+            className="flex items-center gap-2 focus:outline-none cursor-pointer group"
           >
             {settings.profile.avatarUrl ? (
               <img
                 src={settings.profile.avatarUrl}
                 alt={settings.profile.fullName}
-                className="h-9 w-9 rounded-[6px] border-2 border-[var(--border-main)] shadow-paper-sm object-cover"
+                className="h-9 w-9 rounded-full border border-purple-200 dark:border-purple-800 object-cover group-hover:scale-105 transition-transform"
               />
             ) : (
-              <div className="h-9 w-9 rounded-[6px] border-2 border-[var(--border-main)] shadow-paper-sm bg-[#FFC400] flex items-center justify-center font-bold text-xs text-[#111111] uppercase">
+              <div className="h-9 w-9 rounded-full bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[#992e9d] dark:text-purple-300 flex items-center justify-center font-bold text-xs uppercase group-hover:scale-105 transition-transform">
                 {settings.profile.fullName ? settings.profile.fullName.charAt(0) : 'U'}
               </div>
             )}
@@ -198,101 +191,58 @@ export default function Navbar({
 
           {/* Avatar dropdown panel */}
           {dropdownOpen && (
-            <div className="absolute right-0 mt-3 w-64 rounded-[8px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] p-4 shadow-paper-lg space-y-3 z-50 text-[var(--text-primary)]">
+            <div className="absolute right-0 mt-3 w-64 rounded-[11px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0C1220] p-4 shadow-xl space-y-3 z-50 text-slate-900 dark:text-white animate-in fade-in slide-in-from-top-2 duration-150">
               {/* Dropdown Header Info */}
-              <div className="flex items-center gap-3 pb-3 border-b-2 border-[var(--border-main)]">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                 {settings.profile.avatarUrl ? (
                   <img
                     src={settings.profile.avatarUrl}
                     alt={settings.profile.fullName}
-                    className="h-10 w-10 rounded-[6px] border-2 border-[var(--border-main)] object-cover"
+                    className="h-10 w-10 rounded-full border border-purple-200 dark:border-purple-800 object-cover"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-[6px] border-2 border-[var(--border-main)] bg-[#FFC400] flex items-center justify-center font-bold text-sm text-[#111111] uppercase">
+                  <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[#992e9d] dark:text-purple-300 flex items-center justify-center font-bold text-sm uppercase">
                     {settings.profile.fullName ? settings.profile.fullName.charAt(0) : 'U'}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-heading font-bold text-[var(--text-primary)] truncate">{settings.profile.fullName}</div>
-                  <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)] truncate mt-0.5">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{settings.profile.fullName}</div>
+                  <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase truncate mt-0.5">
                     {settings.profile.role === 'admin' ? 'ORGANIZATION ADMIN' : settings.profile.role === 'faculty' ? 'TRAINER / INSTRUCTOR' : 'TRAINEE LEARNER'}
                   </div>
                 </div>
               </div>
 
-              {/* Items List */}
-              <div className="space-y-1 font-mono text-xs text-[var(--text-primary)]">
+              {/* Navigation Options */}
+              <div className="space-y-1">
                 <button
                   onClick={() => handleDropdownOption('profile')}
-                  className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 font-bold text-left hover:bg-[#FFC400] hover:text-[#111111] transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-slate-800 hover:text-[#992e9d] dark:hover:text-purple-300 transition-colors"
                 >
-                  <User className="h-4 w-4 shrink-0" />
-                  <span>Competency Profile</span>
+                  <User className="h-3.5 w-3.5" />
+                  <span>My Profile</span>
                 </button>
-
                 <button
                   onClick={() => handleDropdownOption('settings')}
-                  className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 font-bold text-left hover:bg-[#FFC400] hover:text-[#111111] transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-slate-800 hover:text-[#992e9d] dark:hover:text-purple-300 transition-colors"
                 >
-                  <Settings className="h-4 w-4 shrink-0" />
-                  <span>Account Settings</span>
-                </button>
-
-                <button
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="flex w-full items-center justify-between rounded-[4px] px-2.5 py-2 font-bold text-left hover:bg-[#FFC400] hover:text-[#111111] transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    {theme === 'dark' ? <Sun className="h-4 w-4 shrink-0 text-[#FFC400]" /> : <Moon className="h-4 w-4 shrink-0" />}
-                    <span>Theme</span>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--border-main)] bg-[var(--panel-bg)] font-bold">
-                    {theme === 'dark' ? 'DARK BLUE' : 'LIGHT'}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleDropdownOption('pricing')}
-                  className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 font-bold text-left hover:bg-[#FFC400] hover:text-[#111111] transition-colors cursor-pointer"
-                >
-                  <CreditCard className="h-4 w-4 shrink-0" />
-                  <span>Subscription Plans</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    window.dispatchEvent(new CustomEvent('kuma_start_guided_tour'));
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 font-bold text-left hover:bg-[#FFC400] hover:text-[#111111] transition-colors cursor-pointer"
-                >
-                  <Sparkles className="h-4 w-4 shrink-0 text-[#2F6BFF]" />
-                  <span>Interactive Guided Tour</span>
-                </button>
-
-                <button
-                  onClick={() => handleDropdownOption('help-support')}
-                  className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 font-bold text-left hover:bg-[#FFC400] hover:text-[#111111] transition-colors cursor-pointer"
-                >
-                  <HelpCircle className="h-4 w-4 shrink-0" />
-                  <span>Documentation</span>
+                  <Settings className="h-3.5 w-3.5" />
+                  <span>Settings</span>
                 </button>
               </div>
 
-              {/* Log out button */}
-              <div className="pt-2 border-t-2 border-[var(--border-main)]">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
                     onLogOut();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 font-bold text-left text-white bg-[#FF4D4D] border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ff6666] transition-colors font-mono text-xs uppercase"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-3.5 w-3.5" />
                   <span>Log Out</span>
                 </button>
               </div>
-
             </div>
           )}
         </div>

@@ -6,21 +6,20 @@
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
-  Compass, 
   Settings, 
   Bell, 
   X,
   ChevronLeft,
   ChevronRight,
   LogOut,
-  ExternalLink,
   Target,
   Award,
-  ShieldCheck
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react';
 import { PageId, UserSettings } from '../types';
 import AILogo from './AILogo';
-import { SidebarItem, Button, Badge } from './bauhaus';
+import { SidebarItem } from './bauhaus';
 
 interface SidebarProps {
   activePage: PageId;
@@ -39,7 +38,6 @@ export default function Sidebar({
   isOpenMobile,
   setIsOpenMobile,
   settings,
-  theme,
   onLogOut
 }: SidebarProps) {
   
@@ -56,6 +54,7 @@ export default function Sidebar({
 
   const accountItems = [
     { id: 'notifications', label: 'Activity Center', icon: Bell, indicator: true },
+    { id: 'profile', label: 'My Profile', icon: UserCheck },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
@@ -64,35 +63,33 @@ export default function Sidebar({
     setIsOpenMobile(false);
   };
 
-  const isPro = settings.subscription.planName !== 'BYOK';
-
   const sidebarContent = (
-    <div className={`flex h-full flex-col select-none transition-all duration-200 bg-[var(--sidebar-bg)] text-[var(--text-primary)] border-r border-[var(--border-main)] ${
-      isCollapsed ? 'w-20' : 'w-[260px] lg:w-[280px]'
+    <div className={`flex h-full flex-col select-none transition-all duration-300 bg-white dark:bg-[#050814] text-slate-800 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 ${
+      isCollapsed ? 'w-20' : 'w-[260px] lg:w-[275px]'
     }`}>
       
       {/* Brand area */}
-      <div className={`flex h-16 items-center border-b border-[var(--border-main)] bg-[var(--card-bg)] ${
-        isCollapsed ? 'justify-center px-1 gap-1' : 'justify-between px-4'
+      <div className={`flex h-16 items-center border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#050814] ${
+        isCollapsed ? 'justify-center px-1 gap-1' : 'justify-between px-5'
       }`}>
         <div 
-          className="flex items-center gap-2 cursor-pointer overflow-hidden truncate"
+          className="flex items-center gap-3 cursor-pointer overflow-hidden truncate group"
           onClick={() => handleNavClick('dashboard')}
         >
-          <div className="p-1 rounded-[6px] bg-[#FFC400] border-2 border-[var(--border-main)] shadow-paper-sm shrink-0">
-            <AILogo size={26} theme="light" />
+          <div className="p-2 rounded-full bg-purple-50 dark:bg-purple-950/50 text-[#992e9d] dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0 group-hover:scale-105 transition-transform">
+            <AILogo size={22} theme="light" />
           </div>
           
           {!isCollapsed && (
             <div className="flex flex-col">
-              <div className="font-heading font-bold text-base tracking-tight text-[var(--text-primary)] flex items-center gap-1.5">
+              <div className="font-bold text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 leading-none">
                 KUMA
-                <span className="rounded-[3px] bg-[#FFC400] px-1 py-0.2 text-[9px] font-bold text-[#111111] border border-[var(--border-main)] font-mono">
-                  v2.0
+                <span className="rounded-full bg-purple-100 dark:bg-purple-950/60 px-2 py-0.5 text-[9px] font-semibold text-[#992e9d] dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/50">
+                  SIH26075
                 </span>
               </div>
-              <div className="text-[9px] font-bold uppercase tracking-[2px] text-[var(--text-secondary)] font-mono">
-                COGNITIVE LAB
+              <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
+                CAPACITY CONNECT
               </div>
             </div>
           )}
@@ -101,7 +98,7 @@ export default function Sidebar({
         {/* Mobile close trigger */}
         <button 
           onClick={() => setIsOpenMobile(false)}
-          className="md:hidden flex h-8 w-8 items-center justify-center rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] text-[var(--text-primary)] shadow-paper-sm hover:bg-[#FFC400] hover:text-[#111111]"
+          className="md:hidden flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
           aria-label="Close menu"
         >
           <X className="h-4 w-4" />
@@ -110,25 +107,25 @@ export default function Sidebar({
         {/* Desktop Collapse Trigger */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex h-7 w-7 items-center justify-center rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] text-[var(--text-primary)] shadow-paper-sm hover:bg-[#FFC400] hover:text-[#111111] focus:outline-none shrink-0"
+          className="hidden md:flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none shrink-0"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
         </button>
       </div>
 
       {/* Navigation Groups */}
-      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+      <div className="flex-1 overflow-y-auto py-5 px-3.5 space-y-6">
         {/* Workspace section */}
         <div className="space-y-1">
           {!isCollapsed && (
-            <div className="px-3 pb-1 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider font-mono">
-              MAIN WORKSPACE
+            <div className="px-3.5 pb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              PORTAL WORKSPACE
             </div>
           )}
 
           {workspaceItems.map((item) => (
-            <div key={item.id} data-tour={item.id === 'dashboard' ? 'dashboard-link' : item.id}>
+            <div key={item.id}>
               <SidebarItem
                 icon={<item.icon className="h-4 w-4" />}
                 label={item.label}
@@ -143,8 +140,8 @@ export default function Sidebar({
         {/* Account section */}
         <div className="space-y-1">
           {!isCollapsed && (
-            <div className="px-3 pb-1 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider font-mono">
-              SYSTEM & CONTROL
+            <div className="px-3.5 pb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              ACCOUNT & CONTROLS
             </div>
           )}
 
@@ -155,67 +152,40 @@ export default function Sidebar({
               label={item.label}
               active={activePage === item.id}
               hasNotificationDot={item.indicator}
-              notificationColor="yellow"
+              notificationColor="purple"
               onClick={() => handleNavClick(item.id as PageId)}
               collapsed={isCollapsed}
             />
           ))}
         </div>
-
-        {/* Subscription callout banner */}
-        {!isCollapsed && (
-          <div className="mt-4 p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="font-heading text-[11px] font-bold uppercase text-[var(--text-primary)]">
-                {settings.subscription.planName} MEMBER
-              </span>
-              <Badge variant={isPro ? "yellow" : "red"} size="sm">
-                {isPro ? "ACTIVE" : "FREE"}
-              </Badge>
-            </div>
-            <p className="text-[10px] text-[var(--text-secondary)] font-mono mb-2">
-              {isPro ? 'Direct API Key Mode' : 'Bring Your Own Key Mode'}
-            </p>
-            <Button
-              variant="tertiary"
-              size="sm"
-              fullWidth
-              onClick={() => handleNavClick('pricing')}
-              icon={<ExternalLink className="h-3 w-3" />}
-              iconPosition="right"
-            >
-              {isPro ? 'Upgrade SaaS Plan' : 'Unleash Pro Tiers'}
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* Bottom Profile Identity card (Always pinned to bottom) */}
-      <div className="border-t-2 border-[var(--border-main)] p-3 bg-[var(--card-bg)] shrink-0 sticky bottom-0 z-20 shadow-paper-md">
+      {/* Bottom Profile Identity card (Pinned to bottom) */}
+      <div className="border-t border-slate-100 dark:border-slate-800/80 p-3.5 bg-white dark:bg-[#050814] shrink-0 sticky bottom-0 z-20">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div 
-            className="flex items-center gap-2 cursor-pointer min-w-0"
+            className="flex items-center gap-3 cursor-pointer min-w-0 group"
             onClick={() => handleNavClick('profile')}
-            title="Update Profile"
+            title="View Profile"
           >
             {settings.profile.avatarUrl ? (
               <img
                 src={settings.profile.avatarUrl}
                 alt={settings.profile.fullName}
-                className="h-8 w-8 rounded-[4px] border-2 border-[var(--border-main)] object-cover shrink-0"
+                className="h-9 w-9 rounded-full border border-purple-200 dark:border-purple-800 object-cover shrink-0"
               />
             ) : (
-              <div className="h-8 w-8 rounded-[4px] border-2 border-[var(--border-main)] bg-[#FFC400] flex items-center justify-center font-bold text-xs text-[#111111] shrink-0">
+              <div className="h-9 w-9 rounded-full bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[#992e9d] dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
                 {settings.profile.fullName ? settings.profile.fullName.charAt(0).toUpperCase() : 'U'}
               </div>
             )}
 
             {!isCollapsed && (
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-[var(--text-primary)] truncate font-heading uppercase">
+                <div className="text-xs font-semibold text-slate-900 dark:text-white truncate group-hover:text-[#992e9d] dark:group-hover:text-purple-300 transition-colors">
                   {settings.profile.fullName || 'Trainee Learner'}
                 </div>
-                <div className="text-[10px] font-mono text-[var(--text-secondary)] truncate" title={settings.profile.emailAddress}>
+                <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate" title={settings.profile.emailAddress}>
                   {settings.profile.emailAddress}
                 </div>
               </div>
@@ -226,9 +196,9 @@ export default function Sidebar({
             <button
               onClick={onLogOut}
               title="Secure Logout"
-              className="p-1.5 rounded-[4px] border-2 border-[var(--border-main)] bg-[var(--panel-bg)] text-[var(--text-primary)] hover:bg-[#FF4D4D] hover:text-white transition-colors"
+              className="p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <LogOut className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -240,7 +210,7 @@ export default function Sidebar({
   return (
     <>
       {/* Desktop & Tablet Sidebar Frame */}
-      <aside className={`hidden md:block h-screen sticky top-0 shrink-0 z-30 transition-all duration-200 ${isCollapsed ? 'w-20' : 'w-[260px] lg:w-[280px]'}`}>
+      <aside className={`hidden md:block h-screen sticky top-0 shrink-0 z-30 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-[260px] lg:w-[275px]'}`}>
         {sidebarContent}
       </aside>
 
@@ -252,7 +222,7 @@ export default function Sidebar({
       >
         <div 
           onClick={() => setIsOpenMobile(false)}
-          className="absolute inset-0 bg-[#111111]/70 backdrop-blur-[2px]" 
+          className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" 
         />
         
         <div 

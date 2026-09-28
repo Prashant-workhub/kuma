@@ -1,13 +1,13 @@
 /**
- * Project Kuma - Phase 3F Trainee Certificates Workspace View
+ * Project Kuma - Trainee Certificates Workspace View
  * Displays all earned certificates with preview, print, download, and verification links.
+ * Clean Tutedude Dashboard style architecture.
  */
 
 import React, { useState } from 'react';
 import { UserSettings, TrainingCertificate } from '../types';
 import { getUserCertificates } from '../utils/certificateUtils';
 import CertificateModal from './CertificateModal';
-import { Card, Button, Badge } from './bauhaus';
 import { Award, CheckCircle2, ArrowLeft, ExternalLink, Printer, ShieldCheck, GraduationCap, Building, Calendar } from 'lucide-react';
 
 interface CertificatesViewProps {
@@ -20,146 +20,147 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
   const userCerts = getUserCertificates(settings.profile.uid || 'user-demo-1');
 
   return (
-    <div className="max-w-7xl mx-auto pb-16 space-y-6 bg-grid-paper p-4 md:p-8 select-none">
+    <div className="max-w-7xl mx-auto pb-16 space-y-6 p-4 md:p-8 select-none font-sans">
       
       {/* Header Banner */}
-      <div className="rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] p-6 shadow-paper-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="rounded-[11px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <button
             onClick={() => setActivePage('dashboard')}
-            className="flex items-center gap-1 text-xs font-mono font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors mb-1 cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#992e9d] dark:text-slate-400 dark:hover:text-purple-300 transition-colors mb-2 cursor-pointer"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>BACK TO DASHBOARD</span>
+            <span>Back to Dashboard</span>
           </button>
-          <h1 className="font-heading font-extrabold text-2xl md:text-3xl text-[var(--text-primary)] uppercase tracking-tight flex items-center gap-2">
-            <Award className="h-7 w-7 text-[#FFC400]" />
-            MY DIGITAL CERTIFICATES
+          <h1 className="font-semibold text-2xl md:text-3xl text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <Award className="h-7 w-7 text-[#992e9d] dark:text-purple-400" />
+            My Digital Certificates
           </h1>
-          <p className="text-xs md:text-sm font-mono text-[var(--text-secondary)] mt-1">
-            Official Kuma Capacity Building training completion records and verified digital credentials.
+          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Official Capacity Building training completion records and verified digital credentials.
           </p>
         </div>
 
-        <div className="p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] font-mono text-xs flex items-center gap-3 shrink-0">
+        <div className="p-4 rounded-full border border-purple-100 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/30 text-xs flex items-center gap-4 shrink-0">
           <div>
-            <div className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">Earned Certificates</div>
-            <div className="font-heading font-black text-xl text-[#FFC400]">{userCerts.length}</div>
+            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Earned Certificates</div>
+            <div className="text-xl font-bold text-[#992e9d] dark:text-purple-300">{userCerts.length}</div>
           </div>
-          <div className="w-px h-8 bg-[var(--border-main)]" />
+          <div className="w-px h-7 bg-purple-200 dark:bg-purple-800/60" />
           <div>
-            <div className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">Verification Status</div>
-            <div className="font-heading font-black text-xs text-[#19B56B]">100% VERIFIED</div>
+            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Verification Status</div>
+            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" /> 100% Verified
+            </div>
           </div>
         </div>
       </div>
 
       {/* CERTIFICATES LIST */}
-      <Card shadow="md" className="p-6 bg-[var(--card-bg)] border-2 border-[var(--border-main)] space-y-4">
-        <div className="flex items-center justify-between border-b-2 border-[var(--border-main)] pb-3">
-          <h3 className="section-label text-xs font-bold text-[var(--text-primary)] uppercase tracking-[2px] flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[#9C27B0]" />
-            ISSUED TRAINING CERTIFICATES
+      <div className="p-6 rounded-[11px] bg-white dark:bg-[#0C1220] border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+          <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-[#992e9d] dark:text-purple-400" />
+            Issued Training Credentials
           </h3>
-          <span className="text-xs font-mono text-[var(--text-secondary)] font-bold">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
             Publicly Verifiable
           </span>
         </div>
 
         {userCerts.length === 0 ? (
-          <div className="p-8 text-center rounded-[6px] border-2 border-dashed border-[var(--border-main)] bg-[var(--bg-main)] space-y-2">
-            <GraduationCap className="h-10 w-10 text-[var(--text-secondary)] mx-auto opacity-40" />
-            <h4 className="font-heading font-extrabold text-sm text-[var(--text-primary)] uppercase">
-              NO CERTIFICATES EARNED YET
+          <div className="p-10 text-center rounded-[11px] border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
+            <GraduationCap className="h-10 w-10 text-slate-400 mx-auto opacity-50" />
+            <h4 className="font-semibold text-sm text-slate-900 dark:text-white">
+              No Certificates Earned Yet
             </h4>
-            <p className="text-xs font-mono text-[var(--text-secondary)] max-w-md mx-auto">
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
               Complete your recommended training programs and pass required assessments to automatically earn official digital certificates!
             </p>
-            <Button
-              variant="primary"
-              size="sm"
+            <button
               onClick={() => setActivePage('skill-gap')}
-              className="mt-2 bg-[#9C27B0] text-white"
+              className="mt-2 px-5 py-2.5 rounded-full bg-[#992e9d] hover:bg-[#832687] text-white text-xs font-medium shadow-sm transition-all inline-flex items-center gap-2"
             >
               Explore Skill Gap & Recommended Training
-            </Button>
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {userCerts.map((cert) => (
               <div
                 key={cert.id}
-                className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] flex flex-col justify-between space-y-4 shadow-paper-sm hover:shadow-paper transition-shadow relative overflow-hidden"
+                className="p-5 rounded-[11px] border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-[#080D1A] flex flex-col justify-between space-y-4 hover:border-[#992e9d] dark:hover:border-purple-600 transition-all relative overflow-hidden group"
               >
                 <div className="space-y-3">
                   
                   {/* Top Line */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-black uppercase px-2 py-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/40">
+                    <span className="text-[10px] font-semibold uppercase px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
                       {cert.courseCode}
                     </span>
-                    <span className="flex items-center gap-1 text-[10px] font-mono font-bold text-[#19B56B] px-2 py-0.5 rounded bg-[#19B56B]/15 border border-[#19B56B]/40">
-                      <CheckCircle2 className="h-3 w-3" />
-                      VERIFIED VALID
+                    <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> VERIFIED
                     </span>
                   </div>
 
-                  {/* Course Title */}
+                  {/* Title & Organization */}
                   <div>
-                    <h4 className="font-heading font-black text-base text-[var(--text-primary)] uppercase leading-snug">
+                    <h4 className="font-semibold text-base text-slate-900 dark:text-white group-hover:text-[#992e9d] dark:group-hover:text-purple-300 transition-colors">
                       {cert.courseName}
                     </h4>
-                    <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
-                      Issued to: <span className="font-bold text-[var(--text-primary)]">{cert.userName}</span>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+                      <Building className="h-3.5 w-3.5 text-slate-400" />
+                      <span>{cert.organization || 'Ministry of Skill Development'}</span>
                     </p>
                   </div>
 
-                  {/* Metadata Box */}
-                  <div className="p-3 rounded-[4px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-1 text-xs font-mono">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[var(--text-secondary)]">Organization:</span>
-                      <span className="font-bold text-[var(--text-primary)] truncate max-w-[180px]">{cert.organization}</span>
+                  {/* Competency Badge & Date */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
+                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                      <ShieldCheck className="h-3.5 w-3.5 text-[#992e9d]" />
+                      <span className="font-medium">{cert.competenciesAddressed?.join(', ') || 'Competency Mastery'}</span>
                     </div>
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[var(--text-secondary)]">Issue Date:</span>
-                      <span className="font-bold text-[var(--text-primary)]">{cert.issueDate}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[var(--text-secondary)]">Certificate ID:</span>
-                      <span className="font-bold text-purple-600 dark:text-purple-400">{cert.id}</span>
+
+                    <div className="flex items-center gap-1 text-[11px] text-slate-400 font-mono">
+                      <Calendar className="h-3 w-3" />
+                      <span>{cert.issueDate}</span>
                     </div>
                   </div>
-
                 </div>
 
                 {/* Bottom Actions */}
-                <div className="pt-2 border-t border-[var(--border-main)]/40 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => setActivePage('verify-certificate')}
-                    className="text-[11px] font-mono font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Public Verification</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </button>
+                <div className="pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2">
+                  <div className="text-[10px] font-mono text-slate-400 truncate max-w-[150px]">
+                    ID: {cert.id}
+                  </div>
 
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setSelectedCert(cert)}
-                    className="bg-[#9C27B0] hover:bg-[#8E24AA] text-white flex items-center gap-1.5"
-                  >
-                    <Award className="h-4 w-4" />
-                    <span>View Certificate</span>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActivePage('verify-certificate')}
+                      className="px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1"
+                      title="Public Verification"
+                    >
+                      <ExternalLink className="h-3 w-3 text-slate-500" />
+                      <span>Verify</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedCert(cert)}
+                      className="px-4 py-1.5 rounded-full bg-[#992e9d] hover:bg-[#832687] text-white text-xs font-medium shadow-sm transition-all flex items-center gap-1.5"
+                    >
+                      <Award className="h-3.5 w-3.5" />
+                      <span>View Credential</span>
+                    </button>
+                  </div>
                 </div>
 
               </div>
             ))}
           </div>
         )}
-      </Card>
+      </div>
 
-      {/* CERTIFICATE MODAL PREVIEW */}
+      {/* CERTIFICATE PREVIEW MODAL */}
       {selectedCert && (
         <CertificateModal
           certificate={selectedCert}
