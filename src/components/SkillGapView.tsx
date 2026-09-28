@@ -118,16 +118,18 @@ export default function SkillGapView({
   const highDevCount = designationGaps.filter((g) => g.gap >= 3).length;
 
 
-  // Phase 3E Recommendation Engine execution
-  const { recommendedCourses } = getTrainingRecommendations(
+  // Recommendation Engine execution against Trainee Designation Skill Gaps
+  const { recommendedCourses, unmatchedGaps } = getTrainingRecommendations(
     competencies,
     COURSES,
     [],
     INITIAL_COMPETENCY_CATALOG,
     Object.fromEntries(
       Object.entries(courseProgressState).map(([cid, prog]) => [cid, { completionRate: prog }])
-    )
+    ),
+    traineeDesignation
   );
+
 
   const handleStartCourse = (courseId: string) => {
     setCourseProgressState((prev) => ({
@@ -512,6 +514,43 @@ export default function SkillGapView({
 
               </div>
             ))}
+          </div>
+        )}
+
+        {/* UNMATCHED SKILL GAPS - NO TRAINING AVAILABLE CASE */}
+        {unmatchedGaps.length > 0 && (
+          <div className="pt-4 border-t-2 border-[var(--border-main)] space-y-3">
+            <div className="flex items-center gap-2 text-xs font-mono font-bold text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              <span>TRAINING COVERAGE GAPS ({unmatchedGaps.length})</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {unmatchedGaps.map((gap) => (
+                <div
+                  key={gap.competencyId}
+                  className="p-4 rounded-[6px] border-2 border-amber-500/40 bg-amber-500/10 font-mono text-xs space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-heading font-extrabold uppercase text-[var(--text-primary)]">
+                      {gap.competencyName}
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40 font-bold text-[10px] uppercase">
+                      Training Coverage Gap
+                    </span>
+                  </div>
+
+                  <div className="text-[11px] text-[var(--text-secondary)]">
+                    Current: <strong className="text-[var(--text-primary)]">{gap.currentLevel}</strong> ➔ Required: <strong className="text-[#9C27B0]">{gap.requiredLevel}</strong> (Gap: {gap.gap})
+                  </div>
+
+                  <div className="p-2.5 rounded bg-[var(--card-bg)] border border-amber-500/30 text-[11px] text-amber-700 dark:text-amber-300 font-bold flex items-center gap-2">
+                    <Info className="h-4 w-4 shrink-0 text-amber-500" />
+                    <span>No matching training program is currently available for this competency.</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Card>

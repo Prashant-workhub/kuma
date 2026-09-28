@@ -34,6 +34,8 @@ import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, 
 import { getAllCertificates } from '../utils/certificateUtils';
 import { calculateDesignationSkillGaps } from '../utils/competencyUtils';
 import { LearningAnalytics } from '../teacher-portal/views/LearningAnalytics';
+import { COURSES } from '../teacher-portal/lib/mockData';
+import { TeacherAssignment } from '../teacher-portal/types';
 
 
 
@@ -100,6 +102,12 @@ export default function AdminPortalApp({
   const [newCompDesc, setNewCompDesc] = useState('');
 
   const [competencies, setCompetencies] = useState<CatalogCompetency[]>(DEMO_COMPETENCIES);
+  const [coursesList, setCoursesList] = useState<TeacherAssignment[]>(COURSES);
+
+  // Course Competency Mapping Modal State
+  const [selectedCourseForComp, setSelectedCourseForComp] = useState<TeacherAssignment | null>(null);
+  const [showCourseCompModal, setShowCourseCompModal] = useState(false);
+  const [courseCompToAdd, setCourseCompToAdd] = useState('');
 
   const [traineeList, setTraineeList] = useState<typeof DEMO_TRAINEES>(DEMO_TRAINEES);
   const [selectedTrainee, setSelectedTrainee] = useState<typeof DEMO_TRAINEES[0] | null>(null);
@@ -214,6 +222,58 @@ export default function AdminPortalApp({
       }
       return updated;
     }));
+  };
+
+  const handleAddCompetencyToCourse = (courseId: string, compId: string) => {
+    const targetComp = competencies.find(c => c.id === compId);
+    if (!targetComp) return;
+
+    setCoursesList(prev => prev.map(course => {
+      if (course.id !== courseId) return course;
+      const existingIds = course.competencyIds || [];
+      const existingNames = course.competencyNames || [];
+
+      if (existingIds.includes(targetComp.id)) return course;
+
+      const updated = {
+        ...course,
+        competencyIds: [...existingIds, targetComp.id],
+        competencyNames: [...existingNames, targetComp.name]
+      };
+
+      if (selectedCourseForComp?.id === courseId) {
+        setSelectedCourseForComp(updated);
+      }
+      return updated;
+    }));
+
+    setStatusNotice(`Mapped competency '${targetComp.name}' to course.`);
+  };
+
+  const handleRemoveCompetencyFromCourse = (courseId: string, compId: string) => {
+    setCoursesList(prev => prev.map(course => {
+      if (course.id !== courseId) return course;
+      const idx = (course.competencyIds || []).indexOf(compId);
+      if (idx === -1) return course;
+
+      const newIds = [...(course.competencyIds || [])];
+      const newNames = [...(course.competencyNames || [])];
+      newIds.splice(idx, 1);
+      newNames.splice(idx, 1);
+
+      const updated = {
+        ...course,
+        competencyIds: newIds,
+        competencyNames: newNames
+      };
+
+      if (selectedCourseForComp?.id === courseId) {
+        setSelectedCourseForComp(updated);
+      }
+      return updated;
+    }));
+
+    setStatusNotice('Removed competency mapping from course.');
   };
 
 
@@ -825,30 +885,145 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
           {currentTab === 'training-programs' && (
             <div className="space-y-6 font-mono">
               <div>
-                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">TRAINING PROGRAMS</h1>
-                <p className="text-xs text-[var(--text-secondary)] mt-1">Organizational capacity building courses mapped to competencies.</p>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">TRAINING PROGRAMS & COMPETENCY MAPPING</h1>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Manage organizational training programs, mapped competencies, and audit training coverage gaps.</p>
               </div>
 
+              {/* Course Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { code: 'DA101', name: 'Advanced Data Analytics & Insights', comp: 'Data Analysis', trainer: 'Dr. Rajesh Kumar' },
-                  { code: 'PY102', name: 'Python for Data Professionals', comp: 'Python', trainer: 'Dr. Rajesh Kumar' },
-                  { code: 'CM103', name: 'Professional Communication & Reporting', comp: 'Communication', trainer: 'Prof. Anita Sharma' },
-                  { code: 'LD104', name: 'Leadership Fundamentals & Mentorship', comp: 'Leadership', trainer: 'Prof. Anita Sharma' },
-                  { code: 'DS105', name: 'Digital Skills Essentials', comp: 'Digital Literacy', trainer: 'Prof. Anita Sharma' }
-                ].map((course, idx) => (
-                  <div key={idx} className="p-5 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-3">
-                    <div className="flex items-center justify-between text-[10px] font-bold">
-                      <span className="bg-[#FFC400] text-[#111111] px-2 py-0.5 rounded border border-[var(--border-main)] font-extrabold">{course.code}</span>
-                      <span className="text-[#19B56B]">Active</span>
+                {coursesList.map((course) => (
+                  <div key={course.id} className="p-5 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-3 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-[10px] font-bold">
+                        <span className="bg-[#9C27B0]/20 text-[#9C27B0] px-2 py-0.5 rounded border border-[#9C27B0]/40 font-extrabold">{course.courseCode}</span>
+                        <span className="text-[#19B56B] bg-[#19B56B]/15 px-2 py-0.5 rounded border border-[#19B56B]/40 font-bold">{course.isActive ? 'Active' : 'Inactive'}</span>
+                      </div>
+
+                      <h3 className="text-sm font-extrabold text-[var(--text-primary)] leading-tight">{course.courseName}</h3>
+                      <p className="text-xs text-[var(--text-secondary)] line-clamp-2">{course.description}</p>
+
+                      <div className="text-xs text-[var(--text-secondary)] space-y-1.5 border-t border-[var(--border-main)]/50 pt-2">
+                        <div className="flex items-center justify-between">
+                          <span>Duration:</span>
+                          <strong className="text-[var(--text-primary)]">{course.duration || '4 Weeks'}</strong>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Enrolled Trainees:</span>
+                          <strong className="text-[#FFC400]">{course.students || 0} Trainees</strong>
+                        </div>
+
+                        {/* Mapped Competencies */}
+                        <div className="pt-1 space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)]">Mapped Competencies:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {(course.competencyNames && course.competencyNames.length > 0) ? (
+                              course.competencyNames.map((cName, idx) => (
+                                <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30">
+                                  {cName}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-red-500 italic">No competencies mapped</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-sm font-extrabold text-[var(--text-primary)]">{course.name}</h3>
-                    <div className="text-xs text-[var(--text-secondary)] space-y-1 border-t border-[var(--border-main)] pt-2">
-                      <div>Competency: <strong className="text-[#38BDF8]">{course.comp}</strong></div>
-                      <div>Trainer: <strong className="text-[var(--text-primary)]">{course.trainer}</strong></div>
-                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSelectedCourseForComp(course);
+                        setShowCourseCompModal(true);
+                      }}
+                      className="w-full mt-2 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-primary)] hover:bg-[#38BDF8] hover:text-[#111111] font-bold text-xs border border-[var(--border-main)] transition-colors cursor-pointer"
+                    >
+                      Manage Competency Mapping
+                    </button>
                   </div>
                 ))}
+              </div>
+
+              {/* TRAINING COVERAGE AUDIT TABLE (Requirement 12) */}
+              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-3">
+                  <div>
+                    <h2 className="text-sm font-extrabold uppercase text-[var(--text-primary)] flex items-center gap-2">
+                      <Target className="h-4 w-4 text-[#FFC400]" />
+                      ORGANIZATIONAL TRAINING COVERAGE AUDIT
+                    </h2>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                      Evaluates whether active training programs exist for each catalog competency required across designations.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-purple-500 px-2.5 py-1 rounded bg-purple-500/10 border border-purple-500/30">
+                    Coverage Gap Audit
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-[var(--border-main)] text-[10px] uppercase text-[var(--text-secondary)]">
+                        <th className="py-2.5 px-3">Competency</th>
+                        <th className="py-2.5 px-3">Category</th>
+                        <th className="py-2.5 px-3">Role Requirements</th>
+                        <th className="py-2.5 px-3">Available Training Programs</th>
+                        <th className="py-2.5 px-3 text-right">Coverage Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y border-b border-[var(--border-main)]">
+                      {competencies.map((comp) => {
+                        // Find active training programs matching this competency
+                        const matchingCourses = coursesList.filter(
+                          c => (c.competencyIds && c.competencyIds.includes(comp.id)) ||
+                               (c.competencyNames && c.competencyNames.some(cn => cn.toLowerCase() === comp.name.toLowerCase()))
+                        );
+                        const hasTraining = matchingCourses.length > 0;
+
+                        // Count designations requiring this competency
+                        const reqDesignations = designations.filter(
+                          d => d.requiredCompetencies && d.requiredCompetencies.some(rc => rc.competencyId === comp.id)
+                        );
+
+                        return (
+                          <tr key={comp.id} className="hover:bg-[var(--panel-bg)]">
+                            <td className="py-3 px-3 font-bold text-[var(--text-primary)]">{comp.name}</td>
+                            <td className="py-3 px-3 text-[var(--text-secondary)]">{comp.category}</td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-[#FFC400]">
+                                Required by {reqDesignations.length} Role{reqDesignations.length !== 1 ? 's' : ''}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              {hasTraining ? (
+                                <div className="space-y-0.5">
+                                  {matchingCourses.map(mc => (
+                                    <div key={mc.id} className="font-bold text-purple-600 dark:text-purple-400">
+                                      {mc.courseName} ({mc.courseCode})
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-red-500 font-bold italic">No matching training program</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              {hasTraining ? (
+                                <span className="bg-[#19B56B]/15 text-[#19B56B] px-2.5 py-1 rounded border border-[#19B56B]/40 font-extrabold uppercase">
+                                  Training Available
+                                </span>
+                              ) : (
+                                <span className="bg-red-500/15 text-red-600 dark:text-red-400 px-2.5 py-1 rounded border border-red-500/40 font-extrabold uppercase">
+                                  Training Coverage Gap
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -1395,6 +1570,100 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MANAGE COMPETENCY MAPPINGS FOR COURSE MODAL */}
+      {showCourseCompModal && selectedCourseForComp && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 font-mono">
+          <div className="w-full max-w-lg p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[var(--text-primary)] uppercase">Manage Course Competencies</h3>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Map catalog competencies to <strong>{selectedCourseForComp.courseName}</strong> ({selectedCourseForComp.courseCode}).
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCourseCompModal(false)}
+                className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            {/* Current Mapped Competencies */}
+            <div className="space-y-2">
+              <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)]">Currently Mapped Competencies</label>
+              {(selectedCourseForComp.competencyIds && selectedCourseForComp.competencyIds.length > 0) ? (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {selectedCourseForComp.competencyIds.map((cId, idx) => {
+                    const cName = (selectedCourseForComp.competencyNames || [])[idx] || cId;
+                    return (
+                      <div key={cId} className="flex items-center justify-between p-2.5 rounded bg-[var(--panel-bg)] border border-[var(--border-main)] text-xs font-bold">
+                        <span className="text-purple-600 dark:text-purple-400">{cName}</span>
+                        <button
+                          onClick={() => handleRemoveCompetencyFromCourse(selectedCourseForComp.id, cId)}
+                          className="px-2 py-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/40 text-[10px] uppercase hover:bg-red-500 hover:text-white"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-3 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-500 italic font-bold">
+                  No competencies currently mapped to this course.
+                </div>
+              )}
+            </div>
+
+            {/* Add New Competency Mapping Form */}
+            <div className="border-t border-[var(--border-main)] pt-3 space-y-2 text-xs">
+              <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)]">Add Mapped Competency</label>
+              <div className="flex gap-2">
+                <select
+                  value={courseCompToAdd}
+                  onChange={(e) => setCourseCompToAdd(e.target.value)}
+                  className="flex-1 p-2 rounded border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                >
+                  <option value="">-- Select Competency --</option>
+                  {competencies.map((c) => {
+                    const isMapped = (selectedCourseForComp.competencyIds || []).includes(c.id);
+                    return (
+                      <option key={c.id} value={c.id} disabled={isMapped}>
+                        {c.name} ({c.category}){isMapped ? ' — Mapped' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  type="button"
+                  disabled={!courseCompToAdd}
+                  onClick={() => {
+                    if (courseCompToAdd) {
+                      handleAddCompetencyToCourse(selectedCourseForComp.id, courseCompToAdd);
+                      setCourseCompToAdd('');
+                    }
+                  }}
+                  className="px-4 py-2 rounded bg-purple-600 text-white font-extrabold text-xs border border-[var(--border-main)] disabled:opacity-50 cursor-pointer"
+                >
+                  Add Mapping
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCourseCompModal(false)}
+                className="px-4 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-primary)] font-bold text-xs border border-[var(--border-main)] cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

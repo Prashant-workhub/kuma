@@ -157,66 +157,87 @@ export function LearningAnalytics() {
                 <th className="px-5 py-3 font-medium">Trainee</th>
                 <th className="px-4 py-3 font-medium">Competency</th>
                 <th className="px-4 py-3 text-center font-medium">Current Level</th>
-                <th className="px-4 py-3 text-center font-medium">Target Level</th>
+                <th className="px-4 py-3 text-center font-medium">Required Level</th>
                 <th className="px-4 py-3 text-center font-medium">Gap</th>
-                <th className="px-4 py-3 text-center font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Recommended Training</th>
                 <th className="px-5 py-3 text-right font-medium">Priority</th>
               </tr>
             </thead>
             <tbody>
-              {traineeGaps.map((item) => (
-                <tr key={item.id} className="border-b border-line last:border-0 hover:bg-panel/40 transition-colors">
-                  <td className="px-5 py-4 font-bold text-ink">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar initials={initials(item.traineeName)} size="sm" accent="cyan" />
-                      <span>{item.traineeName}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 font-bold text-brand-purple">{item.competency}</td>
-                  <td className="px-4 py-4 text-center">
-                    <div className="inline-flex flex-col items-center">
-                      <span className="font-bold text-ink">{item.currentLevel}</span>
-                      <span className="text-[9px] text-muted">{item.currentSource}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <select
-                      value={item.targetLevel}
-                      onChange={(e) => handleUpdateTarget(item.id, e.target.value as SkillProficiencyLevel)}
-                      className="rounded border border-line bg-card px-2 py-1 text-xs font-bold text-ink outline-none cursor-pointer"
-                    >
-                      {['Beginner', 'Intermediate', 'Advanced', 'Expert'].map((lvl) => (
-                        <option key={lvl} value={lvl}>{lvl}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-4 text-center font-black text-ink">
-                    <span className={cn('metric px-2 py-0.5 rounded', item.gap === 0 ? 'text-brand-emerald bg-brand-emerald/15' : 'text-brand-rose bg-brand-rose/15')}>
-                      {item.gap} {item.gap === 1 ? 'Level' : 'Levels'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <span className={cn(
-                      'px-2.5 py-1 rounded text-[10px] font-black uppercase border',
-                      item.gap === 0
-                        ? 'bg-brand-emerald/15 text-brand-emerald border-brand-emerald/40'
-                        : item.gap === 1
-                        ? 'bg-brand-gold/15 text-brand-gold border-brand-gold/40'
-                        : 'bg-brand-rose/15 text-brand-rose border-brand-rose/40'
-                    )}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <span className={cn(
-                      'px-2 py-0.5 rounded text-[10px] font-extrabold uppercase',
-                      item.priority === 'Low' ? 'bg-panel text-muted' : item.priority === 'Medium' ? 'bg-brand-gold text-[#111]' : 'bg-brand-rose text-white'
-                    )}>
-                      {item.priority}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {traineeGaps.map((item) => {
+                // Map competency to active course
+                let recommendedTraining = '';
+                let isCoverageGap = false;
+
+                if (item.gap === 0) {
+                  recommendedTraining = 'Target Level Met';
+                } else if (item.competency.includes('Data Analysis')) {
+                  recommendedTraining = 'Advanced Data Analytics & Insights (DA101)';
+                } else if (item.competency.includes('Python')) {
+                  recommendedTraining = 'Python Scripting & Core Algorithms (CS301)';
+                } else if (item.competency.includes('Communication')) {
+                  recommendedTraining = 'Professional Communication & Reporting (CM103)';
+                } else {
+                  isCoverageGap = true;
+                  recommendedTraining = 'Training coverage gap';
+                }
+
+                return (
+                  <tr key={item.id} className="border-b border-line last:border-0 hover:bg-panel/40 transition-colors">
+                    <td className="px-5 py-4 font-bold text-ink">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar initials={initials(item.traineeName)} size="sm" accent="cyan" />
+                        <span>{item.traineeName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 font-bold text-brand-purple">{item.competency}</td>
+                    <td className="px-4 py-4 text-center">
+                      <div className="inline-flex flex-col items-center">
+                        <span className="font-bold text-ink">{item.currentLevel}</span>
+                        <span className="text-[9px] text-muted">{item.currentSource}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <select
+                        value={item.targetLevel}
+                        onChange={(e) => handleUpdateTarget(item.id, e.target.value as SkillProficiencyLevel)}
+                        className="rounded border border-line bg-card px-2 py-1 text-xs font-bold text-ink outline-none cursor-pointer"
+                      >
+                        {['Beginner', 'Intermediate', 'Advanced', 'Expert'].map((lvl) => (
+                          <option key={lvl} value={lvl}>{lvl}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-4 text-center font-black text-ink">
+                      <span className={cn('metric px-2 py-0.5 rounded', item.gap === 0 ? 'text-brand-emerald bg-brand-emerald/15' : 'text-brand-rose bg-brand-rose/15')}>
+                        {item.gap} {item.gap === 1 ? 'Level' : 'Levels'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 font-bold">
+                      {item.gap === 0 ? (
+                        <span className="text-brand-emerald text-xs">Target Level Met</span>
+                      ) : isCoverageGap ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-brand-rose/15 text-brand-rose border border-brand-rose/30">
+                          Training Coverage Gap
+                        </span>
+                      ) : (
+                        <div className="space-y-0.5">
+                          <div className="text-xs font-bold text-brand-purple">{recommendedTraining}</div>
+                          <div className="text-[10px] text-muted font-normal">Addresses {item.competency} gap ({item.currentLevel} ➔ {item.targetLevel})</div>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <span className={cn(
+                        'px-2 py-0.5 rounded text-[10px] font-extrabold uppercase',
+                        item.priority === 'Low' ? 'bg-panel text-muted' : item.priority === 'Medium' ? 'bg-brand-gold text-[#111]' : 'bg-brand-rose text-white'
+                      )}>
+                        {item.priority}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
