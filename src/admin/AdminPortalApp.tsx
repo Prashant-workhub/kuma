@@ -27,7 +27,9 @@ import {
   Trash2,
   Edit3,
   Check,
-  XCircle
+  XCircle,
+  MessageSquare,
+  Bug
 } from 'lucide-react';
 import { PageId, CatalogCompetency, TrainingCertificate, TrainingEnrollment, OrgDepartment, OrgDesignation, DesignationCompetencyRequirement, SkillProficiencyLevel } from '../types';
 import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, DEMO_TRAINEES, DEMO_ORG_DEPARTMENTS_FULL, DEMO_ORG_DESIGNATIONS_FULL, seedDemoEnvironment, resetDemoEnvironment } from '../utils/demoDataSeeder';
@@ -423,6 +425,7 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
               { id: 'admin-assessments', label: 'ASSESSMENTS', icon: Award },
               { id: 'admin-analytics', label: 'ANALYTICS', icon: TrendingUp },
               { id: 'admin-certificates', label: 'CERTIFICATES', icon: ShieldCheck },
+              { id: 'admin-feedback', label: 'TELEMETRY & BUGS', icon: MessageSquare },
               { id: 'admin-settings', label: 'SETTINGS', icon: Settings }
             ].map((item) => {
               const Icon = item.icon;
@@ -1504,6 +1507,78 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TELEMETRY & BUG REPORTS TAB */}
+      {currentTab === 'feedback' && (
+        <div className="space-y-6 font-mono">
+          <div>
+            <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">TELEMETRY & BUG REPORTS</h1>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">Review feedback, bug reports, and feature suggestions submitted by trainees, trainers, and users.</p>
+          </div>
+
+          <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold uppercase text-[var(--text-primary)]">SUBMITTED FEEDBACK & BUG REPORTS</h3>
+              <span className="text-xs text-[var(--text-secondary)]">Live Records</span>
+            </div>
+
+            {(() => {
+              const rawLocal = typeof localStorage !== 'undefined' ? localStorage.getItem('kuma_feedback_telemetry') : null;
+              const localFeedback: Array<{
+                id: string;
+                type: 'bug' | 'feature';
+                subject: string;
+                description: string;
+                email: string;
+                userId: string;
+                submittedAt?: string;
+                deviceInfo?: { userAgent?: string; screenResolution?: string; viewportSize?: string };
+              }> = rawLocal ? JSON.parse(rawLocal) : [];
+
+              if (localFeedback.length === 0) {
+                return (
+                  <div className="p-8 text-center rounded-[6px] bg-[var(--panel-bg)] border-2 border-dashed border-[var(--border-main)] space-y-2">
+                    <MessageSquare size={32} className="mx-auto text-[var(--text-secondary)] opacity-50" />
+                    <div className="text-xs font-bold text-[var(--text-primary)] uppercase">No Telemetry Reports Submitted Yet</div>
+                    <p className="text-[11px] text-[var(--text-secondary)] max-w-sm mx-auto">
+                      Submissions from the floating Telemetry Widget in the bottom-right corner will appear here automatically.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {localFeedback.map((item) => (
+                    <div key={item.id} className="p-4 rounded-[6px] bg-[var(--panel-bg)] border-2 border-[var(--border-main)] shadow-paper-xs space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                            item.type === 'bug' ? 'bg-red-500/15 text-red-500 border-red-500' : 'bg-purple-500/15 text-purple-400 border-purple-500'
+                          }`}>
+                            {item.type === 'bug' ? 'Bug Report' : 'Feature Request'}
+                          </span>
+                          <span className="font-extrabold text-[var(--text-primary)]">{item.subject}</span>
+                        </div>
+                        <span className="text-[10px] text-[var(--text-secondary)]">{item.submittedAt ? new Date(item.submittedAt).toLocaleString() : 'Recent'}</span>
+                      </div>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed bg-[var(--card-bg)] p-3 rounded border border-[var(--border-main)]">
+                        {item.description}
+                      </p>
+                      <div className="flex items-center justify-between text-[10px] text-[var(--text-secondary)] pt-1 border-t border-[var(--border-main)]/50">
+                        <div>Submitted by: <strong className="text-[var(--text-primary)]">{item.email}</strong> (User ID: {item.userId})</div>
+                        {item.deviceInfo?.screenResolution && (
+                          <div>Device: {item.deviceInfo.screenResolution} • {item.deviceInfo.viewportSize}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
