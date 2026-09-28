@@ -30,7 +30,7 @@ export default function CertificateModal({ certificate, onClose }: CertificateMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md overflow-y-auto select-none print:p-0 print:bg-white print:static">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md overflow-y-auto select-none print:p-0 print:bg-white print:static">
       <div className="w-full max-w-3xl rounded-[8px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-2xl p-6 md:p-8 space-y-6 relative print:border-none print:shadow-none print:w-full print:max-w-none print:p-0">
         
         {/* Top Header Controls (Hidden during print) */}
