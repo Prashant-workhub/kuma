@@ -8,6 +8,7 @@ import { Toaster } from './components/ui/Toaster'
 import { LandingHero } from './components/landing/LandingHero'
 import { PortalLayout } from './components/layout/PortalLayout'
 import { OverviewDashboard } from './views/OverviewDashboard'
+import { MyTraineesView } from './views/MyTraineesView'
 import { MyCourses } from './views/MyCourses'
 import { CourseProgress } from './views/CourseProgress'
 import { StudentDoubtsManager } from './views/StudentDoubtsManager'
@@ -23,6 +24,8 @@ function ViewRouter({ active, onNavigate }: { active: ViewId; onNavigate: (id: V
   switch (active) {
     case 'overview':
       return <OverviewDashboard onNavigate={onNavigate} />
+    case 'my-trainees':
+      return <MyTraineesView />
     case 'courses':
       return <MyCourses onNavigate={onNavigate} />
     case 'progress':

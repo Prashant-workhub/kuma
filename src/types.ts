@@ -14,6 +14,7 @@ export type PageId =
   | 'skill-gap'
   | 'certificates'
   | 'verify-certificate'
+  | 'find-trainer'
   | 'auth'
   | 'faculty-login'
   | 'faculty-dashboard'
@@ -610,5 +611,51 @@ export interface TrainingCertificate {
   verificationUrl: string;
   competenciesAddressed?: string[];
   enrollmentId?: string;
+}
+
+export interface TrainerCompetencyItem {
+  id: string;
+  name: string;
+  category?: CompetencyCategory;
+  description?: string;
+  level: SkillProficiencyLevel;
+  canTrain: boolean;
+}
+
+export interface TrainerProfile {
+  uid: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  organization?: string;
+  department?: string;
+  designation?: string;
+  yearsOfExperience?: number;
+  qualification?: string;
+  bio?: string;
+  areaOfExpertise?: string;
+  specialization?: string;
+  skills?: string[];
+  trainerExperience?: string;
+  profilePhoto?: string;
+  competencies?: TrainerCompetencyItem[];
+  trainingPrograms?: string[];
+  trainingTopics?: string[];
+  preferredTrainingMode?: 'Online' | 'Offline' | 'Hybrid';
+  certifications?: string[];
+  createdAt?: any;
+}
+
+export interface TrainerAssignmentRecord {
+  id: string;
+  traineeId: string;
+  traineeName: string;
+  traineeEmail?: string;
+  trainerId: string;
+  trainerName: string;
+  trainerEmail?: string;
+  organizationId?: string;
+  status: 'Pending' | 'Active' | 'Completed' | 'Rejected';
+  createdAt: string;
 }
 

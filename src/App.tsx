@@ -54,6 +54,7 @@ import PricingView from './components/PricingView';
 import AuthView from './components/AuthView';
 import ProfileView from './components/ProfileView';
 import SkillGapView from './components/SkillGapView';
+import FindTrainerDiscoveryView from './components/FindTrainerDiscoveryView';
 import CertificatesView from './components/CertificatesView';
 import CertificateVerificationView from './components/CertificateVerificationView';
 import LandingView from './components/LandingView';
@@ -767,6 +768,14 @@ export default function App() {
             setActivePage={setActivePage}
             theme={theme}
             onTakeAssessment={(quizToTake) => setActiveAssessmentQuiz(quizToTake)}
+          />
+        );
+      case 'find-trainer':
+        return (
+          <FindTrainerDiscoveryView
+            settings={settings}
+            setActivePage={setActivePage}
+            theme={theme}
           />
         );
       case 'certificates':

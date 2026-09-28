@@ -9,6 +9,7 @@ import {
   Megaphone,
   MessagesSquare,
   Settings,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import type { ViewId } from '../../types'
@@ -23,6 +24,7 @@ export interface NavItem {
 
 export const NAV: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, eyebrow: 'Dashboard', group: 'Training' },
+  { id: 'my-trainees', label: 'My Trainees', icon: Users, eyebrow: 'Assigned Trainees', group: 'Training' },
   { id: 'courses', label: 'Training Programs', icon: BookOpen, eyebrow: 'Programs', group: 'Training' },
   { id: 'progress', label: 'Program Delivery', icon: BarChart3, eyebrow: 'Delivery', group: 'Training' },
   { id: 'doubts', label: 'Trainee Queries', icon: MessagesSquare, eyebrow: 'Queries manager', group: 'Training' },

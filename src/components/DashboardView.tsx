@@ -1,10 +1,10 @@
 /**
  * Project Kuma Capacity Connect - Trainee Dashboard
  * Clean, Flat, Pill-based LMS Interface inspired by Tutedude Dashboard design architecture.
- * Fully dynamic user-driven state initialization with 0 fake/hardcoded numbers.
+ * Dynamic user-driven state with My Trainer integration.
  */
 
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   Award,
@@ -15,13 +15,16 @@ import {
   BookOpen,
   CheckCircle2,
   TrendingUp,
-  GraduationCap
+  GraduationCap,
+  Users,
+  User
 } from 'lucide-react';
-import { PageId, Lecture, Note, Source, Quiz, UserSettings } from '../types';
+import { PageId, Lecture, Note, Source, Quiz, UserSettings, TrainerProfile, TrainerAssignmentRecord } from '../types';
 import { Button, Badge, Card } from './bauhaus';
 import { getUserCertificates } from '../utils/certificateUtils';
 import { getUserEnrollments } from '../utils/enrollmentUtils';
 import { LEVEL_TO_NUMERIC } from '../utils/competencyUtils';
+import { getTraineeSelectedTrainer } from '../services/trainerDiscoveryService';
 
 interface DashboardViewProps {
   setActivePage: (page: PageId) => void;
@@ -56,10 +59,28 @@ export default function DashboardView({
   };
   const userId = userProfile.uid || '';
 
-  // Real user specific records (0 for new user, no fallback leak)
+  // Real user specific records
   const userCertificates = useMemo(() => getUserCertificates(userId), [userId]);
   const userEnrollments = useMemo(() => getUserEnrollments(userId), [userId]);
   const userCompetencies = useMemo(() => userProfile.competencies || [], [userProfile.competencies]);
+
+  // Selected Trainer State
+  const [selectedTrainerData, setSelectedTrainerData] = useState<{
+    assignment: TrainerAssignmentRecord;
+    trainer: TrainerProfile;
+  } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (userId) {
+      getTraineeSelectedTrainer(userId).then(res => {
+        if (isMounted) setSelectedTrainerData(res);
+      }).catch(err => {
+        console.warn('[Dashboard] Trainer lookup warning:', err);
+      });
+    }
+    return () => { isMounted = false; };
+  }, [userId]);
 
   // Calculate active skill gaps
   const activeGapsCount = useMemo(() => {
@@ -124,11 +145,19 @@ export default function DashboardView({
             </button>
             
             <button
+              onClick={() => setActivePage('find-trainer')}
+              className="rounded-full px-6 py-2.5 bg-[#38BDF8] hover:bg-[#0284C7] text-white font-semibold text-xs sm:text-sm transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+            >
+              <Users className="h-4 w-4" />
+              <span>Find a Trainer</span>
+            </button>
+
+            <button
               onClick={() => setActivePage('certificates')}
               className="rounded-full px-6 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold text-xs sm:text-sm border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Award className="h-4 w-4 text-[#992E9D]" />
-              <span>My Digital Certificates ({userCertificates.length})</span>
+              <span>My Certificates ({userCertificates.length})</span>
             </button>
           </div>
         </div>
@@ -204,22 +233,22 @@ export default function DashboardView({
           </span>
         </div>
 
-        {/* Stat Card 2: Certificates */}
+        {/* Stat Card 2: Find a Trainer */}
         <div 
-          onClick={() => setActivePage('certificates')}
-          className="p-5 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#161B22] shadow-sm hover:border-blue-500 cursor-pointer transition-all flex items-center justify-between group"
+          onClick={() => setActivePage('find-trainer')}
+          className="p-5 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#161B22] shadow-sm hover:border-[#38BDF8] cursor-pointer transition-all flex items-center justify-between group"
         >
           <div>
             <div className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              My Certificates
+              Assigned Trainer
             </div>
             <div className="text-lg font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
-              <Award className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform" />
-              <span>{userCertificates.length > 0 ? `${userCertificates.length} Earned` : '0 Earned'}</span>
+              <Users className="h-5 w-5 text-[#38BDF8] group-hover:scale-110 transition-transform" />
+              <span className="truncate max-w-[120px]">{selectedTrainerData ? selectedTrainerData.trainer.fullName : 'Find Trainer'}</span>
             </div>
           </div>
-          <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-            CREDENTIALS
+          <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-sky-500/10 text-[#38BDF8] border border-sky-500/20">
+            {selectedTrainerData ? 'ASSIGNED' : 'DISCOVER'}
           </span>
         </div>
 
@@ -242,28 +271,98 @@ export default function DashboardView({
           </span>
         </div>
 
-        {/* Stat Card 4: Skill Gaps */}
+        {/* Stat Card 4: Certificates */}
         <div 
-          onClick={() => setActivePage('skill-gap')}
+          onClick={() => setActivePage('certificates')}
           className="p-5 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#161B22] shadow-sm hover:border-emerald-500 cursor-pointer transition-all flex items-center justify-between group"
         >
           <div>
             <div className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Training Enrolled
+              My Certificates
             </div>
             <div className="text-lg font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-emerald-500 group-hover:scale-110 transition-transform" />
-              <span>{userEnrollments.length} Programs</span>
+              <Award className="h-5 w-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+              <span>{userCertificates.length > 0 ? `${userCertificates.length} Earned` : '0 Earned'}</span>
             </div>
           </div>
           <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            TRAINING
+            CREDENTIALS
           </span>
         </div>
 
       </div>
 
-      {/* 3. ASSIGNED COMPETENCY ASSESSMENTS SECTION */}
+      {/* 3. MY TRAINER SECTION */}
+      <div className="p-6 rounded-[12px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#161B22] shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-[#992e9d]" />
+            <h3 className="font-heading font-extrabold text-base sm:text-lg text-slate-900 dark:text-white uppercase tracking-tight">
+              My Trainer
+            </h3>
+          </div>
+          <button
+            onClick={() => setActivePage('find-trainer')}
+            className="text-xs font-semibold text-[#992e9d] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>Find a Trainer</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {selectedTrainerData ? (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-[10px] bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-4">
+              {selectedTrainerData.trainer.profilePhoto ? (
+                <img
+                  src={selectedTrainerData.trainer.profilePhoto}
+                  alt={selectedTrainerData.trainer.fullName}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-[#992e9d]"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 font-bold text-sm flex items-center justify-center border border-purple-200 dark:border-purple-800">
+                  {selectedTrainerData.trainer.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+              )}
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                  {selectedTrainerData.trainer.fullName}
+                </h4>
+                <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold">
+                  {selectedTrainerData.trainer.designation || 'Senior Faculty'} • {selectedTrainerData.trainer.department || 'Training Unit'}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Expertise: {selectedTrainerData.trainer.areaOfExpertise || 'Technical Training'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActivePage('find-trainer')}
+                className="px-4 py-2 rounded-full bg-[#992e9d] hover:bg-purple-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+              >
+                View Profile / Change
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 text-center rounded-[10px] border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              No trainer selected yet.
+            </p>
+            <button
+              onClick={() => setActivePage('find-trainer')}
+              className="px-5 py-2 rounded-full bg-[#992e9d] hover:bg-purple-700 text-white text-xs font-semibold shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Find a Trainer</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 4. ASSIGNED COMPETENCY ASSESSMENTS SECTION */}
       <div className="space-y-4">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
           <div>

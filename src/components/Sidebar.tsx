@@ -15,7 +15,8 @@ import {
   Target,
   Award,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Users
 } from 'lucide-react';
 import { PageId, UserSettings } from '../types';
 import AILogo from './AILogo';
@@ -47,6 +48,7 @@ export default function Sidebar({
   // Grouped Menu Navigation
   const workspaceItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'find-trainer', label: 'Find a Trainer', icon: Users },
     { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Target },
     { id: 'certificates', label: 'My Certificates', icon: Award },
     { id: 'verify-certificate', label: 'Verify Certificate', icon: ShieldCheck }

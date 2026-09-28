@@ -7,6 +7,7 @@
 
 export type ViewId =
   | 'overview'
+  | 'my-trainees'
   | 'courses'
   | 'progress'
   | 'doubts'

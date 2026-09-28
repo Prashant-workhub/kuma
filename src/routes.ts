@@ -16,6 +16,7 @@ export const PAGE_TO_PATH_MAP: Record<PageId, string> = {
   'skill-gap': '/skill-gap',
   certificates: '/certificates',
   'verify-certificate': '/verify/certificate',
+  'find-trainer': '/trainee/trainers',
   auth: '/auth',
   'faculty-login': '/faculty/login',
   'faculty-dashboard': '/faculty/dashboard',
