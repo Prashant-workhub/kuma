@@ -37,30 +37,45 @@ export default function FeedbackWidget({ theme }: FeedbackWidgetProps) {
 
     try {
       const currentUser = auth.currentUser;
-      const feedbackData = {
+      const feedbackRecord = {
+        id: `telemetry-${Date.now()}`,
         type,
         subject: subject.trim(),
         description: description.trim(),
-        email: currentUser?.email || email.trim() || 'anonymous@kuma.ai',
-        userId: currentUser?.uid || 'anonymous',
+        email: currentUser?.email || email.trim() || 'anonymous@capacityconnect.in',
+        userId: currentUser?.uid || 'anonymous-user',
         deviceInfo: {
           userAgent: navigator.userAgent,
           screenResolution: `${window.screen.width}x${window.screen.height}`,
           viewportSize: `${window.innerWidth}x${window.innerHeight}`
         },
-        createdAt: serverTimestamp()
+        submittedAt: new Date().toISOString()
       };
 
-      const feedbackRef = collection(db, 'feedback');
-      await addDoc(feedbackRef, feedbackData);
+      try {
+        const feedbackRef = collection(db, 'feedback');
+        await addDoc(feedbackRef, {
+          ...feedbackRecord,
+          createdAt: serverTimestamp()
+        });
+      } catch (firestoreErr) {
+        console.warn('Firestore write warning, storing feedback locally:', firestoreErr);
+        // Fallback to local storage persistence
+        if (typeof localStorage !== 'undefined') {
+          const raw = localStorage.getItem('kuma_feedback_telemetry');
+          const existing = raw ? JSON.parse(raw) : [];
+          existing.unshift(feedbackRecord);
+          localStorage.setItem('kuma_feedback_telemetry', JSON.stringify(existing));
+        }
+      }
       
       setSubmitted(true);
       setSubject('');
       setDescription('');
       setEmail('');
     } catch (err: any) {
-      console.error('Failed to submit feedback:', err);
-      setErrorMsg(err.message || 'Submission failed. Please try again.');
+      console.error('Failed to process feedback:', err);
+      setErrorMsg('Telemetry process encountered an issue. Please retry.');
     } finally {
       setLoading(false);
     }

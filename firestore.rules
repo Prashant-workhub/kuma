@@ -77,6 +77,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Feedback / Telemetry collection
+    match /feedback/{feedbackId} {
+      allow create: if true; // Allow feedback/bug report submission for both authenticated and guest users
+      allow read, update, delete: if isAdmin();
+    }
+
     // Default deny all other paths
     match /{document=**} {
       allow read, write: if isAdmin();
