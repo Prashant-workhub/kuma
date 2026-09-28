@@ -300,21 +300,21 @@ export default function ProfileView({
   };
 
   // Visual Step Progress Bar (1-4 blocks)
-  const renderProgressBar = (numLevel: number = 2, activeColor: string = 'bg-[#FFC400]') => {
+  const renderProgressBar = (numLevel: number = 2, activeColor: string = 'bg-[#992e9d]') => {
     const blocks = [1, 2, 3, 4];
     return (
-      <div className="flex items-center gap-1.5 font-mono text-xs">
+      <div className="flex items-center gap-1.5 text-xs">
         <div className="flex items-center gap-1">
           {blocks.map((b) => (
             <div
               key={b}
-              className={`h-3 w-5 rounded-[2px] border border-[var(--border-main)] transition-all ${
-                b <= numLevel ? `${activeColor} shadow-paper-xs` : 'bg-gray-200 dark:bg-neutral-800'
+              className={`h-2.5 w-3.5 rounded-sm transition-all ${
+                b <= numLevel ? activeColor : 'bg-slate-200 dark:bg-slate-800'
               }`}
             />
           ))}
         </div>
-        <span className="text-[11px] font-extrabold text-[var(--text-secondary)] ml-1">
+        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
           {numLevel}/4
         </span>
       </div>
@@ -648,22 +648,22 @@ export default function ProfileView({
                       </div>
 
                       {/* 3 Columns: DECLARED LEVEL | ASSESSED LEVEL | TARGET LEVEL */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                         
                         {/* 1. DECLARED LEVEL (User Editable) */}
-                        <div className="p-3 rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-1.5">
+                        <div className="p-3.5 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#080D1A] space-y-2 overflow-hidden">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">
+                            <span className="text-[10px] font-semibold uppercase text-slate-400">
                               DECLARED LEVEL
                             </span>
-                            <span className="text-[9px] font-mono text-[var(--text-secondary)] italic">Self-Selected</span>
+                            <span className="text-[9px] text-slate-400 italic">Self-Selected</span>
                           </div>
-                          <div className="flex items-center justify-between gap-2">
-                            {renderProgressBar(numLvl)}
+                          <div className="flex flex-wrap items-center justify-between gap-1.5">
+                            {renderProgressBar(numLvl, 'bg-amber-500')}
                             <select
                               value={comp.level}
                               onChange={(e) => handleUpdateCompetencyLevel(comp.id, e.target.value as SkillProficiencyLevel)}
-                              className={`rounded-[4px] border ${style.border} ${style.bg} ${style.text} p-1 text-xs font-mono font-bold cursor-pointer outline-none`}
+                              className="rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0C1220] px-2.5 py-1 text-xs font-semibold text-slate-900 dark:text-white cursor-pointer outline-none max-w-full truncate"
                             >
                               {PROFICIENCY_LEVELS.map((lvl) => (
                                 <option key={lvl} value={lvl}>{lvl}</option>
@@ -673,46 +673,46 @@ export default function ProfileView({
                         </div>
 
                         {/* 2. LATEST ASSESSED LEVEL (From Competency Assessment) */}
-                        <div className="p-3 rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-1.5">
+                        <div className="p-3.5 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#080D1A] space-y-2 overflow-hidden">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">
+                            <span className="text-[10px] font-semibold uppercase text-slate-400">
                               LATEST ASSESSED LEVEL
                             </span>
                             {comp.latestScorePercentage !== undefined && (
-                              <span className="text-[10px] font-mono font-bold text-[#9C27B0]">
+                              <span className="text-[10px] font-semibold text-[#992e9d] dark:text-purple-300">
                                 Score: {comp.latestScorePercentage}%
                               </span>
                             )}
                           </div>
 
                           {comp.latestAssessedLevel ? (
-                            <div className="flex items-center justify-between gap-2">
-                              {renderProgressBar(comp.latestAssessedNumericLevel || 2)}
-                              <span className="text-xs font-mono font-extrabold uppercase text-[#19B56B] dark:text-[#00E676] px-2 py-0.5 rounded border border-[#19B56B]/40 bg-[#19B56B]/10">
+                            <div className="flex flex-wrap items-center justify-between gap-1.5">
+                              {renderProgressBar(comp.latestAssessedNumericLevel || 2, 'bg-emerald-500')}
+                              <span className="text-xs font-semibold uppercase text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40">
                                 {comp.latestAssessedLevel}
                               </span>
                             </div>
                           ) : (
-                            <div className="text-[11px] font-mono text-[var(--text-secondary)] italic pt-1">
+                            <div className="text-[11px] text-slate-400 italic pt-1">
                               No assessment taken yet.
                             </div>
                           )}
                         </div>
 
                         {/* 3. TARGET LEVEL (User Configurable) */}
-                        <div className="p-3 rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-1.5">
+                        <div className="p-3.5 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#080D1A] space-y-2 overflow-hidden">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">
+                            <span className="text-[10px] font-semibold uppercase text-slate-400">
                               TARGET LEVEL
                             </span>
-                            <span className="text-[9px] font-mono text-[#9C27B0] font-bold">Configurable</span>
+                            <span className="text-[9px] text-[#992e9d] dark:text-purple-300 font-semibold">Configurable</span>
                           </div>
-                          <div className="flex items-center justify-between gap-2">
-                            {renderProgressBar(comp.targetNumericLevel || LEVEL_TO_NUM[comp.targetLevel || 'Advanced'] || 3, 'bg-[#9C27B0]')}
+                          <div className="flex flex-wrap items-center justify-between gap-1.5">
+                            {renderProgressBar(comp.targetNumericLevel || LEVEL_TO_NUM[comp.targetLevel || 'Advanced'] || 3, 'bg-[#992e9d]')}
                             <select
                               value={comp.targetLevel || 'Advanced'}
                               onChange={(e) => handleUpdateTargetCompetencyLevel(comp.id, e.target.value as SkillProficiencyLevel)}
-                              className="rounded-[4px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] p-1 text-xs font-mono font-bold text-[var(--text-primary)] cursor-pointer outline-none"
+                              className="rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0C1220] px-2.5 py-1 text-xs font-semibold text-slate-900 dark:text-white cursor-pointer outline-none max-w-full truncate"
                             >
                               {PROFICIENCY_LEVELS.map((lvl) => (
                                 <option key={lvl} value={lvl}>{lvl}</option>
