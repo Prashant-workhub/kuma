@@ -41,6 +41,7 @@ import AILogo from './AILogo';
 import { Button, Card, Badge, Input } from './bauhaus';
 import { seedDemoEnvironment } from '../utils/demoDataSeeder';
 import TraineeRegistrationView from './TraineeRegistrationView';
+import TrainerRegistrationView from './TrainerRegistrationView';
 
 interface AuthViewProps {
   onLoginSuccess: (userData: { fullName: string; emailAddress: string; role?: string }) => void;
@@ -540,6 +541,23 @@ export default function AuthView({
         onNavigateToTrainerSignup={() => {
           setMode('signup');
           setIsFacultyMode(true);
+        }}
+        theme={theme}
+      />
+    );
+  }
+
+  if (mode === 'signup' && isFacultyMode) {
+    return (
+      <TrainerRegistrationView
+        onLoginSuccess={onLoginSuccess}
+        onNavigateToLogin={() => {
+          setMode('login');
+          setIsFacultyMode(true);
+        }}
+        onNavigateToTraineeSignup={() => {
+          setMode('signup');
+          setIsFacultyMode(false);
         }}
         theme={theme}
       />
