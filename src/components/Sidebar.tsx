@@ -121,8 +121,8 @@ export default function Sidebar({
         {/* Workspace section */}
         <div className="space-y-1">
           {!isCollapsed && (
-            <div className="px-3.5 pb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              PORTAL WORKSPACE
+            <div className="px-3 pb-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 tracking-normal">
+              Workspace
             </div>
           )}
 
@@ -142,8 +142,8 @@ export default function Sidebar({
         {/* Account section */}
         <div className="space-y-1">
           {!isCollapsed && (
-            <div className="px-3.5 pb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              ACCOUNT & CONTROLS
+            <div className="px-3 pb-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 tracking-normal">
+              Account
             </div>
           )}
 
