@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { pageIdToPath, pathToPageId } from './routes';
 import { onAuthStateChanged, signOut, updateProfile as updateFirebaseProfile } from 'firebase/auth';
@@ -43,20 +43,12 @@ import {
 import { updateEnrollmentProgress } from './utils/enrollmentUtils';
 import { COURSES } from './teacher-portal/lib/mockData';
 
-// Component imports
+// Core component imports
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import DashboardView from './components/DashboardView';
-import NotificationsView from './components/NotificationsView';
-import SettingsView from './components/SettingsView';
-import SupportView from './components/SupportView';
-import PricingView from './components/PricingView';
 import AuthView from './components/AuthView';
 import ProfileView from './components/ProfileView';
-import SkillGapView from './components/SkillGapView';
-import FindTrainerDiscoveryView from './components/FindTrainerDiscoveryView';
-import CertificatesView from './components/CertificatesView';
-import CertificateVerificationView from './components/CertificateVerificationView';
 import LandingView from './components/LandingView';
 import OnboardingView from './components/OnboardingView';
 import BruteLoader from './components/BruteLoader';
@@ -67,12 +59,20 @@ import AILogo from './components/AILogo';
 import GuidedTour from './components/GuidedTour';
 import NotificationPermissionBanner from './components/NotificationPermissionBanner';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
-
-// Faculty & Admin Portal Imports
 import { subscribeFacultyDoubts, generateTeacherCode } from './services/teacherDoubtService';
 import FacultyOnboardingView from './components/faculty/FacultyOnboardingView';
-import TeacherPortalApp from './teacher-portal/TeacherPortalApp';
-import AdminPortalApp from './admin/AdminPortalApp';
+
+// Code Splitting (React.lazy dynamic imports for heavy portals and sub-views)
+const TeacherPortalApp = lazy(() => import('./teacher-portal/TeacherPortalApp'));
+const AdminPortalApp = lazy(() => import('./admin/AdminPortalApp'));
+const FindTrainerDiscoveryView = lazy(() => import('./components/FindTrainerDiscoveryView'));
+const SkillGapView = lazy(() => import('./components/SkillGapView'));
+const CertificatesView = lazy(() => import('./components/CertificatesView'));
+const CertificateVerificationView = lazy(() => import('./components/CertificateVerificationView'));
+const NotificationsView = lazy(() => import('./components/NotificationsView'));
+const SettingsView = lazy(() => import('./components/SettingsView'));
+const SupportView = lazy(() => import('./components/SupportView'));
+const PricingView = lazy(() => import('./components/PricingView'));
 
 
 export default function App() {
@@ -989,18 +989,20 @@ export default function App() {
   if (sessionUser && userRole === 'admin') {
     return (
       <ErrorBoundary theme={theme}>
-        <AdminPortalApp
-          user={{
-            uid: sessionUser.uid,
-            fullName: settings.profile.fullName || sessionUser.fullName,
-            emailAddress: sessionUser.emailAddress,
-            organization: settings.profile.organization || 'Acme Digital Services'
-          }}
-          activePage={activePage}
-          setActivePage={setActivePage}
-          onSignOut={handleLogOut}
-          theme={theme}
-        />
+        <Suspense fallback={<BruteLoader size="lg" message="Loading Admin Workspace..." />}>
+          <AdminPortalApp
+            user={{
+              uid: sessionUser.uid,
+              fullName: settings.profile.fullName || sessionUser.fullName,
+              emailAddress: sessionUser.emailAddress,
+              organization: settings.profile.organization || 'Acme Digital Services'
+            }}
+            activePage={activePage}
+            setActivePage={setActivePage}
+            onSignOut={handleLogOut}
+            theme={theme}
+          />
+        </Suspense>
         <FeedbackWidget theme={theme} />
       </ErrorBoundary>
     );
@@ -1010,18 +1012,20 @@ export default function App() {
   if (sessionUser && userRole === 'faculty') {
     return (
       <ErrorBoundary theme={theme}>
-        <TeacherPortalApp
-          user={{
-            uid: sessionUser.uid,
-            fullName: settings.profile.fullName || sessionUser.fullName,
-            emailAddress: sessionUser.emailAddress,
-            teacherCode: settings.profile.teacherCode,
-            institution: settings.profile.institution
-          }}
-          onSignOut={handleLogOut}
-          theme={theme}
-          setTheme={setTheme}
-        />
+        <Suspense fallback={<BruteLoader size="lg" message="Loading Trainer Portal..." />}>
+          <TeacherPortalApp
+            user={{
+              uid: sessionUser.uid,
+              fullName: settings.profile.fullName || sessionUser.fullName,
+              emailAddress: sessionUser.emailAddress,
+              teacherCode: settings.profile.teacherCode,
+              institution: settings.profile.institution
+            }}
+            onSignOut={handleLogOut}
+            theme={theme}
+            setTheme={setTheme}
+          />
+        </Suspense>
         <FeedbackWidget theme={theme} />
       </ErrorBoundary>
     );
@@ -1069,7 +1073,9 @@ export default function App() {
           <main className={`flex-1 overflow-y-auto bg-[var(--bg-paper)] text-[var(--text-primary)] ${
             isLanding ? 'p-0' : 'p-2 md:p-3'
           }`}>
-            {renderActiveView()}
+            <Suspense fallback={<BruteLoader size="lg" message="Loading..." />}>
+              {renderActiveView()}
+            </Suspense>
           </main>
         </div>
 
