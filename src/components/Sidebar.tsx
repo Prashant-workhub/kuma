@@ -9,14 +9,10 @@ import {
   Compass, 
   Settings, 
   Bell, 
-  GraduationCap,
-  BookMarked,
   X,
-  Mic,
   ChevronLeft,
   ChevronRight,
   LogOut,
-  User,
   ExternalLink,
   Target,
   Award,
@@ -43,7 +39,6 @@ export default function Sidebar({
   isOpenMobile,
   setIsOpenMobile,
   settings,
-  onNewAnalysis,
   theme,
   onLogOut
 }: SidebarProps) {
@@ -57,7 +52,6 @@ export default function Sidebar({
     { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Target },
     { id: 'certificates', label: 'My Certificates', icon: Award },
     { id: 'verify-certificate', label: 'Verify Certificate', icon: ShieldCheck },
-    { id: 'lecture-capture', label: 'Capture Live', icon: Mic, badge: 'REC' },
     { id: 'knowledge-studio', label: 'Knowledge Studio', icon: Compass }
   ];
 
@@ -124,23 +118,6 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Primary Capture Live Trigger */}
-      {!isCollapsed && onNewAnalysis && (
-        <div className="px-4 py-3 border-b-2 border-[var(--border-main)] space-y-2">
-          <div data-tour="capture-live">
-            <Button
-              variant="secondary"
-              size="md"
-              fullWidth
-              onClick={() => handleNavClick('lecture-capture')}
-              icon={<Mic className="h-4 w-4 animate-pulse text-[#FF4D4D]" />}
-            >
-              Capture Live Session
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Navigation Groups */}
       <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
         {/* Workspace section */}
@@ -156,7 +133,6 @@ export default function Sidebar({
               <SidebarItem
                 icon={<item.icon className="h-4 w-4" />}
                 label={item.label}
-                badge={item.badge}
                 active={activePage === item.id}
                 onClick={() => handleNavClick(item.id as PageId)}
                 collapsed={isCollapsed}
@@ -186,6 +162,7 @@ export default function Sidebar({
             />
           ))}
         </div>
+
         {/* Subscription callout banner */}
         {!isCollapsed && (
           <div className="mt-4 p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm">

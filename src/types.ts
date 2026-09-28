@@ -10,8 +10,6 @@ export type PageId =
   | 'settings'
   | 'help-support'
   | 'pricing'
-  | 'lecture-capture'
-  | 'lecture-processing'
   | 'profile'
   | 'skill-gap'
   | 'certificates'

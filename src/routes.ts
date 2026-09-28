@@ -12,8 +12,6 @@ export const PAGE_TO_PATH_MAP: Record<PageId, string> = {
   settings: '/settings',
   'help-support': '/help-support',
   pricing: '/pricing',
-  'lecture-capture': '/lecture-capture',
-  'lecture-processing': '/lecture-processing',
   profile: '/profile',
   'skill-gap': '/skill-gap',
   certificates: '/certificates',

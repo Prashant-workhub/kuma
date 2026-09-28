@@ -32,7 +32,6 @@ import {
 // Types and mock imports
 import { PageId, Source, Lecture, NotificationItem, UserSettings, Note, DoubtItem, Quiz, QuizAttemptRecord, CompetencyAttemptHistoryItem, CatalogCompetency, TraineeCompetency } from './types';
 import { useNotes } from './hooks/useNotes';
-import { useLectures } from './hooks/useLectures';
 import { 
   INITIAL_SOURCES, 
   INITIAL_LECTURES, 
@@ -58,8 +57,6 @@ import ProfileView from './components/ProfileView';
 import SkillGapView from './components/SkillGapView';
 import CertificatesView from './components/CertificatesView';
 import CertificateVerificationView from './components/CertificateVerificationView';
-import LectureCaptureView from './components/LectureCaptureView';
-import LectureProcessingView from './components/LectureProcessingView';
 import LandingView from './components/LandingView';
 import OnboardingView from './components/OnboardingView';
 import BruteLoader from './components/BruteLoader';
@@ -67,7 +64,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 import FeedbackWidget from './components/FeedbackWidget';
 import AssessmentTakingModal from './components/AssessmentTakingModal';
 import AILogo from './components/AILogo';
-import FloatingRecordingWidget from './components/FloatingRecordingWidget';
 import GuidedTour from './components/GuidedTour';
 import NotificationPermissionBanner from './components/NotificationPermissionBanner';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
@@ -160,7 +156,6 @@ export default function App() {
         const r = (event.data.route || '').toLowerCase().trim();
         if (r.includes('knowledge') || r.includes('studio')) setActivePage('knowledge-studio');
         else if (r.includes('setting')) setActivePage('settings');
-        else if (r.includes('capture')) setActivePage('lecture-capture');
         else setActivePage('dashboard');
       }
     };
@@ -216,20 +211,8 @@ export default function App() {
     });
   }, [sessionUser]);
 
-  // Hook up Firestore notes & lectures in real-time
+  // Hook up Firestore notes in real-time
   const { notes, isLoading: notesLoading, error: notesError, addNote, updateNote, deleteNote } = useNotes(sessionUser?.uid);
-  const { 
-    lectures: dbLectures, 
-    isLoading: lecturesLoading, 
-    addLecture, 
-    updateLecture, 
-    deleteLecture, 
-    uploadLectureAudio,
-    uploadLectureDocument
-  } = useLectures(sessionUser?.uid);
-
-  // Use only real Firestore lectures
-  const combinedLectures = dbLectures;
 
   // Setup Firebase Auth State Listener
   useEffect(() => {
@@ -419,59 +402,7 @@ export default function App() {
   };
 
   // Callbacks: Lectures
-  const handleAddLecture = async (newLecture: Lecture) => {
-    if (sessionUser) {
-      try {
-        await addLecture({
-          title: newLecture.title,
-          subject: newLecture.subject,
-          duration: newLecture.duration,
-          pages: newLecture.pages,
-          status: newLecture.status,
-          type: newLecture.type,
-          addedAt: 'Just now'
-        });
-      } catch (err) {
-        console.error('Failed to add lecture to Firestore:', err);
-      }
-    } else {
-      setLectures(prev => [newLecture, ...prev]);
-    }
 
-    // Also add to sources list as a PDF/text simulation
-    const simulatedSrc: Source = {
-      id: newLecture.id,
-      name: newLecture.title + (newLecture.type === 'recording' ? '.wav' : '.pdf'),
-      type: newLecture.type === 'recording' ? 'recording' : 'pdf',
-      size: newLecture.type === 'recording' ? '14.5 MB' : '3.8 MB',
-      addedAt: 'Just now'
-    };
-    setSources(prev => [simulatedSrc, ...prev]);
-    
-    // Notification log
-    const note: NotificationItem = {
-      id: Math.random().toString(),
-      title: `New processing: ${newLecture.title}`,
-      description: `High-Intensity Synthesis Engine has started transcribing and generating standard markdown outlines.`,
-      timeLabel: 'Today',
-      category: 'system',
-      read: false,
-      timestamp: 'Just now'
-    };
-    setNotifications(prev => [note, ...prev]);
-  };
-
-  const handleDeleteLecture = async (id: string) => {
-    if (sessionUser && dbLectures.some(l => l.id === id)) {
-      try {
-        await deleteLecture(id);
-      } catch (err) {
-        console.error('Failed to delete lecture from Firestore:', err);
-      }
-    } else {
-      setLectures(prev => prev.filter(l => l.id !== id));
-    }
-  };
 
   const handleCompleteAssessmentAttempt = (attemptRecord: QuizAttemptRecord) => {
     const existingComps = settings.profile.competencies || [];
@@ -569,86 +500,6 @@ export default function App() {
       timestamp: 'Just now'
     };
     setNotifications(prev => [note, ...prev]);
-  };
-
-  const handleStartCapture = async (title: string, subject: string) => {
-    if (!sessionUser) throw new Error('User not authenticated');
-    const finalTitle = title.trim() || 'Auto-Detecting Topic...';
-    const lectureId = await addLecture({
-      title: finalTitle,
-      subject,
-      type: 'recording',
-      status: 'recording',
-      duration: '00:00:00'
-    });
-    const userDocRef = doc(db, 'users', sessionUser.uid, 'lectures', lectureId);
-    await setDoc(userDocRef, { recordingStartedAt: serverTimestamp() }, { merge: true });
-    return lectureId;
-  };
-
-  const handleSaveCapture = async (
-    title: string, 
-    subject: string, 
-    duration: string, 
-    audioBlob: Blob, 
-    existingLectureId?: string,
-    transcriptionEngine?: 'gemini' | 'browser',
-    browserLiveTranscript?: string
-  ) => {
-    if (!sessionUser) return;
-    try {
-      let lectureId = existingLectureId;
-      const finalTitle = title.trim() || 'Auto-Detecting Topic...';
-      if (!lectureId) {
-        lectureId = await addLecture({
-          title: finalTitle,
-          subject,
-          duration,
-          type: 'recording',
-          status: 'recording',
-          transcriptionEngine: transcriptionEngine || 'gemini',
-          browserLiveTranscript: browserLiveTranscript || ''
-        });
-      } else {
-        await updateLecture(lectureId, {
-          title: finalTitle,
-          subject,
-          duration,
-          status: 'recording',
-          transcriptionEngine: transcriptionEngine || 'gemini',
-          browserLiveTranscript: browserLiveTranscript || ''
-        });
-      }
-      
-      setProcessingLectureId(lectureId);
-      setProcessingAudioBlob(audioBlob);
-      setActivePage('lecture-processing');
-    } catch (err) {
-      console.error('Failed to start saving lecture capture:', err);
-    }
-  };
-
-  const handleSaveDocument = async (title: string, subject: string, file: File) => {
-    if (!sessionUser) return;
-    try {
-      let type: 'pdf' | 'ppt' | 'text' = 'pdf';
-      if (file.name.endsWith('.pptx')) type = 'ppt';
-      else if (file.name.endsWith('.docx')) type = 'text';
-
-      const lectureId = await addLecture({
-        title,
-        subject,
-        type,
-        status: 'uploading'
-      });
-      
-      setProcessingLectureId(lectureId);
-      setProcessingFile(file);
-      setProcessingAudioBlob(null);
-      setActivePage('lecture-processing');
-    } catch (err) {
-      console.error('Failed to start saving document:', err);
-    }
   };
 
   // Callbacks: Notifications actions
@@ -873,23 +724,6 @@ export default function App() {
             notes={notes}
             quizzes={quizzes}
             onOpenAssessment={(quizToTake) => setActiveAssessmentQuiz(quizToTake)}
-          />
-        );
-      case 'lecture-capture':
-        return null;
-      case 'lecture-processing':
-        return (
-          <LectureProcessingView
-            userId={sessionUser?.uid}
-            lectureId={processingLectureId}
-            audioBlob={processingAudioBlob}
-            documentFile={processingFile}
-            uploadLectureAudio={uploadLectureAudio}
-            uploadLectureDocument={uploadLectureDocument}
-            updateLecture={updateLecture}
-            setActivePage={setActivePage}
-            theme={theme}
-            setActiveLectureId={setActiveLectureId}
           />
         );
       case 'profile':
@@ -1209,36 +1043,11 @@ export default function App() {
           <main className={`flex-1 overflow-y-auto bg-[var(--bg-paper)] text-[var(--text-primary)] ${
             isLanding ? 'p-0' : 'p-2 md:p-3'
           }`}>
-            <div style={{ display: activePage === 'lecture-capture' ? 'block' : 'none', height: '100%' }}>
-              <LectureCaptureView
-                onSaveCapture={handleSaveCapture}
-                onStartCapture={handleStartCapture}
-                setActivePage={setActivePage}
-                theme={theme}
-                lectures={combinedLectures}
-                activeLectureId={activeLectureId}
-                setActiveLectureId={setActiveLectureId}
-                notes={notes}
-                onRecordingStatusChange={setGlobalRecordingState}
-              />
-            </div>
-            {activePage !== 'lecture-capture' && renderActiveView()}
+            {renderActiveView()}
           </main>
         </div>
 
       </div>
-
-      {/* Floating Resizable PiP Recording Box when tab is changed during recording */}
-      {activePage !== 'lecture-capture' && globalRecordingState?.isRecording && (
-        <FloatingRecordingWidget
-          isRecording={globalRecordingState.isRecording}
-          isPaused={globalRecordingState.isPaused}
-          seconds={globalRecordingState.seconds}
-          onPauseToggle={globalRecordingState.pauseCapture}
-          onStop={globalRecordingState.stopCapture}
-          onOpenCapture={() => setActivePage('lecture-capture')}
-        />
-      )}
 
       {/* Interactive Step-by-Step Guiding Tour Popup System */}
       <GuidedTour

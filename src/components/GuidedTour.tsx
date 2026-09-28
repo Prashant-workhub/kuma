@@ -22,14 +22,7 @@ export const DEFAULT_TOUR_STEPS: TourStep[] = [
     targetSelector: '[data-tour="dashboard-link"]',
     pageId: 'dashboard',
     title: 'Workspace Dashboard',
-    description: 'Welcome to Kuma! Access your sessions, recordings, and learning resources at a glance.',
-    preferredPlacement: 'right'
-  },
-  {
-    id: 'capture-live',
-    targetSelector: '[data-tour="capture-live"]',
-    title: 'Capture Live Sessions',
-    description: 'Record live audio or upload audio/video files. Automatically generate structured notes, transcripts, quizzes & flashcards!',
+    description: 'Welcome to Kuma Capacity Connect! Access your competency profile, skill gap analysis, and training programs at a glance.',
     preferredPlacement: 'right'
   },
   {
@@ -37,7 +30,7 @@ export const DEFAULT_TOUR_STEPS: TourStep[] = [
     targetSelector: '[data-tour="knowledge-studio"]',
     pageId: 'knowledge-studio',
     title: 'Knowledge Studio',
-    description: 'Organize your knowledge base, generate notes, summaries, and assessments with persistent AI assistance.',
+    description: 'Organize your learning resources, training modules, and assessment records with persistent AI assistance.',
     preferredPlacement: 'right'
   }
 ];

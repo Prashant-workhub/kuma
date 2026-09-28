@@ -68,8 +68,6 @@ export default function Navbar({
     switch (activePage) {
       case 'dashboard':
         return 'OVERVIEW';
-      case 'lecture-capture':
-        return 'CAPTURE LIVE';
       case 'notifications':
         return 'ACTIVITY CENTER';
       case 'settings':
