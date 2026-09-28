@@ -217,7 +217,7 @@ export default function Navbar({
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-heading font-bold text-[var(--text-primary)] truncate">{settings.profile.fullName}</div>
                   <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)] truncate mt-0.5">
-                    {settings.profile.role === 'faculty' ? 'FACULTY MEMBER' : 'SCHOLAR / STUDENT'}
+                    {settings.profile.role === 'admin' ? 'ORGANIZATION ADMIN' : settings.profile.role === 'faculty' ? 'TRAINER / INSTRUCTOR' : 'TRAINEE LEARNER'}
                   </div>
                 </div>
               </div>
@@ -229,7 +229,7 @@ export default function Navbar({
                   className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-2 font-bold text-left hover:bg-[#FFC400] hover:text-[#111111] transition-colors cursor-pointer"
                 >
                   <User className="h-4 w-4 shrink-0" />
-                  <span>Academic Profile</span>
+                  <span>Competency Profile</span>
                 </button>
 
                 <button
