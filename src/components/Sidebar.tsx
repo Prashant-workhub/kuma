@@ -51,8 +51,7 @@ export default function Sidebar({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Target },
     { id: 'certificates', label: 'My Certificates', icon: Award },
-    { id: 'verify-certificate', label: 'Verify Certificate', icon: ShieldCheck },
-    { id: 'knowledge-studio', label: 'Knowledge Studio', icon: Compass }
+    { id: 'verify-certificate', label: 'Verify Certificate', icon: ShieldCheck }
   ];
 
   const accountItems = [

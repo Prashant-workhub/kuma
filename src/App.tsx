@@ -47,7 +47,6 @@ import { COURSES } from './teacher-portal/lib/mockData';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import DashboardView from './components/DashboardView';
-import KnowledgeStudioView from './components/KnowledgeStudioView';
 import NotificationsView from './components/NotificationsView';
 import SettingsView from './components/SettingsView';
 import SupportView from './components/SupportView';
@@ -714,11 +713,11 @@ export default function App() {
         return (
           <DashboardView
             setActivePage={setActivePage}
-            lectures={combinedLectures}
+            lectures={[]}
             sources={sources}
             onNewAnalysis={handleNewAnalysisShortcut}
             onOpenLecture={(id) => {
-              setActivePage('knowledge-studio');
+              setActivePage('skill-gap');
             }}
             theme={theme}
             notes={notes}
@@ -755,14 +754,6 @@ export default function App() {
       case 'verify-certificate':
         return (
           <CertificateVerificationView
-            setActivePage={setActivePage}
-          />
-        );
-      case 'knowledge-studio':
-        return (
-          <KnowledgeStudioView
-            userId={sessionUser?.uid}
-            theme={theme}
             setActivePage={setActivePage}
           />
         );
@@ -825,11 +816,11 @@ export default function App() {
         return (
           <DashboardView
             setActivePage={setActivePage}
-            lectures={combinedLectures}
+            lectures={[]}
             sources={sources}
             onNewAnalysis={handleNewAnalysisShortcut}
             onOpenLecture={(id) => {
-              setActivePage('knowledge-studio');
+              setActivePage('skill-gap');
             }}
             theme={theme}
             notes={notes}
@@ -955,7 +946,7 @@ export default function App() {
     setIsOnboarding(false);
   }
 
-  if (notesLoading && lecturesLoading) {
+  if (notesLoading) {
     return <BruteLoader message="Initializing Kuma Capacity Connect Workspace..." />;
   }
 

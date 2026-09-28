@@ -14,7 +14,6 @@ export type PageId =
   | 'skill-gap'
   | 'certificates'
   | 'verify-certificate'
-  | 'knowledge-studio'
   | 'auth'
   | 'faculty-login'
   | 'faculty-dashboard'

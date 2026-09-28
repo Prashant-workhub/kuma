@@ -66,18 +66,6 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
 
       {/* Right: Quick Action Industrial Buttons */}
       <div className="flex items-center gap-2.5">
-        {onCaptureClick && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onCaptureClick}
-            icon={
-              <span className="w-2 h-2 rounded-full bg-[#FF4D4D] animate-pulse border border-[#111111]" />
-            }
-          >
-            Capture Live
-          </Button>
-        )}
       </div>
     </header>
   );

@@ -478,7 +478,7 @@ export default function SettingsView({
         if (needsUpdate) await updateDoc(lectureRef, updates);
       }
 
-      setMigrationStatus("Migrating Knowledge Studio sources...");
+      setMigrationStatus("Migrating learning resources...");
       // Migrate Sources
       const sourcesSnap = await getDocs(collection(db, 'users', uid, 'sources'));
       for (const docSnap of sourcesSnap.docs) {

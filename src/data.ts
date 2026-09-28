@@ -299,7 +299,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     id: 'faq3',
     question: 'Does Kuma AI cite and match statements back to my exact source material?',
-    answer: 'Yes! That is one of our fundamental design objectives. When you read an AI Summary or work through the Knowledge Studio, any claims or synthesized bullet points generate clickable citation numbers. Clicking a number scrolls your resource preview directly to the matching paragraph block or specific timestamp inside raw transcribing logs.'
+    answer: 'Yes! That is one of our fundamental design objectives. When you read an AI Summary or work through your learning resources, any claims or synthesized bullet points generate clickable citation numbers. Clicking a number scrolls your resource preview directly to the matching paragraph block or specific timestamp inside raw transcribing logs.'
   },
   {
     id: 'faq4',

@@ -357,10 +357,10 @@ export default function LandingView({
                   <img src="/mascots/broot-thinking.png" alt="Broot Thinking" className="w-14 h-14 object-contain filter drop-shadow group-hover:scale-110 transition-transform" />
                 </div>
                 <h3 className="font-heading text-lg font-bold text-[var(--text-primary)] uppercase tracking-tight">
-                  KNOWLEDGE STUDIO
+                  CAPACITY CONNECT ENGINE
                 </h3>
                 <p className="text-xs text-[var(--text-secondary)] font-mono leading-relaxed">
-                  Multi-document synthesis. Upload PDFs, PPTs, or audio recordings to generate structured outlines and flashcard decks as Broot processes key concepts.
+                  Competency analysis and multi-document synthesis. Upload PDFs, PPTs, or training resources to generate structured outlines and flashcard decks as Kuma processes key concepts.
                 </p>
               </div>
             </Card>

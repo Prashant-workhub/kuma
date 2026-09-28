@@ -348,7 +348,7 @@ async function fallbackClientUrlExtraction(url: string, type: 'youtube' | 'websi
       } catch (e) {}
 
       if (!text || text.trim().length === 0) {
-        text = `YouTube Video Study Resource: ${title}\nVideo URL: ${url}\nVideo ID: ${videoId}\n\nOverview:\nThis YouTube video has been attached to your Knowledge Studio workspace. Kuma AI will analyze the video topic, title structure, and key learning concepts to produce high-yield notes, flashcards, and practice quizzes.`;
+        text = `YouTube Video Study Resource: ${title}\nVideo URL: ${url}\nVideo ID: ${videoId}\n\nOverview:\nThis YouTube video has been attached to your capacity building workspace. Kuma AI will analyze the video topic, title structure, and key learning concepts to produce high-yield notes, flashcards, and practice quizzes.`;
       }
 
       return { text, title };
@@ -362,7 +362,7 @@ async function fallbackClientUrlExtraction(url: string, type: 'youtube' | 'websi
   } catch (e) {}
 
   return {
-    text: `Web Article Source: ${url}\n\nContent Ingested: The webpage content at ${url} has been imported into Knowledge Studio for AI synthesis and interactive chat.`,
+    text: `Web Article Source: ${url}\n\nContent Ingested: The webpage content at ${url} has been imported into your capacity building workspace for AI synthesis and interactive chat.`,
     title: cleanTitle
   };
 }

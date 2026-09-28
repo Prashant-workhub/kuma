@@ -39,15 +39,6 @@ export default function DashboardView({
   quizzes = [],
   onOpenAssessment
 }: DashboardViewProps) {
-  // Quick navigation helpers
-  const handleStartRecording = () => {
-    setActivePage('lecture-capture');
-  };
-
-  const handleOpenStudio = () => {
-    setActivePage('knowledge-studio');
-  };
-
   const handleOpenProfile = () => {
     setActivePage('profile');
   };
@@ -82,23 +73,23 @@ export default function DashboardView({
 
           <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
             <Button
-              variant="secondary"
+              variant="primary"
               size="lg"
-              onClick={handleStartRecording}
-              className="w-full sm:w-auto bg-[#2F6BFF] text-white hover:bg-[#255cd9] border-2 border-[var(--border-main)] shadow-paper-md"
-              icon={<Mic className="h-4.5 w-4.5 text-white animate-pulse" />}
+              onClick={() => setActivePage('skill-gap')}
+              className="w-full sm:w-auto bg-[#FFC400] text-[#111111] hover:bg-[#E6B000] border-2 border-[var(--border-main)] shadow-paper-md"
+              icon={<Target className="h-4.5 w-4.5 text-[#111111]" />}
             >
-              Start Recording
+              Analyze Skill Gap
             </Button>
             
             <Button
-              variant="tertiary"
+              variant="secondary"
               size="lg"
-              onClick={handleOpenStudio}
+              onClick={() => setActivePage('certificates')}
               className="w-full sm:w-auto border-2 border-[var(--border-main)] shadow-paper-md"
-              icon={<BookOpen className="h-4 w-4 text-[var(--text-primary)]" />}
+              icon={<Award className="h-4 w-4 text-[var(--text-primary)]" />}
             >
-              Open Knowledge Studio
+              My Digital Certificates
             </Button>
           </div>
         </div>
@@ -142,55 +133,55 @@ export default function DashboardView({
           <Badge variant="yellow" size="sm">ANALYSIS</Badge>
         </div>
 
-        {/* Stat Card 2: Sessions Recorded */}
+        {/* Stat Card 2: Certificates */}
         <div 
-          onClick={() => setActivePage('knowledge-studio')}
+          onClick={() => setActivePage('certificates')}
           className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm hover:border-[#2F6BFF] cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
             <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-              SAVED SESSIONS
+              MY CERTIFICATES
             </div>
             <div className="text-xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
-              <BookOpen className="h-5 w-5 text-[#2F6BFF]" />
-              <span>{lectures.length} SAVED</span>
+              <Award className="h-5 w-5 text-[#2F6BFF]" />
+              <span>VERIFIED</span>
             </div>
           </div>
-          <Badge variant="blue" size="sm">STUDIO</Badge>
+          <Badge variant="blue" size="sm">CREDENTIALS</Badge>
         </div>
 
-        {/* Stat Card 3: Saved Notes */}
+        {/* Stat Card 3: Competency Profile */}
         <div 
-          onClick={() => setActivePage('knowledge-studio')}
+          onClick={() => setActivePage('profile')}
           className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm hover:border-[#FFC400] cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
             <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-              SAVED NOTES
+              COMPETENCY PROFILE
             </div>
             <div className="text-xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
-              <Sparkles className="h-5 w-5 text-[#FFC400]" />
-              <span>{notes.length} DRAFTED</span>
+              <UserCheck className="h-5 w-5 text-[#FFC400]" />
+              <span>ACTIVE</span>
             </div>
           </div>
-          <Badge variant="yellow" size="sm">NOTES</Badge>
+          <Badge variant="yellow" size="sm">PROFILE</Badge>
         </div>
 
-        {/* Stat Card 4: Resources Indexed */}
+        {/* Stat Card 4: Skill Gaps */}
         <div 
-          onClick={() => setActivePage('knowledge-studio')}
+          onClick={() => setActivePage('skill-gap')}
           className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] shadow-paper-sm hover:border-[#19B56B] cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
             <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-              INDEXED SOURCES
+              SKILL GAPS
             </div>
-            <div className="text-2xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
-              <Mic className="h-5 w-5 text-[#19B56B]" />
-              <span>{sources.length} INDEXED</span>
+            <div className="text-xl font-extrabold font-heading text-[var(--text-primary)] mt-1 flex items-center gap-1.5">
+              <ClipboardCheck className="h-5 w-5 text-[#19B56B]" />
+              <span>TRACKED</span>
             </div>
           </div>
-          <Badge variant="green" size="sm">SOURCES</Badge>
+          <Badge variant="green" size="sm">GAPS</Badge>
         </div>
 
       </div>

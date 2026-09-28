@@ -26,10 +26,10 @@ export const DEFAULT_TOUR_STEPS: TourStep[] = [
     preferredPlacement: 'right'
   },
   {
-    id: 'knowledge-studio',
-    targetSelector: '[data-tour="knowledge-studio"]',
-    pageId: 'knowledge-studio',
-    title: 'Knowledge Studio',
+    id: 'capacity-connect',
+    targetSelector: '[data-tour="dashboard-link"]',
+    pageId: 'dashboard',
+    title: 'Capacity Connect Workspace',
     description: 'Organize your learning resources, training modules, and assessment records with persistent AI assistance.',
     preferredPlacement: 'right'
   }
