@@ -152,6 +152,92 @@ app.get('/api/admin/summary', verifyAdminToken, async (req, res) => {
   }
 });
 
+// Admin Department API Routes
+app.get('/api/admin/departments', verifyAdminToken, async (req, res) => {
+  try {
+    if (db) {
+      const snap = await db.collection('departments').get();
+      const departments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return res.json({ success: true, count: departments.length, departments });
+    }
+    return res.json({
+      success: true,
+      departments: [
+        { id: 'dept-data-analytics', name: 'Data & Analytics', description: 'Data processing and BI analytics.', isActive: true },
+        { id: 'dept-technology', name: 'Technology', description: 'Software engineering and IT systems.', isActive: true },
+        { id: 'dept-human-resources', name: 'Human Resources', description: 'Workforce capacity building.', isActive: true }
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/departments', verifyAdminToken, async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Department name is required' });
+    }
+    const deptDoc = {
+      name: name.trim(),
+      description: (description || '').trim(),
+      isActive: true,
+      createdAt: new Date().toISOString()
+    };
+    if (db) {
+      const ref = await db.collection('departments').add(deptDoc);
+      return res.json({ success: true, department: { id: ref.id, ...deptDoc } });
+    }
+    return res.json({ success: true, department: { id: `dept-${Date.now()}`, ...deptDoc } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Designation & Competency Requirements API Routes
+app.get('/api/admin/designations', verifyAdminToken, async (req, res) => {
+  try {
+    if (db) {
+      const snap = await db.collection('designations').get();
+      const designations = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return res.json({ success: true, count: designations.length, designations });
+    }
+    return res.json({ success: true, designations: [] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/designations', verifyAdminToken, async (req, res) => {
+  try {
+    const { name, departmentId, departmentName, description } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Designation name is required' });
+    }
+    if (!departmentId) {
+      return res.status(400).json({ success: false, error: 'Department ID is required' });
+    }
+    const desigDoc = {
+      name: name.trim(),
+      departmentId,
+      departmentName: departmentName || 'General',
+      description: (description || '').trim(),
+      isActive: true,
+      requiredCompetencies: [],
+      createdAt: new Date().toISOString()
+    };
+    if (db) {
+      const ref = await db.collection('designations').add(desigDoc);
+      return res.json({ success: true, designation: { id: ref.id, ...desigDoc } });
+    }
+    return res.json({ success: true, designation: { id: `desig-${Date.now()}`, ...desigDoc } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 
 // Serve frontend static build if dist directory exists
 const distPath = path.join(__dirname, '../dist');

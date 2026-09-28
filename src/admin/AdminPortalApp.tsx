@@ -21,15 +21,22 @@ import {
   Settings,
   LogOut,
   Sparkles,
-  ExternalLink,
   ChevronRight,
   RefreshCw,
-  Briefcase
+  Briefcase,
+  Trash2,
+  Edit3,
+  Check,
+  XCircle
 } from 'lucide-react';
-import { PageId, CatalogCompetency, TrainingCertificate, TrainingEnrollment } from '../types';
-import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, DEMO_TRAINEES, seedDemoEnvironment, resetDemoEnvironment } from '../utils/demoDataSeeder';
+import { PageId, CatalogCompetency, TrainingCertificate, TrainingEnrollment, OrgDepartment, OrgDesignation, DesignationCompetencyRequirement, SkillProficiencyLevel } from '../types';
+import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, DEMO_TRAINEES, DEMO_ORG_DEPARTMENTS_FULL, DEMO_ORG_DESIGNATIONS_FULL, seedDemoEnvironment, resetDemoEnvironment } from '../utils/demoDataSeeder';
 import { getAllCertificates } from '../utils/certificateUtils';
+import { calculateDesignationSkillGaps } from '../utils/competencyUtils';
 import { LearningAnalytics } from '../teacher-portal/views/LearningAnalytics';
+
+
+
 
 interface AdminPortalAppProps {
   user: {
@@ -64,15 +71,151 @@ export default function AdminPortalApp({
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
 
-  // Modal / Form States
+  // Organization Hierarchy State
+  const [departments, setDepartments] = useState<OrgDepartment[]>(DEMO_ORG_DEPARTMENTS_FULL);
+  const [designations, setDesignations] = useState<OrgDesignation[]>(DEMO_ORG_DESIGNATIONS_FULL);
+
+  // Department Modal States
+  const [showAddDeptModal, setShowAddDeptModal] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [newDeptDesc, setNewDeptDesc] = useState('');
+
+  // Designation Modal States
+  const [showAddDesigModal, setShowAddDesigModal] = useState(false);
+  const [newDesigName, setNewDesigName] = useState('');
+  const [newDesigDeptId, setNewDesigDeptId] = useState('');
+  const [newDesigDesc, setNewDesigDesc] = useState('');
+
+  // Required Competency Modal States for a Designation
+  const [selectedDesigForComp, setSelectedDesigForComp] = useState<OrgDesignation | null>(null);
+  const [showAddReqCompModal, setShowAddReqCompModal] = useState(false);
+  const [reqCompId, setReqCompId] = useState('');
+  const [reqProfLevel, setReqProfLevel] = useState<SkillProficiencyLevel>('Intermediate');
+  const [reqPriority, setReqPriority] = useState<'high' | 'medium' | 'low'>('medium');
+
+  // Catalog Competency Modal States
   const [showAddCompModal, setShowAddCompModal] = useState(false);
   const [newCompName, setNewCompName] = useState('');
   const [newCompCategory, setNewCompCategory] = useState<'Technical' | 'Professional' | 'Communication' | 'Leadership' | 'Management' | 'Digital' | 'Domain Specific'>('Technical');
   const [newCompDesc, setNewCompDesc] = useState('');
 
   const [competencies, setCompetencies] = useState<CatalogCompetency[]>(DEMO_COMPETENCIES);
+
   const [traineeList, setTraineeList] = useState<typeof DEMO_TRAINEES>(DEMO_TRAINEES);
   const [selectedTrainee, setSelectedTrainee] = useState<typeof DEMO_TRAINEES[0] | null>(null);
+
+  const handleCreateDepartment = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = newDeptName.trim();
+    if (!cleanName) return;
+    if (departments.some(d => d.name.toLowerCase() === cleanName.toLowerCase())) {
+      setStatusNotice(`Department '${cleanName}' already exists.`);
+      return;
+    }
+    const newDept: OrgDepartment = {
+      id: `dept-${Date.now()}`,
+      name: cleanName,
+      description: newDeptDesc.trim() || 'Organizational capacity building department.',
+      isActive: true,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+    setDepartments(prev => [...prev, newDept]);
+    setShowAddDeptModal(false);
+    setNewDeptName('');
+    setNewDeptDesc('');
+    setStatusNotice(`Department '${newDept.name}' created successfully.`);
+  };
+
+  const handleToggleDeptStatus = (id: string) => {
+    setDepartments(prev => prev.map(d => d.id === id ? { ...d, isActive: !d.isActive } : d));
+  };
+
+  const handleCreateDesignation = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = newDesigName.trim();
+    if (!cleanName || !newDesigDeptId) return;
+    const targetDept = departments.find(d => d.id === newDesigDeptId);
+    if (!targetDept) return;
+
+    if (designations.some(d => d.name.toLowerCase() === cleanName.toLowerCase() && d.departmentId === newDesigDeptId)) {
+      setStatusNotice(`Designation '${cleanName}' already exists in ${targetDept.name}.`);
+      return;
+    }
+
+    const newDesig: OrgDesignation = {
+      id: `desig-${Date.now()}`,
+      name: cleanName,
+      departmentId: targetDept.id,
+      departmentName: targetDept.name,
+      description: newDesigDesc.trim() || 'Organizational role definition.',
+      isActive: true,
+      requiredCompetencies: [],
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    setDesignations(prev => [...prev, newDesig]);
+    setShowAddDesigModal(false);
+    setNewDesigName('');
+    setNewDesigDesc('');
+    setStatusNotice(`Designation '${newDesig.name}' added under ${targetDept.name}.`);
+  };
+
+  const handleToggleDesigStatus = (id: string) => {
+    setDesignations(prev => prev.map(d => d.id === id ? { ...d, isActive: !d.isActive } : d));
+  };
+
+  const handleAddRequiredCompetency = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDesigForComp || !reqCompId) return;
+    const catalogComp = competencies.find(c => c.id === reqCompId);
+    if (!catalogComp) return;
+
+    // Check duplicate competency requirement on same designation
+    const existingReqs = selectedDesigForComp.requiredCompetencies || [];
+    if (existingReqs.some(r => r.competencyId === reqCompId)) {
+      setStatusNotice(`Competency '${catalogComp.name}' is already assigned to ${selectedDesigForComp.name}.`);
+      return;
+    }
+
+    const numericMap: Record<SkillProficiencyLevel, 1 | 2 | 3 | 4> = {
+      'Beginner': 1,
+      'Intermediate': 2,
+      'Advanced': 3,
+      'Expert': 4
+    };
+
+    const newReq: DesignationCompetencyRequirement = {
+      competencyId: catalogComp.id,
+      competencyName: catalogComp.name,
+      requiredLevel: reqProfLevel,
+      requiredNumericLevel: numericMap[reqProfLevel] || 2,
+      priority: reqPriority
+    };
+
+    const updatedDesig = {
+      ...selectedDesigForComp,
+      requiredCompetencies: [...existingReqs, newReq]
+    };
+
+    setDesignations(prev => prev.map(d => d.id === updatedDesig.id ? updatedDesig : d));
+    setSelectedDesigForComp(updatedDesig);
+    setShowAddReqCompModal(false);
+    setReqCompId('');
+    setStatusNotice(`Required competency '${catalogComp.name} (${reqProfLevel})' assigned to ${selectedDesigForComp.name}.`);
+  };
+
+  const handleRemoveRequiredCompetency = (desigId: string, compId: string) => {
+    setDesignations(prev => prev.map(d => {
+      if (d.id !== desigId) return d;
+      const filtered = d.requiredCompetencies.filter(r => r.competencyId !== compId);
+      const updated = { ...d, requiredCompetencies: filtered };
+      if (selectedDesigForComp?.id === desigId) {
+        setSelectedDesigForComp(updated);
+      }
+      return updated;
+    }));
+  };
+
 
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvContent, setCsvContent] = useState(
@@ -386,36 +529,171 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
 
           {/* ORGANIZATION TAB */}
           {currentTab === 'organization' && (
-            <div className="space-y-6 max-w-4xl">
+            <div className="space-y-8 font-mono">
               <div>
                 <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">ORGANIZATION GOVERNANCE</h1>
-                <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Configure organizational structures, departments, and capacity parameters.</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Manage departments, organizational designations, and competency requirements for workforce capacity building.</p>
               </div>
 
-              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4 font-mono">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded bg-[#FFC400] border-2 border-[var(--border-main)] text-[#111111]">
-                    <Building size={24} />
+              {/* Organization Profile Banner */}
+              <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded bg-[#FFC400] border-2 border-[var(--border-main)] text-[#111111]">
+                      <Building size={26} />
+                    </div>
+                    <div>
+                      <div className="text-lg font-extrabold text-[var(--text-primary)]">{DEMO_ORGANIZATION}</div>
+                      <div className="text-xs text-[var(--text-secondary)]">National Digital Capacity Building & Skill Transformation Framework</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-lg font-extrabold text-[var(--text-primary)]">{DEMO_ORGANIZATION}</div>
-                    <div className="text-xs text-[var(--text-secondary)]">National Digital Capacity Building Framework</div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded bg-[#19B56B]/15 text-[#19B56B] text-xs font-bold border border-[#19B56B]">
+                      ACTIVE ENTERPRISE
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="border-t-2 border-[var(--border-main)] pt-4 space-y-3">
-                  <label className="text-xs font-extrabold uppercase text-[var(--text-secondary)]">REGISTERED DEPARTMENTS</label>
-                  <div className="flex flex-wrap gap-2">
-                    {DEMO_DEPARTMENTS.map((dept, i) => (
-                      <span key={i} className="px-3 py-1 rounded-[6px] bg-[var(--panel-bg)] border-2 border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)]">
-                        {dept}
-                      </span>
-                    ))}
+              {/* DEPARTMENTS SECTION */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-extrabold uppercase text-[var(--text-primary)]">DEPARTMENTS ({departments.length})</h2>
+                    <p className="text-xs text-[var(--text-secondary)]">Organizational divisions holding designations and workforce cohorts.</p>
                   </div>
+                  <button
+                    onClick={() => setShowAddDeptModal(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-[6px] bg-[#FFC400] text-[#111111] font-bold text-xs border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span>CREATE DEPARTMENT</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {departments.map((dept) => {
+                    const traineeCount = traineeList.filter(t => t.department.toLowerCase() === dept.name.toLowerCase()).length;
+                    const trainerCount = DEMO_TRAINEES.filter(() => false).length + (DEMO_TRAINERS.filter(tr => tr.department.toLowerCase() === dept.name.toLowerCase()).length);
+                    const desigCount = designations.filter(ds => ds.departmentId === dept.id || ds.departmentName.toLowerCase() === dept.name.toLowerCase()).length;
+
+                    return (
+                      <div key={dept.id} className="p-5 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-3 flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-extrabold text-[var(--text-primary)]">{dept.name}</span>
+                            <button
+                              onClick={() => handleToggleDeptStatus(dept.id)}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded border cursor-pointer ${
+                                dept.isActive
+                                  ? 'bg-[#19B56B]/15 text-[#19B56B] border-[#19B56B]'
+                                  : 'bg-[var(--panel-bg)] text-[var(--text-secondary)] border-[var(--border-main)]'
+                              }`}
+                            >
+                              {dept.isActive ? 'Active' : 'Inactive'}
+                            </button>
+                          </div>
+                          <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{dept.description}</p>
+                        </div>
+
+                        <div className="border-t border-[var(--border-main)] pt-3 space-y-1 text-xs">
+                          <div className="flex justify-between text-[var(--text-secondary)]">
+                            <span>Trainees Enrolled:</span>
+                            <strong className="text-[var(--text-primary)]">{traineeCount}</strong>
+                          </div>
+                          <div className="flex justify-between text-[var(--text-secondary)]">
+                            <span>Assigned Trainers:</span>
+                            <strong className="text-[var(--text-primary)]">{trainerCount}</strong>
+                          </div>
+                          <div className="flex justify-between text-[var(--text-secondary)]">
+                            <span>Designations:</span>
+                            <strong className="text-[#38BDF8]">{desigCount}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* DESIGNATIONS / ROLES SECTION */}
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-extrabold uppercase text-[var(--text-primary)]">ORGANIZATIONAL DESIGNATIONS ({designations.length})</h2>
+                    <p className="text-xs text-[var(--text-secondary)]">Specific workforce roles and their required competency levels.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (departments.length > 0 && !newDesigDeptId) {
+                        setNewDesigDeptId(departments[0].id);
+                      }
+                      setShowAddDesigModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-[6px] bg-[#38BDF8] text-[#111111] font-bold text-xs border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span>CREATE DESIGNATION</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {designations.map((desig) => (
+                    <div key={desig.id} className="p-5 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-extrabold text-[var(--text-primary)]">{desig.name}</span>
+                          <span className="text-[10px] font-bold uppercase bg-[#FFC400]/15 text-[#FFC400] px-2 py-0.5 rounded border border-[#FFC400]">
+                            {desig.departmentName}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleToggleDesigStatus(desig.id)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded border cursor-pointer ${
+                            desig.isActive
+                              ? 'bg-[#19B56B]/15 text-[#19B56B] border-[#19B56B]'
+                              : 'bg-[var(--panel-bg)] text-[var(--text-secondary)] border-[var(--border-main)]'
+                          }`}
+                        >
+                          {desig.isActive ? 'Active' : 'Inactive'}
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-[var(--text-secondary)]">{desig.description}</p>
+
+                      {/* Required Competencies Summary */}
+                      <div className="border-t border-[var(--border-main)] pt-3 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-[var(--text-secondary)] uppercase">REQUIRED COMPETENCIES ({desig.requiredCompetencies?.length || 0})</span>
+                          <button
+                            onClick={() => setSelectedDesigForComp(desig)}
+                            className="text-[#38BDF8] hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <Edit3 size={13} />
+                            <span>Manage Requirements</span>
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {(desig.requiredCompetencies || []).length === 0 ? (
+                            <span className="text-[11px] text-[var(--text-secondary)] italic">No required competencies defined yet.</span>
+                          ) : (
+                            desig.requiredCompetencies.map((req) => (
+                              <span key={req.competencyId} className="px-2 py-0.5 rounded bg-[var(--panel-bg)] border border-[var(--border-main)] text-[11px] font-bold text-[var(--text-primary)] flex items-center gap-1">
+                                <span>{req.competencyName}</span>
+                                <span className="text-[#FFC400] font-mono text-[10px]">({req.requiredLevel})</span>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
+
 
           {/* COMPETENCIES TAB */}
           {currentTab === 'competencies' && (
@@ -800,21 +1078,36 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
               <button onClick={() => setSelectedTrainee(null)} className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]">✕ Close</button>
             </div>
 
-            <div className="space-y-3">
-              <div className="text-xs font-extrabold uppercase text-[var(--text-secondary)]">Competencies & Skill Levels</div>
+            <div className="space-y-3 font-mono">
+              <div className="text-xs font-extrabold uppercase text-[var(--text-secondary)]">Designation Skill Gap Matrix</div>
               <div className="space-y-2">
-                {selectedTrainee.competencies.map((c) => (
-                  <div key={c.id} className="p-3 rounded-[6px] bg-[var(--panel-bg)] border border-[var(--border-main)] flex items-center justify-between text-xs">
-                    <div>
-                      <div className="font-bold text-[var(--text-primary)]">{c.name}</div>
-                      <div className="text-[10px] text-[var(--text-secondary)]">Declared: {c.level} | Assessed: {c.latestAssessedLevel || 'None'}</div>
+                {(() => {
+                  const traineeDesig = designations.find(
+                    d => d.name.toLowerCase() === selectedTrainee.designation.toLowerCase() ||
+                         d.departmentName.toLowerCase() === selectedTrainee.department.toLowerCase()
+                  ) || designations[0];
+
+                  const traineeGaps = calculateDesignationSkillGaps(selectedTrainee.competencies, traineeDesig, competencies);
+
+                  return traineeGaps.map((g) => (
+                    <div key={g.competencyId} className="p-3 rounded-[6px] bg-[var(--panel-bg)] border border-[var(--border-main)] flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-[var(--text-primary)]">{g.competencyName}</div>
+                        <div className="text-[10px] text-[var(--text-secondary)]">
+                          Current: <strong className={g.currentSource === 'Not Assessed' ? 'text-red-400' : 'text-[#38BDF8]'}>{g.currentLevel} ({g.currentNumericLevel}/4)</strong> [{g.currentSource}]
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-[#FFC400]">Required: {g.requiredLevel} ({g.requiredNumericLevel}/4)</div>
+                        <div className="text-[10px] font-extrabold">
+                          Gap: <span className={g.gap === 0 ? 'text-[#19B56B]' : 'text-red-500'}>{g.gap} {g.gap === 1 ? 'Level' : 'Levels'}</span> ({g.status})
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-[#FFC400]">Target: {c.targetLevel || c.level}</div>
-                    </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
+
 
               {selectedTrainee.certificates.length > 0 && (
                 <div className="space-y-2 pt-2">
@@ -835,6 +1128,278 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
         </div>
       )}
 
+      {/* CREATE DEPARTMENT MODAL */}
+      {showAddDeptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-mono">
+          <div className="w-full max-w-md p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4">
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)] uppercase">Create Department</h3>
+
+            <form onSubmit={handleCreateDepartment} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Department Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
+                  placeholder="e.g. Cybersecurity & Infrastructure"
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Description</label>
+                <textarea
+                  value={newDeptDesc}
+                  onChange={(e) => setNewDeptDesc(e.target.value)}
+                  placeholder="Brief description of department scope and operations."
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none h-20"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddDeptModal(false)}
+                  className="px-3 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-secondary)] font-bold border border-[var(--border-main)] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-[#FFC400] text-[#111111] font-extrabold border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer"
+                >
+                  Create Department
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE DESIGNATION MODAL */}
+      {showAddDesigModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-mono">
+          <div className="w-full max-w-md p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4">
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)] uppercase">Create Designation / Role</h3>
+
+            <form onSubmit={handleCreateDesignation} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Designation Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newDesigName}
+                  onChange={(e) => setNewDesigName(e.target.value)}
+                  placeholder="e.g. Senior Security Analyst"
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Department *</label>
+                <select
+                  value={newDesigDeptId}
+                  onChange={(e) => setNewDesigDeptId(e.target.value)}
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                >
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Role Description</label>
+                <textarea
+                  value={newDesigDesc}
+                  onChange={(e) => setNewDesigDesc(e.target.value)}
+                  placeholder="Responsibilities and skill expectations for this designation."
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none h-20"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddDesigModal(false)}
+                  className="px-3 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-secondary)] font-bold border border-[var(--border-main)] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-[#38BDF8] text-[#111111] font-extrabold border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer"
+                >
+                  Create Designation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DESIGNATION REQUIRED COMPETENCIES INSPECTOR & ADD MODAL */}
+      {selectedDesigForComp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-mono">
+          <div className="w-full max-w-2xl p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b-2 border-[var(--border-main)] pb-3">
+              <div>
+                <h3 className="text-lg font-extrabold text-[var(--text-primary)] uppercase">REQUIRED COMPETENCIES: {selectedDesigForComp.name}</h3>
+                <div className="text-xs text-[var(--text-secondary)]">Department: <strong className="text-[#FFC400]">{selectedDesigForComp.departmentName}</strong></div>
+              </div>
+              <button onClick={() => setSelectedDesigForComp(null)} className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]">✕ Close</button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[var(--text-secondary)] uppercase">Assigned Requirements ({(selectedDesigForComp.requiredCompetencies || []).length})</span>
+              <button
+                onClick={() => {
+                  if (competencies.length > 0 && !reqCompId) {
+                    setReqCompId(competencies[0].id);
+                  }
+                  setShowAddReqCompModal(true);
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded bg-[#FFC400] text-[#111111] text-xs font-extrabold border border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Add Competency Requirement</span>
+              </button>
+            </div>
+
+            {/* Required Competencies Table */}
+            <div className="overflow-x-auto border-2 border-[var(--border-main)] rounded-[6px]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-[var(--border-main)] text-[10px] uppercase text-[var(--text-secondary)] bg-[var(--panel-bg)]">
+                    <th className="py-2.5 px-3">Competency</th>
+                    <th className="py-2.5 px-3">Required Level</th>
+                    <th className="py-2.5 px-3">Numeric Scale</th>
+                    <th className="py-2.5 px-3">Priority</th>
+                    <th className="py-2.5 px-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y border-b border-[var(--border-main)]">
+                  {(selectedDesigForComp.requiredCompetencies || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-center text-xs text-[var(--text-secondary)] italic">
+                        No competency requirements assigned to this designation yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    selectedDesigForComp.requiredCompetencies.map((req) => (
+                      <tr key={req.competencyId} className="hover:bg-[var(--panel-bg)]">
+                        <td className="py-3 px-3 font-bold text-[var(--text-primary)]">{req.competencyName}</td>
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 rounded bg-[#38BDF8]/15 text-[#38BDF8] font-bold border border-[#38BDF8]">
+                            {req.requiredLevel}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-[var(--text-primary)]">
+                          Level {req.requiredNumericLevel} / 4
+                        </td>
+                        <td className="py-3 px-3 uppercase text-[10px] font-bold">
+                          <span className={`px-2 py-0.5 rounded border ${
+                            req.priority === 'high' ? 'bg-[#FF4D4D]/15 text-[#FF4D4D] border-[#FF4D4D]' :
+                            req.priority === 'medium' ? 'bg-[#FFC400]/15 text-[#FFC400] border-[#FFC400]' :
+                            'bg-[var(--panel-bg)] text-[var(--text-secondary)] border-[var(--border-main)]'
+                          }`}>
+                            {req.priority || 'medium'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <button
+                            onClick={() => handleRemoveRequiredCompetency(selectedDesigForComp.id, req.competencyId)}
+                            className="p-1.5 rounded bg-[#FF4D4D]/10 text-[#FF4D4D] hover:bg-[#FF4D4D] hover:text-white border border-[#FF4D4D] cursor-pointer transition-colors"
+                            title="Remove Requirement"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD REQUIRED COMPETENCY TO DESIGNATION FORM MODAL */}
+      {showAddReqCompModal && selectedDesigForComp && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 font-mono">
+          <div className="w-full max-w-md p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4">
+            <h3 className="text-base font-extrabold text-[var(--text-primary)] uppercase">Add Competency Requirement</h3>
+            <p className="text-xs text-[var(--text-secondary)]">Assign a required competency to <strong>{selectedDesigForComp.name}</strong>.</p>
+
+            <form onSubmit={handleAddRequiredCompetency} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Select Competency *</label>
+                <select
+                  value={reqCompId}
+                  onChange={(e) => setReqCompId(e.target.value)}
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                >
+                  {competencies.map((c) => {
+                    const alreadyAssigned = (selectedDesigForComp.requiredCompetencies || []).some(r => r.competencyId === c.id);
+                    return (
+                      <option key={c.id} value={c.id} disabled={alreadyAssigned}>
+                        {c.name} ({c.category}){alreadyAssigned ? ' - Already Assigned' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Required Proficiency Level *</label>
+                <select
+                  value={reqProfLevel}
+                  onChange={(e) => setReqProfLevel(e.target.value as SkillProficiencyLevel)}
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                >
+                  <option value="Beginner">1 — Beginner</option>
+                  <option value="Intermediate">2 — Intermediate</option>
+                  <option value="Advanced">3 — Advanced</option>
+                  <option value="Expert">4 — Expert</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">Priority Level</label>
+                <select
+                  value={reqPriority}
+                  onChange={(e) => setReqPriority(e.target.value as any)}
+                  className="w-full p-2.5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-bold outline-none"
+                >
+                  <option value="high">High Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="low">Low Priority</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddReqCompModal(false)}
+                  className="px-3 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-secondary)] font-bold border border-[var(--border-main)] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-[#FFC400] text-[#111111] font-extrabold border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer"
+                >
+                  Assign Requirement
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+

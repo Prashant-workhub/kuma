@@ -3,7 +3,7 @@
  * Provides self-contained, realistic sample data and safe reset mechanisms for SIH evaluation.
  */
 
-import { TrainingCertificate, TrainingEnrollment, TraineeCompetency, CatalogCompetency, CompetencyCategory, SkillProficiencyLevel } from '../types';
+import { TrainingCertificate, TrainingEnrollment, TraineeCompetency, CatalogCompetency, CompetencyCategory, SkillProficiencyLevel, OrgDepartment, OrgDesignation } from '../types';
 
 export const DEMO_ORGANIZATION = 'Acme Digital Services';
 
@@ -12,6 +12,116 @@ export const DEMO_DEPARTMENTS = [
   'Technology',
   'Human Resources'
 ];
+
+export const DEMO_ORG_DEPARTMENTS_FULL: OrgDepartment[] = [
+  {
+    id: 'dept-data-analytics',
+    name: 'Data & Analytics',
+    description: 'Data processing, statistical modeling, BI reporting, and predictive analytics.',
+    isActive: true,
+    createdAt: '2026-01-10'
+  },
+  {
+    id: 'dept-technology',
+    name: 'Technology',
+    description: 'Software engineering, cloud infrastructure, and IT security systems.',
+    isActive: true,
+    createdAt: '2026-01-10'
+  },
+  {
+    id: 'dept-human-resources',
+    name: 'Human Resources',
+    description: 'Workforce capacity building, talent acquisition, and personnel development.',
+    isActive: true,
+    createdAt: '2026-01-15'
+  }
+];
+
+export const DEMO_ORG_DESIGNATIONS_FULL: OrgDesignation[] = [
+  {
+    id: 'desig-junior-data-associate',
+    name: 'Junior Data Associate',
+    departmentId: 'dept-data-analytics',
+    departmentName: 'Data & Analytics',
+    description: 'Data cleaning, introductory statistical analysis, and dashboard visualization.',
+    isActive: true,
+    requiredCompetencies: [
+      {
+        competencyId: 'comp-data-analysis',
+        competencyName: 'Data Analysis',
+        requiredLevel: 'Intermediate',
+        requiredNumericLevel: 2,
+        priority: 'high'
+      },
+      {
+        competencyId: 'comp-python-programming',
+        competencyName: 'Python',
+        requiredLevel: 'Intermediate',
+        requiredNumericLevel: 2,
+        priority: 'medium'
+      },
+      {
+        competencyId: 'comp-comm-skills',
+        competencyName: 'Communication',
+        requiredLevel: 'Intermediate',
+        requiredNumericLevel: 2,
+        priority: 'low'
+      }
+    ],
+    createdAt: '2026-01-12'
+  },
+  {
+    id: 'desig-software-engineer',
+    name: 'Software Engineer',
+    departmentId: 'dept-technology',
+    departmentName: 'Technology',
+    description: 'Full-stack software application development and system architecture maintenance.',
+    isActive: true,
+    requiredCompetencies: [
+      {
+        competencyId: 'comp-python-programming',
+        competencyName: 'Python',
+        requiredLevel: 'Advanced',
+        requiredNumericLevel: 3,
+        priority: 'high'
+      },
+      {
+        competencyId: 'comp-digital-literacy',
+        competencyName: 'Digital Literacy',
+        requiredLevel: 'Advanced',
+        requiredNumericLevel: 3,
+        priority: 'medium'
+      }
+    ],
+    createdAt: '2026-01-12'
+  },
+  {
+    id: 'desig-hr-lead',
+    name: 'HR Lead',
+    departmentId: 'dept-human-resources',
+    departmentName: 'Human Resources',
+    description: 'Organizational learning strategy, workforce management, and competency tracking.',
+    isActive: true,
+    requiredCompetencies: [
+      {
+        competencyId: 'comp-leadership-mgmt',
+        competencyName: 'Leadership',
+        requiredLevel: 'Advanced',
+        requiredNumericLevel: 3,
+        priority: 'high'
+      },
+      {
+        competencyId: 'comp-comm-skills',
+        competencyName: 'Communication',
+        requiredLevel: 'Advanced',
+        requiredNumericLevel: 3,
+        priority: 'high'
+      }
+    ],
+    createdAt: '2026-01-18'
+  }
+];
+
 
 export const DEMO_COMPETENCIES: CatalogCompetency[] = [
   {

@@ -245,6 +245,52 @@ export interface CatalogCompetency {
   isActive: boolean;
 }
 
+export interface DesignationCompetencyRequirement {
+  competencyId: string;
+  competencyName: string;
+  requiredLevel: SkillProficiencyLevel;
+  requiredNumericLevel: 1 | 2 | 3 | 4;
+  priority?: 'high' | 'medium' | 'low';
+}
+
+export interface OrgDepartment {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface OrgDesignation {
+  id: string;
+  name: string;
+  departmentId: string;
+  departmentName: string;
+  description?: string;
+  isActive: boolean;
+  requiredCompetencies: DesignationCompetencyRequirement[];
+  createdAt?: string;
+}
+
+export type SkillProficiencyScaleLevel = 'Not Assessed' | 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
+export interface RoleSkillGapRecord {
+  competencyId: string;
+  competencyName: string;
+  category?: CompetencyCategory;
+  requiredLevel: SkillProficiencyLevel;
+  requiredNumericLevel: 1 | 2 | 3 | 4;
+  currentLevel: SkillProficiencyScaleLevel;
+  currentNumericLevel: 0 | 1 | 2 | 3 | 4;
+  currentSource: 'Assessed' | 'Declared' | 'Not Assessed';
+  gap: number;
+  status: 'Meets Target' | 'Development Needed' | 'Significant Development Needed' | 'High Development Need';
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  requirementPriority?: 'high' | 'medium' | 'low';
+}
+
+
+
 export interface TraineeSkill {
   id: string;
   name: string;

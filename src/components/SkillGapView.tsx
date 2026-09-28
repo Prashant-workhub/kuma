@@ -3,20 +3,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { UserSettings, TraineeCompetency, SkillProficiencyLevel } from '../types';
+import React, { useState, useMemo } from 'react';
+import { UserSettings, TraineeCompetency, SkillProficiencyLevel, RoleSkillGapRecord } from '../types';
 import { 
   calculateSkillGap, 
+  calculateDesignationSkillGaps,
   LEVEL_TO_NUMERIC, 
   NUMERIC_TO_LEVEL, 
   GapPriority, 
   GapStatus 
 } from '../utils/competencyUtils';
+import { DEMO_ORG_DESIGNATIONS_FULL } from '../utils/demoDataSeeder';
 import { getTrainingRecommendations } from '../utils/recommendationUtils';
 import { enrollInCourse, updateEnrollmentProgress } from '../utils/enrollmentUtils';
 import { COURSES } from '../teacher-portal/lib/mockData';
 import { INITIAL_COMPETENCY_CATALOG } from '../data';
 import { Card, Button, Badge } from './bauhaus';
+
 import { 
   Target, 
   TrendingUp, 
@@ -93,17 +96,27 @@ export default function SkillGapView({
     onUpdateSettings(updatedSettings);
   };
 
-  // Skill Gap Calculations
-  const gapAnalyses = competencies.map((comp) => ({
-    competency: comp,
-    analysis: calculateSkillGap(comp)
-  }));
+  // Find trainee's organizational designation
+  const traineeDesignation = useMemo(() => {
+    const desigName = (settings.profile.designation || '').toLowerCase();
+    const deptName = (settings.profile.department || '').toLowerCase();
+    return DEMO_ORG_DESIGNATIONS_FULL.find(
+      (d) => (desigName && d.name.toLowerCase() === desigName) ||
+             (deptName && d.departmentName.toLowerCase() === deptName)
+    ) || DEMO_ORG_DESIGNATIONS_FULL[0];
+  }, [settings.profile.designation, settings.profile.department]);
 
-  const totalCompetencies = gapAnalyses.length;
-  const meetingTargetCount = gapAnalyses.filter((g) => g.analysis.gap === 0).length;
-  const devNeededCount = gapAnalyses.filter((g) => g.analysis.gap === 1).length;
-  const sigDevCount = gapAnalyses.filter((g) => g.analysis.gap === 2).length;
-  const highDevCount = gapAnalyses.filter((g) => g.analysis.gap >= 3).length;
+  // Dynamic Designation Skill Gap Calculations
+  const designationGaps = useMemo(() => {
+    return calculateDesignationSkillGaps(competencies, traineeDesignation, INITIAL_COMPETENCY_CATALOG);
+  }, [competencies, traineeDesignation]);
+
+  const totalCompetencies = designationGaps.length;
+  const meetingTargetCount = designationGaps.filter((g) => g.gap === 0).length;
+  const devNeededCount = designationGaps.filter((g) => g.gap === 1).length;
+  const sigDevCount = designationGaps.filter((g) => g.gap === 2).length;
+  const highDevCount = designationGaps.filter((g) => g.gap >= 3).length;
+
 
   // Phase 3E Recommendation Engine execution
   const { recommendedCourses } = getTrainingRecommendations(
@@ -222,118 +235,121 @@ export default function SkillGapView({
           </span>
         </div>
 
-        {gapAnalyses.length === 0 ? (
+        {/* Trainee Designation Badge Header */}
+        <div className="p-3 rounded-[6px] bg-[var(--panel-bg)] border border-[var(--border-main)] flex items-center justify-between font-mono text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold uppercase text-[var(--text-secondary)]">TRAINEE DESIGNATION:</span>
+            <span className="font-black text-[#FFC400] uppercase">{traineeDesignation.name}</span>
+            <span className="text-[var(--text-secondary)]">({traineeDesignation.departmentName})</span>
+          </div>
+          <span className="text-[10px] text-[var(--text-secondary)]">
+            Required Competencies Specified by Organization
+          </span>
+        </div>
+
+        {designationGaps.length === 0 ? (
           <div className="p-8 text-center font-mono text-xs text-[var(--text-secondary)]">
-            No competencies added yet. Add competencies in your Trainee Profile to perform gap analysis.
+            No required competencies found for your designation.
           </div>
         ) : (
           <div className="space-y-4">
-            {gapAnalyses.map(({ competency: comp, analysis: a }) => {
-              const statusStyle = STATUS_BADGE_STYLE[a.status];
-              const priorityStyle = PRIORITY_BADGE_STYLE[a.priority];
+            {designationGaps.map((rec) => {
+              const statusStyle = STATUS_BADGE_STYLE[rec.status];
+              const priorityStyle = PRIORITY_BADGE_STYLE[rec.priority];
 
               return (
                 <div
-                  key={comp.id}
+                  key={rec.competencyId}
                   className="p-5 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] space-y-3 shadow-paper-xs"
                 >
                   {/* Top Line: Competency Name & Badges */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--border-main)]/40 pb-3">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--border-main)]/40 pb-3 font-mono">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-heading font-extrabold text-base text-[var(--text-primary)] uppercase">
-                          {comp.name}
+                          {rec.competencyName}
                         </h4>
-                        {comp.category && (
-                          <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)]">
-                            {comp.category}
+                        {rec.category && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)]">
+                            {rec.category}
                           </span>
                         )}
                       </div>
-                      {comp.description && (
-                        <p className="text-xs font-mono text-[var(--text-secondary)] mt-1 max-w-2xl leading-relaxed">
-                          {comp.description}
-                        </p>
-                      )}
                     </div>
 
                     {/* Status & Priority Badges */}
                     <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-                      <span className={`px-2.5 py-1 rounded-[4px] border ${statusStyle.border} ${statusStyle.bg} ${statusStyle.text} font-mono text-xs font-black uppercase`}>
-                        {a.status}
+                      <span className={`px-2.5 py-1 rounded-[4px] border ${statusStyle.border} ${statusStyle.bg} ${statusStyle.text} text-xs font-black uppercase`}>
+                        {rec.status}
                       </span>
-                      <span className={`px-2 py-1 rounded-[4px] ${priorityStyle.bg} font-mono text-xs font-black uppercase shadow-paper-xs`}>
-                        Priority: {a.priority}
+                      <span className={`px-2 py-1 rounded-[4px] ${priorityStyle.bg} text-xs font-black uppercase shadow-paper-xs`}>
+                        Priority: {rec.priority}
                       </span>
                     </div>
                   </div>
 
-                  {/* Matrix Columns: CURRENT LEVEL | TARGET LEVEL | CALCULATED GAP */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                  {/* Matrix Columns: CURRENT LEVEL | REQUIRED LEVEL | CALCULATED GAP */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 font-mono">
                     
-                    {/* 1. CURRENT LEVEL (Assessed Preferred, Declared Fallback) */}
+                    {/* 1. CURRENT LEVEL (Assessed Preferred, Declared Fallback, 0 Not Assessed) */}
                     <div className="p-3.5 rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">
+                        <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">
                           CURRENT LEVEL
                         </span>
-                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
-                          a.currentSource === 'Assessed' 
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                          rec.currentSource === 'Assessed' 
                             ? 'bg-[#19B56B]/20 text-[#19B56B] border-[#19B56B]/40' 
-                            : 'bg-gray-200 dark:bg-neutral-800 text-[var(--text-secondary)] border-[var(--border-main)]'
+                            : rec.currentSource === 'Declared'
+                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                            : 'bg-red-500/20 text-red-400 border-red-500/40'
                         }`}>
-                          {a.currentSource === 'Assessed' ? 'Assessed (Phase 3C)' : 'Declared (Phase 3A)'}
+                          {rec.currentSource === 'Assessed' ? 'Assessed' : rec.currentSource === 'Declared' ? 'Declared' : 'Not Assessed'}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        {renderProgressBar(a.currentNumericLevel, 'bg-[#FFC400]')}
+                        {renderProgressBar(rec.currentNumericLevel, rec.currentNumericLevel === 0 ? 'bg-red-500' : 'bg-[#FFC400]')}
                         <span className="font-heading font-extrabold text-xs text-[var(--text-primary)] uppercase">
-                          {a.currentLevel}
+                          {rec.currentLevel}
                         </span>
                       </div>
                     </div>
 
-                    {/* 2. TARGET LEVEL (Configurable Dropdown) */}
+                    {/* 2. REQUIRED LEVEL (From Designation Role) */}
                     <div className="p-3.5 rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">
-                          TARGET LEVEL
+                        <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">
+                          REQUIRED LEVEL (ROLE)
                         </span>
-                        <span className="text-[9px] font-mono text-[var(--text-secondary)] italic">Configurable</span>
+                        <span className="text-[9px] text-[var(--text-secondary)] font-bold">Role Spec</span>
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        {renderProgressBar(a.targetNumericLevel, 'bg-[#9C27B0]')}
-                        <select
-                          value={a.targetLevel}
-                          onChange={(e) => handleUpdateTargetLevel(comp.id, e.target.value as SkillProficiencyLevel)}
-                          className="rounded-[4px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] p-1 text-xs font-mono font-bold text-[var(--text-primary)] cursor-pointer outline-none"
-                        >
-                          {PROFICIENCY_LEVELS.map((lvl) => (
-                            <option key={lvl} value={lvl}>{lvl}</option>
-                          ))}
-                        </select>
+                        {renderProgressBar(rec.requiredNumericLevel, 'bg-[#9C27B0]')}
+                        <span className="font-heading font-extrabold text-xs text-[#9C27B0] uppercase">
+                          {rec.requiredLevel} ({rec.requiredNumericLevel}/4)
+                        </span>
                       </div>
                     </div>
 
                     {/* 3. SKILL GAP */}
                     <div className="p-3.5 rounded-[6px] border border-[var(--border-main)] bg-[var(--card-bg)] space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">
+                        <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">
                           SKILL GAP
                         </span>
-                        <span className="text-[9px] font-mono text-[var(--text-secondary)]">Target - Current</span>
+                        <span className="text-[9px] text-[var(--text-secondary)]">Required - Current</span>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <span className={`font-heading font-black text-xl uppercase ${
-                          a.gap === 0 ? 'text-[#19B56B]' : a.gap === 1 ? 'text-[#B78103] dark:text-[#FFD54F]' : 'text-red-500'
+                          rec.gap === 0 ? 'text-[#19B56B]' : rec.gap === 1 ? 'text-[#B78103] dark:text-[#FFD54F]' : 'text-red-500'
                         }`}>
-                          {a.gap} {a.gap === 1 ? 'LEVEL' : 'LEVELS'}
+                          {rec.gap} {rec.gap === 1 ? 'LEVEL' : 'LEVELS'}
                         </span>
                         <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)]">
-                          {a.gap === 0 ? 'Target Satisfied' : `Needs +${a.gap} Level Step`}
+                          {rec.gap === 0 ? 'Meets Target' : `Needs +${rec.gap} Level Step`}
                         </span>
                       </div>
                     </div>
@@ -344,6 +360,7 @@ export default function SkillGapView({
             })}
           </div>
         )}
+
       </Card>
 
       {/* PHASE 3E: RECOMMENDED TRAINING SECTION */}
