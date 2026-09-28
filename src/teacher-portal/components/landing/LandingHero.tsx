@@ -10,7 +10,7 @@ const FADE_MS = 500
 const FADE_OUT_LEAD = 0.55 // seconds before the end to start fading out
 
 /**
- * Full-screen cinematic hero with seamless video loop, the mascot logo, and a single, direct
+ * Full-screen cinematic hero with seamless video loop, the brand logo, and a single, direct
  * "ENTER PORTAL" button.
  */
 export function LandingHero() {

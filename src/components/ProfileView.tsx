@@ -35,9 +35,9 @@ import {
   TraineeCompetency, 
   TraineeCertification 
 } from '../types';
+import { Button, Card, Input } from './bauhaus';
 import { INITIAL_COMPETENCY_CATALOG } from '../data';
-import { Button, Card, Badge, Input } from './bauhaus';
-import { MascotAvatarPicker } from './bauhaus/MascotAvatarPicker';
+import { UserProfileAvatarPicker } from './bauhaus/UserProfileAvatarPicker';
 import AdminCompetencyCatalogModal from './AdminCompetencyCatalogModal';
 import CompetencyHistoryModal from './CompetencyHistoryModal';
 
@@ -432,7 +432,7 @@ export default function ProfileView({
             </div>
 
             <div className="w-full pt-2">
-              <MascotAvatarPicker
+              <UserProfileAvatarPicker
                 currentAvatarUrl={avatarUrl}
                 onSelectAvatar={(url) => setAvatarUrl(url)}
                 userInitial={firstName ? firstName.charAt(0) : 'T'}

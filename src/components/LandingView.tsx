@@ -5,32 +5,23 @@
 
 import React, { useState } from 'react';
 import {
-  Play,
-  Mic,
   Sparkles,
   BookOpen,
   TrendingUp,
   Brain,
-  Cpu,
   Layers,
   ArrowRight,
   ShieldCheck,
   Check,
-  User,
-  Github,
-  Linkedin,
-  Mail,
-  HelpCircle,
-  ChevronDown,
-  Globe,
+  Building2,
+  Users,
+  Target,
   Award,
-  Key,
-  MessageCircle,
-  Headphones,
-  Smile
+  ChevronDown,
+  BarChart3,
+  GraduationCap
 } from 'lucide-react';
 import AILogo from './AILogo';
-import { Button, Card, Badge } from './bauhaus';
 
 interface LandingViewProps {
   onEnterApp: () => void;
@@ -42,8 +33,6 @@ interface LandingViewProps {
 
 export default function LandingView({
   onEnterApp,
-  onLoginSuccess,
-  onNavigateToPricing,
   onGetStarted,
   onSignIn
 }: LandingViewProps) {
@@ -51,445 +40,265 @@ export default function LandingView({
 
   const faqs = [
     {
-      q: "Who is Broot?",
-      a: "Broot is Kuma's friendly 3D cognitive companion! Broot listens to your lectures, organizes your research notes, and helps you build flashcards as you study."
+      q: "What is Capacity Connect?",
+      a: "Capacity Connect (SIH26075) is a Digital Capacity Building and Learning Management Portal designed to bridge organizational skill gaps, automate training recommendations, and provide real-time capacity analytics."
     },
     {
-      q: "How does Kuma record and transcribe lectures?",
-      a: "Kuma uses browser-native WebAudio pipelines combined with custom Whisper and Gemini 2.5 audio processors to capture live spoken lectures or uploaded audio files, generating verbatim transcripts with speaker labels."
+      q: "How does Skill Gap Diagnosis work?",
+      a: "The platform maps department designations to required competency levels, compares them against individual employee profiles, and automatically calculates skill gap scores with AI-driven training recommendations."
     },
     {
-      q: "What is Bring Your Own Key (BYOK) mode?",
-      a: "BYOK allows scholars to input their personal API keys (Google Gemini, Groq, OpenAI, Anthropic, DeepSeek, OpenRouter, Mistral, xAI, NVIDIA, Notion AI) to run unlimited AI note synthesis and quizzes at 0 extra platform markup."
+      q: "Can administrators track real-time capacity analytics?",
+      a: "Yes. Executive dashboards provide department-level competency heatmaps, course completion tracking, assessment scores, and budget allocation metrics."
     },
     {
-      q: "Can I export my notes and presentation slides?",
-      a: "Yes! All synthesized outlines, flashcard decks, and presentation decks can be exported as structured PDF documents, Markdown files, or raw text directly into Notion or Canvas."
+      q: "Does Capacity Connect support AI-powered learning paths?",
+      a: "Integrated AI models evaluate employee performance and generate adaptive learning modules, interactive flashcards, and competency assessments tailored to each role."
     },
     {
-      q: "Is my academic data and recorded audio secure?",
-      a: "Absolutely. All audio data processing occurs locally in browser memory or encrypted temp blobs. Your personal study material is private to your authenticated user account."
+      q: "How are certificates verified?",
+      a: "Every course completion issues an authenticated digital certificate with verifiable competency codes and metadata hash for audit compliance."
+    }
+  ];
+
+  const workflowSteps = [
+    {
+      step: "01",
+      title: "Organization Setup",
+      desc: "Administrators define departments, designations, and required baseline competency scores.",
+      icon: Building2
+    },
+    {
+      step: "02",
+      title: "Skill Gap Analysis",
+      desc: "System evaluates employee performance against role metrics to detect precise capability gaps.",
+      icon: Target
+    },
+    {
+      step: "03",
+      title: "AI Course Recommendation",
+      desc: "Tailored training programs are automatically assigned to employees to target identified deficits.",
+      icon: GraduationCap
+    },
+    {
+      step: "04",
+      title: "Capacity Analytics",
+      desc: "Real-time management dashboards display competency growth, completion metrics, and ROI.",
+      icon: BarChart3
     }
   ];
 
   return (
-    <div className="bg-[var(--bg-paper)] text-[var(--text-primary)] min-h-screen overflow-x-hidden select-none relative font-sans transition-colors duration-200">
-
-      {/* 1. Header Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-[var(--sidebar-bg)] border-b-2 border-[var(--border-main)] px-6 py-4 flex items-center justify-between">
+    <div className="bg-white text-slate-900 min-h-screen overflow-x-hidden font-sans select-none">
+      {/* Header Navigation Bar */}
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-purple-100 px-6 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={onGetStarted}>
-          <div className="p-1.5 rounded-[6px] bg-[#FFC400] border-2 border-[var(--border-main)] shadow-paper-sm transition-transform group-hover:scale-105 flex items-center justify-center">
-            <AILogo size={28} theme="light" />
+          <div className="p-2 rounded-full bg-purple-50 text-[#992e9d] transition-transform group-hover:scale-105 flex items-center justify-center border border-purple-200">
+            <AILogo size={24} theme="light" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-heading font-extrabold text-lg text-[var(--text-primary)] tracking-tight block leading-none">KUMA</span>
+              <span className="font-semibold text-lg text-slate-900 tracking-tight block leading-none">CAPACITY CONNECT</span>
+              <span className="bg-purple-100 text-[#992e9d] text-[10px] font-bold px-2 py-0.5 rounded-full">SIH 2026</span>
             </div>
-            <span className="font-mono text-[9px] text-[var(--text-secondary)] font-bold tracking-[2px] uppercase">COGNITIVE SCHOLAR WORKSPACE</span>
+            <span className="text-[10px] text-slate-500 font-medium tracking-wide uppercase">Digital Capacity & Learning Portal</span>
           </div>
         </div>
 
-        <nav className="hidden md:flex items-center gap-6 font-mono text-xs font-bold uppercase tracking-wider">
-          <a href="#broot-showcase" style={{ color: 'var(--text-primary)' }} className="landing-nav-link px-2.5 py-1 rounded-[3px] border border-transparent transition-colors font-bold flex items-center gap-1 text-[#FFC400]">
-            <Sparkles className="w-3.5 h-3.5" /> Broot AI
-          </a>
-          <a href="#features" style={{ color: 'var(--text-primary)' }} className="landing-nav-link px-2.5 py-1 rounded-[3px] border border-transparent transition-colors font-bold">Features</a>
-          <a href="#workflow" style={{ color: 'var(--text-primary)' }} className="landing-nav-link px-2.5 py-1 rounded-[3px] border border-transparent transition-colors font-bold">Workflow</a>
-          <a href="#pricing" style={{ color: 'var(--text-primary)' }} className="landing-nav-link px-2.5 py-1 rounded-[3px] border border-transparent transition-colors font-bold">Pricing</a>
-          <a href="#faq" style={{ color: 'var(--text-primary)' }} className="landing-nav-link px-2.5 py-1 rounded-[3px] border border-transparent transition-colors font-bold">FAQ</a>
+        <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-600">
+          <a href="#features" className="hover:text-[#992e9d] transition-colors">Features</a>
+          <a href="#workflow" className="hover:text-[#992e9d] transition-colors">Workflow</a>
+          <a href="#analytics" className="hover:text-[#992e9d] transition-colors">Analytics</a>
+          <a href="#faq" className="hover:text-[#992e9d] transition-colors">FAQ</a>
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button
-            variant="tertiary"
-            size="sm"
+          <button
             onClick={onSignIn}
-            className="border-2 border-[var(--border-main)] text-[var(--text-primary)] bg-[var(--card-bg)]"
+            className="px-4 py-2 rounded-full border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
           >
             Sign In
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
+          </button>
+          <button
             onClick={onGetStarted}
-            className="bg-[#FFC400] text-[#111111] border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] font-bold"
+            className="px-5 py-2 rounded-full bg-[#992e9d] hover:bg-[#832687] text-white text-xs font-medium shadow-sm hover:shadow-md transition-all flex items-center gap-1.5"
           >
-            Get Started
-          </Button>
+            Launch Portal <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </header>
 
-      {/* 2. Hero Presentation Area featuring Mascot Broot */}
-      <section className="max-w-7xl mx-auto px-6 pt-10 md:pt-16 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-grid-paper relative">
+      {/* Hero Section */}
+      <section className="relative px-6 pt-16 pb-20 max-w-7xl mx-auto">
+        <div className="text-center max-w-3xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-50 border border-purple-200 text-[#992e9d] text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5" /> Next-Gen Enterprise Capacity Building
+          </div>
 
-        {/* Left Side Copy */}
-        <div className="lg:col-span-7 space-y-6 text-left relative z-10">
-          <h1 className="font-heading font-extrabold text-4xl sm:text-6xl md:text-7xl text-[var(--text-primary)] tracking-tight leading-none uppercase">
-            LEARN SMARTER <br />
-            WITH <span className="bg-[#FFC400] text-[#111111] px-3 py-0.5 border-2 border-[var(--border-main)] shadow-paper-md inline-block mt-2 transform -rotate-1">
-              BROOT & KUMA
-            </span>
+          <h1 className="text-4xl md:text-5xl font-semibold text-slate-900 tracking-tight leading-tight">
+            Bridge Organizational Skill Gaps with <span className="text-[#992e9d]">Data-Driven</span> Capacity Building
           </h1>
 
-          <p className="text-sm sm:text-base text-[var(--text-secondary)] font-mono font-medium leading-relaxed max-w-xl border-l-4 border-[#FFC400] pl-4 py-1">
-            Kuma captures live lectures, extracts structured notes, generates quizzes, and diagnoses weak topics alongside Broot!
+          <p className="text-slate-600 text-base leading-relaxed">
+            Capacity Connect empowers enterprise organizations and government bodies to map competency requirements, measure individual skill gaps, deploy AI-recommended learning paths, and audit real-time capability growth.
           </p>
 
-          <div className="flex flex-wrap items-center gap-4 pt-3">
-            <Button
-              variant="primary"
-              size="lg"
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
+            <button
               onClick={onGetStarted}
-              className="bg-[#2F6BFF] text-white hover:bg-[#255cd9] border-2 border-[var(--border-main)] shadow-paper-md font-bold px-7"
-              icon={<Play className="h-4 w-4 fill-current text-white" />}
+              className="px-7 py-3 rounded-full bg-[#992e9d] hover:bg-[#832687] text-white font-medium text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2"
             >
-              Start Free with Broot
-            </Button>
-
-            <Button
-              variant="tertiary"
-              size="lg"
-              onClick={onSignIn}
-              className="bg-[var(--card-bg)] text-[var(--text-primary)] border-2 border-[var(--border-main)] shadow-paper-md hover:bg-[var(--hover-bg)] font-bold"
-              icon={<BookOpen className="h-4 w-4 text-[var(--text-primary)]" />}
+              Explore Dashboard Demo <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onEnterApp}
+              className="px-7 py-3 rounded-full border border-purple-200 text-[#992e9d] bg-purple-50/50 hover:bg-purple-100/60 font-medium text-sm transition-all"
             >
-              Workspace Sign In
-            </Button>
-          </div>
-        </div>
-
-        {/* Right Side Broot Hero Showcase */}
-        <div className="lg:col-span-5 relative w-full flex flex-col items-center justify-center pt-6 lg:pt-0">
-
-          {/* Broot Mascot Image with Speech Bubble */}
-          <div className="relative group">
-            {/* Speech Bubble */}
-            <div className="absolute -top-10 -left-6 z-20 bg-[#FFC400] text-[#111111] font-mono text-xs font-extrabold px-3 py-1.5 rounded-[8px] border-2 border-[var(--border-main)] shadow-paper-sm animate-bounce">
-              "Hi! I'm Broot! Ready to study?"
-              <div className="absolute -bottom-2 left-6 w-3 h-3 bg-[#FFC400] border-r-2 border-b-2 border-[var(--border-main)] transform rotate-45" />
-            </div>
-
-            {/* Giant Mascot Broot Thinking (No Box Container) */}
-            <div className="relative z-10 flex items-center justify-center">
-              <img
-                src="/mascots/broot-hero-thinking.png"
-                alt="Broot Thinking Mascot"
-                className="w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 object-contain transition-transform duration-300 group-hover:scale-105 filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.4)]"
-              />
-            </div>
-
-            {/* Decorative Floating Mini Badges */}
-            <div className="absolute -bottom-4 -left-4 z-20 bg-[var(--panel-bg)] border-2 border-[var(--border-main)] p-2.5 rounded-[8px] shadow-paper-sm flex items-center gap-2 font-mono text-xs font-bold text-[var(--text-primary)]">
-              <Headphones className="w-4 h-4 text-[#38BDF8]" />
-              <span>Live Listening</span>
-            </div>
-
-            <div className="absolute -top-4 -right-4 z-20 bg-[var(--panel-bg)] border-2 border-[var(--border-main)] p-2.5 rounded-[8px] shadow-paper-sm flex items-center gap-2 font-mono text-xs font-bold text-[#FFC400]">
-              <Sparkles className="w-4 h-4" />
-              <span>AI-Powered Notes</span>
-            </div>
+              View Admin Analytics
+            </button>
           </div>
 
-        </div>
-      </section>
-
-      {/* NEW SECTION: BROOT MASCOT SHOWCASE BANNER */}
-      <section id="broot-showcase" className="border-y-2 border-[var(--border-main)] bg-[#FFC400] text-[#111111] py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-6">
-            <img
-              src="/mascots/broot-listening-headphones.png"
-              alt="Broot Listening"
-              className="w-24 h-24 sm:w-32 sm:h-32 object-contain filter drop-shadow-md animate-pulse"
-            />
-            <div className="space-y-1">
-              <div className="inline-block px-2.5 py-0.5 bg-[#111111] text-[#FFC400] font-mono text-xs font-extrabold rounded-[4px] uppercase tracking-wider">
-                ALWAYS BY YOUR SIDE
-              </div>
-              <h2 className="font-heading font-extrabold text-2xl md:text-4xl tracking-tight uppercase">
-                Meet Broot, Your Cognitive AI Companion
-              </h2>
-              <p className="font-mono text-xs md:text-sm font-semibold max-w-xl opacity-90">
-                Broot pops up at key study moments to guide lecture processing and highlight areas that need revision.
-              </p>
+          {/* Quick Metrics Bar */}
+          <div className="pt-10 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
+            <div className="p-4 rounded-[11px] bg-slate-50 border border-slate-100">
+              <div className="text-2xl font-semibold text-[#992e9d]">94%</div>
+              <div className="text-xs text-slate-500 font-medium mt-0.5">Competency Gap Resolution</div>
             </div>
-          </div>
-
-          <div className="flex gap-4">
-            <img
-              src="/mascots/broot-thinking.png"
-              alt="Broot Thinking"
-              className="w-16 h-16 sm:w-20 sm:h-20 object-contain bg-white/40 p-2 rounded-[12px] border-2 border-[#111111] shadow-paper-sm"
-            />
-            <img
-              src="/mascots/broot-peace-wink.png"
-              alt="Broot Wink"
-              className="w-16 h-16 sm:w-20 sm:h-20 object-contain bg-white/40 p-2 rounded-[12px] border-2 border-[#111111] shadow-paper-sm"
-            />
-            <img
-              src="/mascots/broot-celebrating-confetti.png"
-              alt="Broot Celebrating"
-              className="w-16 h-16 sm:w-20 sm:h-20 object-contain bg-white/40 p-2 rounded-[12px] border-2 border-[#111111] shadow-paper-sm"
-            />
+            <div className="p-4 rounded-[11px] bg-slate-50 border border-slate-100">
+              <div className="text-2xl font-semibold text-slate-900">120+</div>
+              <div className="text-xs text-slate-500 font-medium mt-0.5">Skill Mapping Frameworks</div>
+            </div>
+            <div className="p-4 rounded-[11px] bg-slate-50 border border-slate-100">
+              <div className="text-2xl font-semibold text-[#992e9d]">Real-time</div>
+              <div className="text-xs text-slate-500 font-medium mt-0.5">Automated Progress Audits</div>
+            </div>
+            <div className="p-4 rounded-[11px] bg-slate-50 border border-slate-100">
+              <div className="text-2xl font-semibold text-slate-900">100%</div>
+              <div className="text-xs text-slate-500 font-medium mt-0.5">Verified Accreditation</div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 3. PRICING SECTION ON LANDING PAGE */}
-      <section id="pricing" className="border-t-2 border-[var(--border-main)] bg-[var(--bg-paper)] py-16 px-6">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <Badge variant="yellow" size="md">TRANSPARENT PRICING</Badge>
-            <h2 className="font-heading font-extrabold text-3xl md:text-5xl uppercase text-[var(--text-primary)] tracking-tight">
-              SELECT YOUR PLAN
-            </h2>
-            <p className="text-xs md:text-sm font-mono text-[var(--text-secondary)]">
-              Start free with your own API keys, or upgrade for managed AI infrastructure.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* BYOK FREE PLAN */}
-            <Card shadow="md" className="p-6 bg-[var(--card-bg)] border-2 border-[var(--border-main)] space-y-6 flex flex-col justify-between">
-              <div className="space-y-4">
-                <Badge variant="yellow" size="sm">FREE FOREVER</Badge>
-                <div>
-                  <h3 className="font-heading font-extrabold text-xl uppercase text-[var(--text-primary)]">BYOK PLAN</h3>
-                  <div className="text-3xl font-heading font-extrabold text-[var(--text-primary)] mt-1">₹0 <span className="text-xs font-mono text-[var(--text-secondary)]">/ month</span></div>
-                </div>
-                <p className="text-xs font-mono text-[var(--text-secondary)]">Bring Your Own Key for 9+ AI providers with zero platform fee.</p>
-                <div className="space-y-2 font-mono text-xs text-[var(--text-primary)] border-t-2 border-[var(--border-main)] pt-3">
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[#34D399]" /><span>Unlimited Live Audio Recording</span></div>
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[#34D399]" /><span>Connect Gemini, Groq, OpenAI, Anthropic</span></div>
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[#34D399]" /><span>Academic Library & Broot AI Companion</span></div>
-                </div>
-              </div>
-              <Button variant="tertiary" size="md" onClick={onGetStarted} className="w-full justify-center border-2 border-[var(--border-main)] text-[var(--text-primary)]">
-                Get Started Free
-              </Button>
-            </Card>
-
-            {/* FEATURED SCHOLAR PRO PLAN */}
-            <Card shadow="lg" className="p-6 bg-[var(--card-bg)] border-2 border-[#FFC400] space-y-6 flex flex-col justify-between relative shadow-paper-yellow">
-              <div className="space-y-4">
-                <span className="px-2.5 py-1 rounded-[4px] bg-[#FFC400] text-[#111111] font-mono text-[10px] font-extrabold uppercase border border-[#FFC400] inline-block shadow-paper-sm">
-                  RECOMMENDED SCHOLAR
-                </span>
-                <div>
-                  <h3 className="font-heading font-extrabold text-xl uppercase text-[var(--text-primary)]">SCHOLAR PRO</h3>
-                  <div className="text-3xl font-heading font-extrabold text-[var(--text-primary)] mt-1">₹399 <span className="text-xs font-mono text-[var(--text-secondary)]">/ month</span></div>
-                </div>
-                <p className="text-xs font-mono text-[var(--text-secondary)] font-bold">Managed AI infrastructure with high-speed API quota included.</p>
-                <div className="space-y-2 font-mono text-xs text-[var(--text-primary)] border-t-2 border-[var(--border-main)] pt-3">
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[#FFC400] stroke-[3]" /><span className="text-[var(--text-primary)] font-medium">Managed AI Run Quota (No API keys needed)</span></div>
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[#FFC400] stroke-[3]" /><span className="text-[var(--text-primary)] font-medium">100 GB Cloud Storage</span></div>
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[#FFC400] stroke-[3]" /><span className="text-[var(--text-primary)] font-medium">Weak Topic Radar & Broot AI Presentations</span></div>
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[#FFC400] stroke-[3]" /><span className="text-[var(--text-primary)] font-medium">Priority Support</span></div>
-                </div>
-              </div>
-              <Button variant="secondary" size="md" onClick={onGetStarted} className="w-full justify-center bg-[#FFC400] text-[#111111] hover:bg-[#ffe066] font-extrabold border-2 border-[var(--border-main)] shadow-paper-sm">
-                Upgrade to Scholar Pro →
-              </Button>
-            </Card>
-
-            {/* INSTITUTION PLAN - LOCKED */}
-            <Card shadow="md" className="p-6 bg-[var(--panel-bg)] border-2 border-[var(--border-main)] space-y-6 flex flex-col justify-between opacity-80 border-dashed">
-              <div className="space-y-4">
-                <Badge variant="blue" size="sm">🔒 UNDER DEVELOPMENT</Badge>
-                <div>
-                  <h3 className="font-heading font-extrabold text-xl uppercase text-[var(--text-primary)]">INSTITUTION</h3>
-                  <div className="text-2xl font-heading font-extrabold text-[var(--text-secondary)] mt-1">UNDER WORK</div>
-                </div>
-                <p className="text-xs font-mono text-[var(--text-secondary)]">Multi-user seat licenses and campus LMS sync under active engineering.</p>
-                <div className="space-y-2 font-mono text-xs text-[var(--text-secondary)] border-t-2 border-[var(--border-main)] pt-3">
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[var(--text-secondary)]" /><span>Canvas & Blackboard LMS Sync (In Progress)</span></div>
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[var(--text-secondary)]" /><span>Department-wide Knowledge Base</span></div>
-                  <div className="flex items-center gap-2"><Check className="h-4 w-4 text-[var(--text-secondary)]" /><span>Dedicated Account Manager</span></div>
-                </div>
-              </div>
-              <button disabled className="w-full py-3 px-4 font-mono text-xs font-bold uppercase rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--panel-bg)] text-[var(--text-secondary)] cursor-not-allowed">
-                🔒 UNDER DEVELOPMENT
-              </button>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. FEATURES SECTION WITH BROOT INTEGRATION */}
-      <section id="features" className="border-t-2 border-[var(--border-main)] bg-[var(--card-bg)] py-16 px-6 relative">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center space-y-3 max-w-3xl mx-auto">
-            <Badge variant="yellow" size="md">ENGINEERED FOR SCHOLARS</Badge>
-            <h2 className="font-heading font-extrabold text-3xl md:text-5xl uppercase text-[var(--text-primary)] tracking-tight">
-              PRECISION KNOWLEDGE TOOLS
-            </h2>
-            <p className="text-xs md:text-sm font-mono text-[var(--text-secondary)]">
-              A complete cognitive stack designed to streamline high-level academic research and study retention.
-            </p>
+      {/* Workflow Section */}
+      <section id="workflow" className="py-16 bg-slate-50/60 border-y border-purple-100 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-xl mx-auto mb-12">
+            <h2 className="text-2xl md:text-3xl font-semibold text-slate-900">The End-to-End Capacity Lifecycle</h2>
+            <p className="text-sm text-slate-500 mt-2">A structured workflow from department requirements to verified competency mastery.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Feature 1 with Broot Listening */}
-            <Card shadow="md" className="p-6 bg-[var(--panel-bg)] border-2 border-[var(--border-main)] space-y-4 flex flex-col justify-between relative overflow-hidden group">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-[6px] bg-[#38BDF8]/20 border-2 border-[var(--border-main)] shadow-paper-sm flex items-center justify-center text-[#38BDF8]">
-                    <Mic className="w-6 h-6" />
+            {workflowSteps.map((step) => {
+              const IconComponent = step.icon;
+              return (
+                <div key={step.step} className="bg-white p-6 rounded-[11px] border border-slate-200/80 shadow-sm hover:border-purple-300 transition-all space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-50 text-[#992e9d]">Step {step.step}</span>
+                    <IconComponent className="w-5 h-5 text-slate-400" />
                   </div>
-                  <img src="/mascots/broot-listening-headphones.png" alt="Broot Listening" className="w-14 h-14 object-contain filter drop-shadow group-hover:scale-110 transition-transform" />
+                  <h3 className="text-base font-semibold text-slate-900">{step.title}</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">{step.desc}</p>
                 </div>
-                <h3 className="font-heading text-lg font-bold text-[var(--text-primary)] uppercase tracking-tight">
-                  LIVE LECTURE CAPTURE
-                </h3>
-                <p className="text-xs text-[var(--text-secondary)] font-mono leading-relaxed">
-                  Real-time audio recording with live waveform display, multi-speaker segmentation, and verbatim transcripts while Broot listens alongside you.
-                </p>
-              </div>
-            </Card>
-
-            {/* Feature 2 with Broot Thinking */}
-            <Card shadow="md" className="p-6 bg-[var(--panel-bg)] border-2 border-[var(--border-main)] space-y-4 flex flex-col justify-between relative overflow-hidden group">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-[6px] bg-[#FFC400] border-2 border-[var(--border-main)] shadow-paper-sm flex items-center justify-center text-[#111111]">
-                    <Layers className="w-6 h-6" />
-                  </div>
-                  <img src="/mascots/broot-thinking.png" alt="Broot Thinking" className="w-14 h-14 object-contain filter drop-shadow group-hover:scale-110 transition-transform" />
-                </div>
-                <h3 className="font-heading text-lg font-bold text-[var(--text-primary)] uppercase tracking-tight">
-                  CAPACITY CONNECT ENGINE
-                </h3>
-                <p className="text-xs text-[var(--text-secondary)] font-mono leading-relaxed">
-                  Competency analysis and multi-document synthesis. Upload PDFs, PPTs, or training resources to generate structured outlines and flashcard decks as Kuma processes key concepts.
-                </p>
-              </div>
-            </Card>
-
-            {/* Feature 3 with Broot Peace Wink */}
-            <Card shadow="md" className="p-6 bg-[var(--panel-bg)] border-2 border-[var(--border-main)] space-y-4 flex flex-col justify-between relative overflow-hidden group">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-[6px] bg-[#FF5353]/20 border-2 border-[var(--border-main)] shadow-paper-sm flex items-center justify-center text-[#FF5353]">
-                    <TrendingUp className="w-6 h-6" />
-                  </div>
-                  <img src="/mascots/broot-peace-wink.png" alt="Broot Wink" className="w-14 h-14 object-contain filter drop-shadow group-hover:scale-110 transition-transform" />
-                </div>
-                <h3 className="font-heading text-lg font-bold text-[var(--text-primary)] uppercase tracking-tight">
-                  WEAK TOPIC RADAR
-                </h3>
-                <p className="text-xs text-[var(--text-secondary)] font-mono leading-relaxed">
-                  Automated diagnosis of knowledge gaps based on interactive quiz performance, offering customized remediation study steps.
-                </p>
-              </div>
-            </Card>
-
-            {/* Feature 4 with Broot Celebrating */}
-            <Card shadow="md" className="p-6 bg-[var(--panel-bg)] border-2 border-[var(--border-main)] space-y-4 flex flex-col justify-between relative overflow-hidden group">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-[6px] bg-[#34D399]/20 border-2 border-[var(--border-main)] shadow-paper-sm flex items-center justify-center text-[#34D399]">
-                    <Brain className="w-6 h-6" />
-                  </div>
-                  <img src="/mascots/broot-celebrating-confetti.png" alt="Broot Celebrating" className="w-14 h-14 object-contain filter drop-shadow group-hover:scale-110 transition-transform" />
-                </div>
-                <h3 className="font-heading text-lg font-bold text-[var(--text-primary)] uppercase tracking-tight">
-                  BYOK MULTI-LLM ARCHITECTURE
-                </h3>
-                <p className="text-xs text-[var(--text-secondary)] font-mono leading-relaxed">
-                  Connect personal keys for 9+ providers including Gemini 2.5, Groq, OpenAI, Anthropic, DeepSeek, and OpenRouter with 0 platform markup.
-                </p>
-              </div>
-            </Card>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* 4. WORKFLOW STEP-BY-STEP */}
-      <section id="workflow" className="border-t-2 border-[var(--border-main)] bg-[var(--bg-paper)] py-16 px-6">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <h2 className="font-heading font-extrabold text-3xl md:text-4xl uppercase text-[var(--text-primary)]">
-              HOW KUMA WORKS
-            </h2>
-            <p className="text-xs font-mono text-[var(--text-secondary)]">
-              From raw acoustic soundwaves to structured academic mastery in 4 simple steps.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { num: '01', title: 'CAPTURE', desc: 'Record live lectures or upload audio, PDF, and text study materials.' },
-              { num: '02', title: 'INDEX', desc: 'Semantic OCR and acoustic speech indexing extract key definitions.' },
-              { num: '03', title: 'SYNTHESIZE', desc: 'Generate multi-level outlines, flashcards, mind maps, and quiz decks.' },
-              { num: '04', title: 'MASTER', desc: 'Review weak topics, practice interactive quizzes, and export presentation decks.' }
-            ].map((step, i) => (
-              <Card key={i} shadow="sm" className="p-6 bg-[var(--card-bg)] border-2 border-[var(--border-main)] space-y-3 relative overflow-hidden">
-                <span className="font-mono text-2xl font-extrabold bg-[#FFC400] text-[#111111] px-2 py-0.5 border border-[var(--border-main)] inline-block shadow-paper-sm">
-                  {step.num}
-                </span>
-                <h4 className="font-heading font-bold text-base uppercase text-[var(--text-primary)]">{step.title}</h4>
-                <p className="text-xs font-mono text-[var(--text-secondary)]">{step.desc}</p>
-              </Card>
-            ))}
-          </div>
+      {/* Key Features Grid */}
+      <section id="features" className="py-20 px-6 max-w-7xl mx-auto">
+        <div className="text-center max-w-xl mx-auto mb-14">
+          <h2 className="text-2xl md:text-3xl font-semibold text-slate-900">Built for Enterprise Governance</h2>
+          <p className="text-sm text-slate-500 mt-2">Everything required for institutional skill transformation.</p>
         </div>
-      </section>
 
-      <section id="faq" className="border-t-2 border-[var(--border-main)] bg-[var(--card-bg)] py-16 px-6">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="text-center space-y-3">
-            <h2 className="font-heading font-extrabold text-3xl md:text-4xl uppercase text-[var(--text-primary)]">
-              FREQUENTLY ASKED QUESTIONS
-            </h2>
-            <p className="text-xs font-mono text-[var(--text-secondary)]">Everything you need to know about Kuma & Broot.</p>
-          </div>
-
-          <div className="space-y-4">
-            {faqs.map((faq, i) => (
-              <Card
-                key={i}
-                shadow="sm"
-                className="p-5 bg-[var(--panel-bg)] border-2 border-[var(--border-main)] cursor-pointer transition-all hover:bg-[var(--hover-bg)]"
-                onClick={() => setActiveFaq(activeFaq === i ? null : i)}
-              >
-                <div className="flex justify-between items-center">
-                  <h4 className="font-heading font-bold text-base text-[var(--text-primary)] uppercase">{faq.q}</h4>
-                  <ChevronDown className={`h-5 w-5 text-[var(--text-primary)] transition-transform ${activeFaq === i ? 'rotate-180' : ''}`} />
-                </div>
-                {activeFaq === i && (
-                  <p className="text-xs font-mono text-[var(--text-secondary)] pt-3 border-t border-[var(--border-main)] mt-3 leading-relaxed">
-                    {faq.a}
-                  </p>
-                )}
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 8. SOLID BAUHAUS FOOTER */}
-      <footer className="bg-[var(--sidebar-bg)] text-[var(--text-primary)] border-t-2 border-[var(--border-main)] py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 font-mono text-xs">
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 rounded-[6px] bg-[#FFC400] text-[#111111] flex items-center justify-center">
-              <AILogo size={22} theme="light" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-[11px] border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-3">
+            <div className="w-10 h-10 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center text-[#992e9d]">
+              <Building2 className="w-5 h-5" />
             </div>
-            <p className="text-[var(--text-secondary)]">
-              © 2026 Kuma Scholar. Precision in knowledge synthesis.
+            <h3 className="text-base font-semibold text-slate-900">Department Hierarchy</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Model complex organizational structures, departments, and specific designation competency baselines with ease.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-6 font-bold uppercase tracking-wider text-[var(--text-primary)]">
-            <a href="#broot-showcase" className="hover:text-[#FFC400] transition-colors">BROOT AI</a>
-            <a href="#features" className="hover:text-[#FFC400] transition-colors">FEATURES</a>
-            <a href="#workflow" className="hover:text-[#FFC400] transition-colors">WORKFLOW</a>
-            <a href="#pricing" className="hover:text-[#FFC400] transition-colors">PRICING</a>
-            <a href="#faq" className="hover:text-[#FFC400] transition-colors">FAQ</a>
+          <div className="bg-white p-6 rounded-[11px] border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-3">
+            <div className="w-10 h-10 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center text-[#992e9d]">
+              <Target className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-900">Automated Gap Diagnosis</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Instant diagnostic assessment engine identifies critical individual skill deficits and targets exact learning areas.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-[11px] border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-3">
+            <div className="w-10 h-10 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center text-[#992e9d]">
+              <Award className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-900">Certified Accreditation</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Issue tamper-proof certificates with QR validation and detailed skill breakdown upon successful course completion.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section id="faq" className="py-16 bg-slate-50/60 border-t border-purple-100 px-6">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <div className="text-center">
+            <h2 className="text-2xl md:text-3xl font-semibold text-slate-900">Frequently Asked Questions</h2>
+            <p className="text-xs text-slate-500 mt-1">SIH26075 Prototype Details & Specifications</p>
+          </div>
+
+          <div className="space-y-3">
+            {faqs.map((faq, idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-[11px] border border-slate-200/80 overflow-hidden transition-all"
+              >
+                <button
+                  onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                  className="w-full text-left px-5 py-4 font-semibold text-sm text-slate-900 flex items-center justify-between hover:text-[#992e9d] transition-colors"
+                >
+                  <span>{faq.q}</span>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${activeFaq === idx ? 'rotate-180' : ''}`} />
+                </button>
+                {activeFaq === idx && (
+                  <div className="px-5 pb-4 text-xs text-slate-500 leading-relaxed border-t border-slate-100 pt-3">
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-10 px-6 border-t border-purple-100 bg-white text-slate-500 text-xs">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-[#992e9d]">
+              <AILogo size={14} theme="light" />
+            </div>
+            <span className="font-semibold text-slate-800">Capacity Connect</span>
+            <span>— SIH 2026 Prototype (SIH26075)</span>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <a href="#features" className="hover:text-slate-800 transition-colors">Features</a>
+            <a href="#workflow" className="hover:text-slate-800 transition-colors">Workflow</a>
+            <a href="#faq" className="hover:text-slate-800 transition-colors">FAQ</a>
+            <button onClick={onGetStarted} className="text-[#992e9d] font-semibold hover:underline">
+              Enter Dashboard
+            </button>
           </div>
         </div>
       </footer>
-
     </div>
   );
 }
-

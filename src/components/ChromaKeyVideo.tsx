@@ -226,7 +226,7 @@ export default function ChromaKeyVideo({
       {fallbackImg && (
         <img
           src={fallbackImg}
-          alt="Mascot Fallback"
+          alt="Avatar Fallback"
           className="absolute inset-0 w-full h-full object-contain -z-10 opacity-0 transition-opacity"
           onError={(e) => {
             (e.target as HTMLElement).style.opacity = '1';

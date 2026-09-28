@@ -388,7 +388,7 @@ export default function LibraryView({
 
     setNewLectureTitle('');
     setShowCreateLectureModal(false);
-    setActivePage('lecture-capture');
+    setActivePage('dashboard');
   };
 
   // Saved tab file upload handler
@@ -836,27 +836,15 @@ export default function LibraryView({
                         );
                       })}
 
-                      {/* End Node with Mascot Avatar & Add Button */}
+                      {/* End Node Add Button */}
                       <div className="relative mt-16 flex flex-col items-center z-20">
-                        <div
+                        <button
                           onClick={() => setShowCreateLectureModal(true)}
-                          className="w-20 h-20 bg-white dark:bg-[#161B22] brutal-border rounded-full flex items-center justify-center mb-4 hover:bg-[#FFC107] transition-colors cursor-pointer group"
+                          className="w-16 h-16 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-all cursor-pointer group"
                         >
-                          <Plus className="w-8 h-8 text-black dark:text-white group-hover:text-black stroke-[4] group-hover:scale-125 transition-transform" />
-                        </div>
-
-                        <div className="p-2 bg-[#FFC107] brutal-border transform rotate-6 flex items-center gap-3">
-                          <img
-                            src="/mascots/mascot-owl.jpg"
-                            alt="Mascot"
-                            className="w-20 h-20 object-cover border-2 border-black grayscale contrast-125"
-                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                          />
-                          <div className="text-black pr-2">
-                            <div className="text-xs font-black uppercase">Scholar Owl</div>
-                            <div className="text-[10px] font-bold">"Click + to add Lecture {currentSubjectLectures.length + 1}!"</div>
-                          </div>
-                        </div>
+                          <Plus className="w-7 h-7 stroke-[2.5]" />
+                        </button>
+                        <span className="mt-2 text-xs font-medium text-slate-500">Add Learning Module</span>
                       </div>
 
                     </div>
@@ -906,7 +894,7 @@ export default function LibraryView({
                         onClick={() => {
                           if (setActiveLectureId) setActiveLectureId(selectedLectureDetail.id);
                           setSelectedLectureDetail(null);
-                          setActivePage('lecture-capture');
+                          setActivePage('dashboard');
                         }}
                         className="w-full bg-[#FFC107] text-black font-black uppercase text-sm py-3.5 brutal-border flex items-center justify-center gap-2 hover:bg-[#FFD54F] transition-transform cursor-pointer"
                       >
@@ -991,7 +979,7 @@ export default function LibraryView({
                       onClick={() => {
                         if (setActiveLectureId) setActiveLectureId(selectedLectureDetail.id);
                         setSelectedLectureDetail(null);
-                        setActivePage('lecture-capture');
+                        setActivePage('dashboard');
                       }}
                       className="w-full flex items-center p-3.5 bg-white dark:bg-[#161B22] brutal-border hover:bg-[#FFC107] hover:text-black transition-colors group text-left"
                     >
@@ -1010,7 +998,7 @@ export default function LibraryView({
                       onClick={() => {
                         if (setActiveLectureId) setActiveLectureId(selectedLectureDetail.id);
                         setSelectedLectureDetail(null);
-                        setActivePage('lecture-capture');
+                        setActivePage('dashboard');
                       }}
                       className="w-full flex items-center p-3.5 bg-white dark:bg-[#161B22] brutal-border hover:bg-[#FFC107] hover:text-black transition-colors group text-left"
                     >
@@ -1029,7 +1017,7 @@ export default function LibraryView({
                       onClick={() => {
                         if (setActiveLectureId) setActiveLectureId(selectedLectureDetail.id);
                         setSelectedLectureDetail(null);
-                        setActivePage('knowledge-studio');
+                        setActivePage('skill-gap');
                       }}
                       className="w-full flex items-center p-3.5 bg-white dark:bg-[#161B22] brutal-border hover:bg-[#FFC107] hover:text-black transition-colors group text-left"
                     >
@@ -1048,7 +1036,7 @@ export default function LibraryView({
                       onClick={() => {
                         if (setActiveLectureId) setActiveLectureId(selectedLectureDetail.id);
                         setSelectedLectureDetail(null);
-                        setActivePage('knowledge-studio');
+                        setActivePage('skill-gap');
                       }}
                       className="w-full flex items-center p-3.5 bg-white dark:bg-[#161B22] brutal-border hover:bg-[#FFC107] hover:text-black transition-colors group text-left"
                     >
@@ -1208,7 +1196,7 @@ export default function LibraryView({
                       <button
                         onClick={() => {
                           if (setActiveLectureId) setActiveLectureId(lec.id);
-                          setActivePage('lecture-capture');
+                          setActivePage('dashboard');
                         }}
                         className={`text-xs font-black uppercase hover:text-[#FFC107] flex items-center gap-1 ${lec.isShared ? 'text-black' : 'text-black dark:text-white'
                           }`}
@@ -1577,7 +1565,7 @@ export default function LibraryView({
                   const lec = contextMenu.item as Lecture;
                   setContextMenu(null);
                   if (setActiveLectureId) setActiveLectureId(lec.id);
-                  setActivePage('lecture-capture');
+                  setActivePage('dashboard');
                 }}
                 className="w-full text-left px-3 py-2 font-black uppercase flex items-center gap-2 text-black dark:text-white hover:bg-[#FFC107] hover:text-black border-2 border-transparent hover:border-black transition-colors cursor-pointer"
               >

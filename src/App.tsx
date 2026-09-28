@@ -153,7 +153,7 @@ export default function App() {
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       if (event.data?.type === 'KUMA_NOTIFICATION_NAVIGATE') {
         const r = (event.data.route || '').toLowerCase().trim();
-        if (r.includes('knowledge') || r.includes('studio')) setActivePage('knowledge-studio');
+        if (r.includes('skill') || r.includes('gap')) setActivePage('skill-gap');
         else if (r.includes('setting')) setActivePage('settings');
         else setActivePage('dashboard');
       }
@@ -621,7 +621,7 @@ export default function App() {
 
   // Sync click shortcut helper
   const handleNewAnalysisShortcut = () => {
-    setActivePage('knowledge-studio');
+    setActivePage('dashboard');
   };
 
   const handleLogOut = async () => {

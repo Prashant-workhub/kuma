@@ -37,8 +37,8 @@ import { auth, db } from '../firebaseConfig';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { API_BASE_URL } from '../config';
 import { validateApiKeyDirect } from '../providers/ValidationAdapters';
-import { MascotAvatarPicker } from './bauhaus/MascotAvatarPicker';
 import NotificationSettingsSection from './NotificationSettingsSection';
+import { UserProfileAvatarPicker } from './bauhaus/UserProfileAvatarPicker';
 
 const PROVIDER_METADATA: Record<string, {
   name: string;
@@ -1151,8 +1151,8 @@ export default function SettingsView({
                 <p className="text-xs font-mono font-bold text-[var(--text-secondary)] mt-1">Configure your primary academic researcher identification and institutional information.</p>
               </div>
 
-              {/* Official Mascot Avatar Picker */}
-              <MascotAvatarPicker
+              {/* User Profile Avatar Picker */}
+              <UserProfileAvatarPicker
                 currentAvatarUrl={avatarUrl}
                 onSelectAvatar={(url) => setAvatarUrl(url)}
                 userInitial={firstName ? firstName.charAt(0) : 'U'}
