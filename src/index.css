@@ -683,6 +683,10 @@
 
 
 @theme {
+  --font-display: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
   --color-canvas: rgb(var(--canvas) / <alpha-value>);
   --color-card: rgb(var(--card) / <alpha-value>);
   --color-panel: rgb(var(--panel) / <alpha-value>);

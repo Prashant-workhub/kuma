@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { PageId, UserSettings } from '../types';
 import AILogo from './AILogo';
-import { SidebarItem } from './bauhaus';
+import { TraineeAvatar, TraineeNavItem } from './trainee/TraineeUI';
 
 interface SidebarProps {
   activePage: PageId;
@@ -66,32 +66,27 @@ export default function Sidebar({
   };
 
   const sidebarContent = (
-    <div className={`flex h-full flex-col select-none transition-all duration-300 bg-white dark:bg-[#050814] text-slate-800 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 ${
+    <div className={`flex h-full flex-col select-none overflow-hidden border-r border-line bg-card text-ink transition-all duration-300 ${
       isCollapsed ? 'w-20' : 'w-[260px] lg:w-[275px]'
     }`}>
-      
+
       {/* Brand area */}
-      <div className={`flex h-16 items-center border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#050814] ${
+      <div className={`flex h-16 min-w-0 items-center overflow-hidden border-b border-line/50 bg-panel/30 ${
         isCollapsed ? 'justify-center px-1 gap-1' : 'justify-between px-5'
       }`}>
-        <div 
-          className="flex items-center gap-3 cursor-pointer overflow-hidden truncate group"
+        <div
+          className="group flex min-w-0 cursor-pointer items-center gap-3 overflow-hidden truncate"
           onClick={() => handleNavClick('dashboard')}
         >
-          <div className="p-2 rounded-full bg-purple-50 dark:bg-purple-950/50 text-[#992e9d] dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0 group-hover:scale-105 transition-transform">
-            <AILogo size={22} theme="light" />
+          <div className="shrink-0 transition-transform group-hover:scale-105">
+            <AILogo size={28} showText={false} theme="dark" />
           </div>
-          
+
           {!isCollapsed && (
-            <div className="flex flex-col">
-              <div className="font-bold text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 leading-none">
-                KUMA
-                <span className="rounded-full bg-purple-100 dark:bg-purple-950/60 px-2 py-0.5 text-[9px] font-semibold text-[#992e9d] dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/50">
-                  SIH26075
-                </span>
-              </div>
-              <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
-                CAPACITY CONNECT
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden leading-tight">
+              <div className="truncate font-display text-[15px] font-bold text-ink">Kuma AI</div>
+              <div className="truncate font-mono text-[10px] font-semibold lowercase tracking-[0.15em] text-brand-cyan">
+                trainee portal
               </div>
             </div>
           )}
@@ -100,7 +95,7 @@ export default function Sidebar({
         {/* Mobile close trigger */}
         <button 
           onClick={() => setIsOpenMobile(false)}
-          className="md:hidden flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+          className="md:hidden flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-panel text-muted hover:text-ink"
           aria-label="Close menu"
         >
           <X className="h-4 w-4" />
@@ -109,7 +104,7 @@ export default function Sidebar({
         {/* Desktop Collapse Trigger */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none shrink-0"
+          className="hidden md:flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-panel text-faint hover:text-ink focus:outline-none"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
@@ -117,44 +112,42 @@ export default function Sidebar({
       </div>
 
       {/* Navigation Groups */}
-      <div className="flex-1 overflow-y-auto py-5 px-3.5 space-y-6">
+      <div className="flex-1 space-y-5 overflow-y-auto px-3 py-3">
         {/* Workspace section */}
         <div className="space-y-1">
           {!isCollapsed && (
-            <div className="px-3 pb-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 tracking-normal">
+            <div className="px-3 pb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-faint">
               Workspace
             </div>
           )}
 
           {workspaceItems.map((item) => (
-            <div key={item.id}>
-              <SidebarItem
-                icon={<item.icon className="h-4 w-4" />}
-                label={item.label}
-                active={activePage === item.id}
-                onClick={() => handleNavClick(item.id as PageId)}
-                collapsed={isCollapsed}
-              />
-            </div>
+            <TraineeNavItem
+              key={item.id}
+              icon={<item.icon className="h-4 w-4" />}
+              label={item.label}
+              active={activePage === item.id}
+              onClick={() => handleNavClick(item.id as PageId)}
+              collapsed={isCollapsed}
+            />
           ))}
         </div>
 
         {/* Account section */}
         <div className="space-y-1">
           {!isCollapsed && (
-            <div className="px-3 pb-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 tracking-normal">
+            <div className="px-3 pb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-faint">
               Account
             </div>
           )}
 
           {accountItems.map((item) => (
-            <SidebarItem
+            <TraineeNavItem
               key={item.id}
               icon={<item.icon className="h-4 w-4" />}
               label={item.label}
               active={activePage === item.id}
-              hasNotificationDot={item.indicator}
-              notificationColor="purple"
+              showDot={item.indicator}
               onClick={() => handleNavClick(item.id as PageId)}
               collapsed={isCollapsed}
             />
@@ -163,31 +156,26 @@ export default function Sidebar({
       </div>
 
       {/* Bottom Profile Identity card (Pinned to bottom) */}
-      <div className="border-t border-slate-100 dark:border-slate-800/80 p-3.5 bg-white dark:bg-[#050814] shrink-0 sticky bottom-0 z-20">
+      <div className="shrink-0 border-t border-line bg-panel/30 p-3.5">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          <div 
-            className="flex items-center gap-3 cursor-pointer min-w-0 group"
+          <div
+            className="group flex min-w-0 cursor-pointer items-center gap-3"
             onClick={() => handleNavClick('profile')}
             title="View Profile"
           >
-            {settings.profile.avatarUrl ? (
-              <img
-                src={settings.profile.avatarUrl}
-                alt={settings.profile.fullName}
-                className="h-9 w-9 rounded-full border border-purple-200 dark:border-purple-800 object-cover shrink-0"
-              />
-            ) : (
-              <div className="h-9 w-9 rounded-full bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[#992e9d] dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
-                {settings.profile.fullName ? settings.profile.fullName.charAt(0).toUpperCase() : 'U'}
-              </div>
-            )}
+            <TraineeAvatar
+              src={settings.profile.avatarUrl}
+              initials={(settings.profile.fullName || 'Trainee Learner').charAt(0).toUpperCase()}
+              size={36}
+              className="shrink-0"
+            />
 
             {!isCollapsed && (
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-slate-900 dark:text-white truncate group-hover:text-[#992e9d] dark:group-hover:text-purple-300 transition-colors">
+                <div className="truncate text-[13px] font-semibold text-ink transition-colors group-hover:text-brand-cyan">
                   {settings.profile.fullName || 'Trainee Learner'}
                 </div>
-                <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate" title={settings.profile.emailAddress}>
+                <div className="truncate text-[11px] text-muted" title={settings.profile.emailAddress}>
                   {settings.profile.emailAddress}
                 </div>
               </div>
@@ -198,7 +186,8 @@ export default function Sidebar({
             <button
               onClick={onLogOut}
               title="Secure Logout"
-              className="p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+              aria-label="Log out"
+              className="shrink-0 cursor-pointer rounded-full p-2 text-faint transition-colors hover:bg-brand-rose/10 hover:text-brand-rose"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -224,7 +213,7 @@ export default function Sidebar({
       >
         <div 
           onClick={() => setIsOpenMobile(false)}
-          className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" 
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
         />
         
         <div 
