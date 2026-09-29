@@ -187,11 +187,10 @@ export async function getAvailableTrainers(): Promise<TrainerProfile[]> {
     competencies: sanitizeCompetencies(t.competencies)
   }));
 
-  // 2. Fetch from Firestore users collection
+  // 2. Fetch non-PII trainer directory records. Private users/{uid} profiles
+  // are intentionally not readable as a directory.
   try {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('role', 'in', ['faculty', 'teacher', 'trainer']));
-    const snap = await getDocs(q);
+    const snap = await getDocs(collection(db, 'trainerProfiles'));
 
     snap.docs.forEach(docSnap => {
       const data = docSnap.data();
@@ -199,8 +198,8 @@ export async function getAvailableTrainers(): Promise<TrainerProfile[]> {
       const trainer: TrainerProfile = {
         uid: uid,
         fullName: data.fullName || `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Trainer Faculty',
-        email: data.email || '',
-        phone: data.phone || data.phone_number || '',
+        email: '',
+        phone: '',
         organization: data.organization || data.school_or_university || 'Capacity Connect Institute',
         department: data.department || 'Training & Capacity Building',
         designation: data.designation || 'Senior Faculty',

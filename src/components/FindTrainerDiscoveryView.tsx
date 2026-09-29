@@ -26,6 +26,7 @@ import {
   Star
 } from 'lucide-react';
 import { UserSettings, TrainerProfile, TrainerAssignmentRecord, SkillProficiencyLevel } from '../types';
+import { rankTrainersForTrainee } from '../utils/trainerMatching';
 import {
   getAvailableTrainers,
   getTraineeSelectedTrainer,
@@ -125,8 +126,13 @@ export default function FindTrainerDiscoveryView({
   }, [trainers]);
 
   // Dynamic search & filtering
+  const rankedTrainers = useMemo(
+    () => rankTrainersForTrainee(trainers, traineeProfile.competencies || []),
+    [trainers, traineeProfile.competencies]
+  );
+
   const filteredTrainers = useMemo(() => {
-    return trainers.filter(t => {
+    return rankedTrainers.filter(({ trainer: t }) => {
       if (!t) return false;
 
       // 1. Search Query
@@ -175,7 +181,7 @@ export default function FindTrainerDiscoveryView({
       return true;
     });
   }, [
-    trainers,
+    rankedTrainers,
     searchQuery,
     selectedDepartment,
     selectedDesignation,
@@ -399,7 +405,7 @@ export default function FindTrainerDiscoveryView({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredTrainers.map((t) => {
+          {filteredTrainers.map(({ trainer: t, score, breakdown, matchedCompetencies, reason }) => {
             const isSelected = activeTrainerId === t.uid;
             const nameStr = t.fullName || 'Trainer Faculty';
             const initials = nameStr.split(' ').map(n => n[0] || '').join('').slice(0, 2) || 'TF';
@@ -446,6 +452,17 @@ export default function FindTrainerDiscoveryView({
                   <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
                     <span>{t.yearsOfExperience || 5} years experience</span>
                     <span className="font-medium text-slate-700 dark:text-slate-300">{t.preferredTrainingMode || 'Hybrid'}</span>
+                  </div>
+
+                  <div className="rounded-md border border-purple-200/60 dark:border-purple-800/60 bg-purple-50/70 dark:bg-purple-950/25 p-2.5 text-xs">
+                    <div className="flex items-center justify-between font-semibold text-purple-800 dark:text-purple-200">
+                      <span>Competency match</span><span>{score}%</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">{reason}</p>
+                    <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                      Alignment {breakdown.competency}/40 · Proficiency {breakdown.proficiency}/30 · Experience {breakdown.experience}/15 · Qualification {breakdown.qualification}/15
+                    </p>
+                    {matchedCompetencies.length > 0 && <p className="mt-1 text-[10px] text-purple-700 dark:text-purple-300">Matches: {matchedCompetencies.join(', ')}</p>}
                   </div>
 
                   {/* Short Bio */}

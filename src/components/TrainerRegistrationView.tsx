@@ -465,6 +465,30 @@ export default function TrainerRegistrationView({
       try {
         const userRef = doc(db, 'users', uid);
         await setDoc(userRef, trainerProfile, { merge: true });
+
+        // Publish only discovery-safe fields. Email and phone remain private
+        // in users/{uid}; this record powers authenticated trainer search.
+        await setDoc(doc(db, 'trainerProfiles', uid), {
+          uid,
+          fullName: trainerProfile.fullName,
+          organization: trainerProfile.organization,
+          department: trainerProfile.department,
+          designation: trainerProfile.designation,
+          yearsOfExperience: trainerProfile.yearsOfExperience,
+          qualification: trainerProfile.qualification,
+          bio: trainerProfile.bio,
+          areaOfExpertise: trainerProfile.areaOfExpertise,
+          specialization: trainerProfile.specialization,
+          skills: trainerProfile.skills,
+          trainerExperience: trainerProfile.trainerExperience,
+          profilePhoto: trainerProfile.profilePhoto || '',
+          competencies: trainerProfile.competencies,
+          trainingPrograms: trainerProfile.trainingPrograms,
+          trainingTopics: trainerProfile.trainingTopics,
+          preferredTrainingMode: trainerProfile.preferredTrainingMode,
+          certifications: trainerProfile.certifications,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
       } catch (dbErr) {
         console.warn('[Trainer Registration] Firestore document write warning:', dbErr);
       }

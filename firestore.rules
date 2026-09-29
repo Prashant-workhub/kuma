@@ -39,6 +39,37 @@ service cloud.firestore {
         request.resource.data.status in ['Active', 'Completed'];
     }
 
+    // trainerProfiles/{uid} is the authenticated, non-PII trainer directory.
+    // It intentionally excludes email, phone, private settings and API keys.
+    function validPublicTrainer() {
+      return request.resource.data.keys().hasOnly([
+          'uid', 'fullName', 'organization', 'department', 'designation',
+          'yearsOfExperience', 'qualification', 'bio', 'areaOfExpertise',
+          'specialization', 'skills', 'trainerExperience', 'profilePhoto',
+          'competencies', 'trainingPrograms', 'trainingTopics',
+          'preferredTrainingMode', 'certifications', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasAll(['uid', 'fullName', 'competencies', 'updatedAt']) &&
+        request.resource.data.uid is string && request.resource.data.uid == request.auth.uid &&
+        request.resource.data.fullName is string && request.resource.data.fullName.size() > 0 &&
+        request.resource.data.fullName.size() <= 120 &&
+        request.resource.data.competencies is list && request.resource.data.competencies.size() <= 30 &&
+        request.resource.data.skills is list && request.resource.data.skills.size() <= 40 &&
+        request.resource.data.trainingPrograms is list && request.resource.data.trainingPrograms.size() <= 30 &&
+        request.resource.data.trainingTopics is list && request.resource.data.trainingTopics.size() <= 40 &&
+        request.resource.data.certifications is list && request.resource.data.certifications.size() <= 30 &&
+        request.resource.data.yearsOfExperience is number &&
+        request.resource.data.yearsOfExperience >= 0 && request.resource.data.yearsOfExperience <= 80 &&
+        request.resource.data.updatedAt is timestamp &&
+        (!('profilePhoto' in request.resource.data) ||
+          (request.resource.data.profilePhoto is string && request.resource.data.profilePhoto.size() <= 2048 &&
+            (request.resource.data.profilePhoto == '' || request.resource.data.profilePhoto.matches('^https://.*')))) &&
+        (!('bio' in request.resource.data) ||
+          (request.resource.data.bio is string && request.resource.data.bio.size() <= 1500)) &&
+        (!('preferredTrainingMode' in request.resource.data) ||
+          request.resource.data.preferredTrainingMode in ['Online', 'Offline', 'Hybrid']);
+    }
+
     match /users/{uid} {
       // No public directory or email lookup: this document includes PII.
       allow get: if isOwner(uid) || isAdmin();
@@ -60,6 +91,14 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create, update: if isAdmin() && request.resource.data.keys().size() <= 30;
       allow delete: if isAdmin();
+    }
+
+    match /trainerProfiles/{uid} {
+      allow read: if signedIn();
+      allow create: if isOwner(uid) && validPublicTrainer();
+      allow update: if isOwner(uid) && validPublicTrainer() &&
+        request.resource.data.uid == resource.data.uid;
+      allow delete: if isOwner(uid) || isAdmin();
     }
 
     match /trainer_assignments/{assignmentId} {
