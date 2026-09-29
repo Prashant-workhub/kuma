@@ -2,48 +2,47 @@
 
 @layer base {
   :root {
-    --bg-paper: #F6F2EA;
-    --bg-main: #F6F2EA;
+    --bg-paper: #F8FAFC;
+    --bg-main: #F8FAFC;
     --card-bg: #FFFFFF;
-    --panel-bg: #F6F2EA;
-    --text-primary: #111111;
-    --text-secondary: #666666;
-    --border-main: #111111;
-    --border-subtle: #1D1D1D;
-    --accent-yellow: #FFC400;
-    --accent-red: #FF4D4D;
+    --panel-bg: #F1F5F9;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --border-main: #E2E8F0;
+    --border-subtle: #CBD5E1;
+    --accent-yellow: #F59E0B;
+    --accent-red: #EF4444;
     --accent-blue: #2F6BFF;
-    --accent-green: #19B56B;
-    --hover-bg: #FFF8D6;
-    --shadow-color: #111111;
+    --accent-green: #10B981;
+    --hover-bg: #F1F5F9;
+    --shadow-color: rgba(15, 23, 42, 0.08);
     --input-bg: #FFFFFF;
-    --sidebar-bg: #F6F2EA;
-    --navbar-bg: #F6F2EA;
+    --sidebar-bg: #FFFFFF;
+    --navbar-bg: #FFFFFF;
     --brand-header-bg: #FFFFFF;
-    --hero-banner-bg: #FFF8D6;
-    /* Soft Light Yellow for Light Mode */
-    --hero-banner-text: #111111;
-    --hero-banner-subtext: #444444;
-    --hero-banner-border: #111111;
+    --hero-banner-bg: #F1F5F9;
+    --hero-banner-text: #0F172A;
+    --hero-banner-subtext: #475569;
+    --hero-banner-border: #E2E8F0;
 
     /* Teacher Portal Academic Management Theme Tokens */
-    --app-bg: #F3F6F4;
+    --app-bg: #F8FAFC;
     --app-surface: #FFFFFF;
-    --app-surface-alt: #EBF0EC;
-    --app-border: #CBD5E1;
+    --app-surface-alt: #F1F5F9;
+    --app-border: #E2E8F0;
     --app-text: #0F172A;
     --app-muted: #64748B;
     --app-brand: #0284C7;
     --app-brand-strong: #0369A1;
 
-    /* Teachers LMS Portal Theme Tokens - Moss Green & Black Light Mode */
-    --canvas: 243 246 243;
+    /* Teachers LMS Portal Theme Tokens - Light Mode */
+    --canvas: 248 250 252;
     --card: 255 255 255;
-    --panel: 230 238 232;
-    --line: 200 215 203;
-    --ink: 12 20 13;
-    --muted: 48 64 51;
-    --faint: 85 102 88;
+    --panel: 241 245 249;
+    --line: 226 232 240;
+    --ink: 15 23 42;
+    --muted: 71 85 105;
+    --faint: 100 116 139;
   }
 
   [data-theme="dark"],
@@ -120,60 +119,70 @@
     color: #F8FAFC;
   }
 
-  /* Global Light Mode High-Contrast Auto-Remap */
-  [data-theme="light"] body,
-  html:not(.dark) body {
+  /* Global Light Mode High-Contrast Clean Palette Remapping */
+  html:not(.dark) body,
+  [data-theme="light"] body {
     background-color: #F8FAFC !important;
     background-image: none !important;
     color: #0F172A !important;
   }
 
-  [data-theme="light"] .bg-\[\#0a0a0c\],
-  [data-theme="light"] .bg-\[\#0c0c14\],
-  [data-theme="light"] .bg-\[\#12121a\],
-  [data-theme="light"] .bg-\[\#161622\],
-  [data-theme="light"] .bg-\[\#14141f\],
-  [data-theme="light"] .bg-\[\#0e0e17\],
-  [data-theme="light"] .bg-\[\#101712\],
-  [data-theme="light"] .bg-\[\#181825\],
-  [data-theme="light"] .bg-\[\#080C09\],
-  [data-theme="light"] .bg-\[\#162019\],
   html:not(.dark) .bg-\[\#0a0a0c\],
   html:not(.dark) .bg-\[\#0c0c14\],
   html:not(.dark) .bg-\[\#12121a\],
   html:not(.dark) .bg-\[\#161622\],
   html:not(.dark) .bg-\[\#14141f\],
-  html:not(.dark) .bg-\[\#0e0e17\],
   html:not(.dark) .bg-\[\#101712\],
   html:not(.dark) .bg-\[\#181825\],
   html:not(.dark) .bg-\[\#080C09\],
-  html:not(.dark) .bg-\[\#162019\] {
+  html:not(.dark) .bg-\[\#162019\],
+  html:not(.dark) .bg-\[\#0C1220\],
+  html:not(.dark) .bg-\[\#050814\],
+  [data-theme="light"] .bg-\[\#0a0a0c\],
+  [data-theme="light"] .bg-\[\#0c0c14\],
+  [data-theme="light"] .bg-\[\#12121a\],
+  [data-theme="light"] .bg-\[\#161622\],
+  [data-theme="light"] .bg-\[\#14141f\],
+  [data-theme="light"] .bg-\[\#101712\],
+  [data-theme="light"] .bg-\[\#181825\],
+  [data-theme="light"] .bg-\[\#080C09\],
+  [data-theme="light"] .bg-\[\#162019\],
+  [data-theme="light"] .bg-\[\#0C1220\],
+  [data-theme="light"] .bg-\[\#050814\] {
     background-color: #FFFFFF !important;
   }
 
+  html:not(.dark) .bg-\[\#0e0e17\],
+  [data-theme="light"] .bg-\[\#0e0e17\] {
+    background-color: #F8FAFC !important;
+  }
+
+  html:not(.dark) .border-gray-800,
+  html:not(.dark) .border-gray-800\/80,
+  html:not(.dark) .border-gray-800\/60,
+  html:not(.dark) .border-\[\#233326\],
+  html:not(.dark) .border-slate-800,
+  html:not(.dark) .border-slate-800\/80,
   [data-theme="light"] .border-gray-800,
   [data-theme="light"] .border-gray-800\/80,
   [data-theme="light"] .border-gray-800\/60,
   [data-theme="light"] .border-\[\#233326\],
-  html:not(.dark) .border-gray-800,
-  html:not(.dark) .border-gray-800\/80,
-  html:not(.dark) .border-gray-800\/60,
-  html:not(.dark) .border-\[\#233326\] {
+  [data-theme="light"] .border-slate-800,
+  [data-theme="light"] .border-slate-800\/80 {
     border-color: #E2E8F0 !important;
   }
 
-  [data-theme="light"] .text-white,
-  html:not(.dark) .text-white {
-    color: #0F172A !important;
-  }
-
-  [data-theme="light"] .text-gray-400,
-  [data-theme="light"] .text-gray-300,
-  [data-theme="light"] .text-\[\#A0B2A3\],
+  html:not(.dark) .text-slate-400,
+  html:not(.dark) .text-slate-500,
   html:not(.dark) .text-gray-400,
-  html:not(.dark) .text-gray-300,
-  html:not(.dark) .text-\[\#A0B2A3\] {
-    color: #475569 !important;
+  html:not(.dark) .text-gray-500,
+  html:not(.dark) .text-\[\#A0B2A3\],
+  [data-theme="light"] .text-slate-400,
+  [data-theme="light"] .text-slate-500,
+  [data-theme="light"] .text-gray-400,
+  [data-theme="light"] .text-gray-500,
+  [data-theme="light"] .text-\[\#A0B2A3\] {
+    color: #64748B !important;
   }
 
   /* Global Dark Mode High-Contrast Auto-Remap for Text Visibility */
