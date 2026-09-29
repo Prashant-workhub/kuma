@@ -1036,7 +1036,7 @@ export default function App() {
   return (
     <ErrorBoundary theme={theme}>
       {!isLanding && sessionUser && <NotificationPermissionBanner />}
-      <div className="flex h-screen w-screen overflow-hidden transition-all duration-300 bg-[var(--bg-paper)] text-[var(--text-primary)]">
+      <div className="flex h-screen w-screen overflow-hidden transition-all duration-300 bg-[#050814] text-slate-100">
         
         {/* Sidebar - hides completely on landing page layout */}
         {!isLanding && (
@@ -1053,7 +1053,7 @@ export default function App() {
         )}
 
         {/* Main core layout frame container */}
-        <div className="flex flex-1 flex-col overflow-hidden h-full bg-[var(--bg-paper)]">
+        <div className="flex flex-1 flex-col overflow-hidden h-full bg-[#050814]">
           {/* Navbar - hides on landing page layout */}
           {!isLanding && (
             <Navbar
@@ -1072,7 +1072,7 @@ export default function App() {
           )}
 
           {/* Dynamic page contents viewer */}
-          <main className={`flex-1 overflow-y-auto bg-[var(--bg-paper)] text-[var(--text-primary)] ${
+          <main className={`flex-1 overflow-y-auto bg-[#050814] text-slate-100 ${
             isLanding ? 'p-0' : 'p-2 md:p-3'
           }`}>
             <Suspense fallback={<BruteLoader size="lg" message="Loading..." />}>

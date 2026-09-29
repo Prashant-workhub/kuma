@@ -90,8 +90,12 @@
   }
 
   body {
-    background-color: var(--bg-paper);
-    color: var(--text-primary);
+    background-color: #030610;
+    background-image:
+      radial-gradient(circle at 50% -10%, rgba(30, 58, 138, 0.25) 0%, rgba(15, 23, 42, 0.5) 40%, rgba(3, 7, 18, 0.95) 80%, #02040A 100%),
+      radial-gradient(circle at 80% 50%, rgba(29, 78, 216, 0.08) 0%, transparent 60%);
+    background-attachment: fixed;
+    color: #F8FAFC;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     margin: 0;
     padding: 0;
@@ -100,8 +104,7 @@
   }
 
   [data-theme="dark"] body,
-  .dark body,
-  body {
+  .dark body {
     background-color: #030610;
     background-image:
       radial-gradient(circle at 50% -10%, rgba(30, 58, 138, 0.25) 0%, rgba(15, 23, 42, 0.5) 40%, rgba(3, 7, 18, 0.95) 80%, #02040A 100%),
@@ -111,45 +114,8 @@
   }
 
   [data-theme="light"] body {
-    background-color: #F8FAFC !important;
-    background-image: none !important;
-    color: #0F172A !important;
-  }
-
-  /* Explicit Light Mode Container Remapping (Only applied when data-theme="light" is explicitly selected) */
-  [data-theme="light"] .bg-\[\#0a0a0c\],
-  [data-theme="light"] .bg-\[\#0c0c14\],
-  [data-theme="light"] .bg-\[\#12121a\],
-  [data-theme="light"] .bg-\[\#161622\],
-  [data-theme="light"] .bg-\[\#14141f\],
-  [data-theme="light"] .bg-\[\#101712\],
-  [data-theme="light"] .bg-\[\#181825\],
-  [data-theme="light"] .bg-\[\#080C09\],
-  [data-theme="light"] .bg-\[\#162019\],
-  [data-theme="light"] .bg-\[\#0C1220\],
-  [data-theme="light"] .bg-\[\#050814\] {
-    background-color: #FFFFFF !important;
-  }
-
-  [data-theme="light"] .bg-\[\#0e0e17\] {
-    background-color: #F8FAFC !important;
-  }
-
-  [data-theme="light"] .border-gray-800,
-  [data-theme="light"] .border-gray-800\/80,
-  [data-theme="light"] .border-gray-800\/60,
-  [data-theme="light"] .border-\[\#233326\],
-  [data-theme="light"] .border-slate-800,
-  [data-theme="light"] .border-slate-800\/80 {
-    border-color: #E2E8F0 !important;
-  }
-
-  [data-theme="light"] .text-slate-400,
-  [data-theme="light"] .text-slate-500,
-  [data-theme="light"] .text-gray-400,
-  [data-theme="light"] .text-gray-500,
-  [data-theme="light"] .text-\[\#A0B2A3\] {
-    color: #64748B !important;
+    background-color: #F8FAFC;
+    color: #0F172A;
   }
 
   /* Global Dark Mode High-Contrast Auto-Remap for Text Visibility */
