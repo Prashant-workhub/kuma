@@ -12,12 +12,12 @@ const STORAGE_KEY = 'kuma.theme'
 
 function readInitialTheme(): ThemeMode {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    const saved = localStorage.getItem('kuma_theme') || localStorage.getItem(STORAGE_KEY)
     if (saved === 'light' || saved === 'dark') return saved
   } catch {
     /* storage unavailable — fall through */
   }
-  return 'dark' // dark is the default cinematic look
+  return 'dark' // dark is default
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -26,7 +26,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement
     root.classList.toggle('dark', theme === 'dark')
+    root.setAttribute('data-theme', theme)
+    document.body.setAttribute('data-theme', theme)
     try {
+      localStorage.setItem('kuma_theme', theme)
       localStorage.setItem(STORAGE_KEY, theme)
     } catch {
       /* ignore */

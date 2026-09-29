@@ -371,7 +371,7 @@ export async function selectTrainerForTrainee(
 /**
  * Retrieves all trainees assigned to a specific Trainer UID.
  */
-export async function getTrainerAssignedTrainees(trainerId: string): Promise<Array<{
+export async function getTrainerAssignedTrainees(trainerId: string, trainerEmail?: string): Promise<Array<{
   assignment: TrainerAssignmentRecord;
   traineeProfile: {
     uid: string;
@@ -388,7 +388,11 @@ export async function getTrainerAssignedTrainees(trainerId: string): Promise<Arr
 }>> {
   if (!trainerId) return [];
 
-  const localAssignments = getAllTrainerAssignments().filter(a => a.trainerId === trainerId || a.trainerEmail === trainerId);
+  const localAssignments = getAllTrainerAssignments().filter(a => 
+    a.trainerId === trainerId || 
+    a.trainerEmail === trainerId ||
+    (trainerEmail && a.trainerEmail === trainerEmail)
+  );
 
   // Firestore query
   const firestoreAssignments: TrainerAssignmentRecord[] = [];
@@ -399,6 +403,15 @@ export async function getTrainerAssignedTrainees(trainerId: string): Promise<Arr
     );
     const snap = await getDocs(q);
     snap.docs.forEach(d => firestoreAssignments.push({ id: d.id, ...d.data() } as TrainerAssignmentRecord));
+
+    if (trainerEmail) {
+      const qEmail = query(
+        collection(db, 'trainer_assignments'),
+        where('trainerEmail', '==', trainerEmail)
+      );
+      const snapEmail = await getDocs(qEmail);
+      snapEmail.docs.forEach(d => firestoreAssignments.push({ id: d.id, ...d.data() } as TrainerAssignmentRecord));
+    }
   } catch (err) {}
 
   const mergedMap = new Map<string, TrainerAssignmentRecord>();

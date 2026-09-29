@@ -141,16 +141,16 @@ export function TopBar({
               <Avatar initials={profile.avatarInitials} src={profile.avatarUrl} size="sm" accent="emerald" />
             </button>
 
-            {/* Solid Opaque Dropdown Menu (No Transparency) */}
+            {/* Solid Opaque Dropdown Menu */}
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl border-2 border-line bg-[#101712] dark:bg-[#101712] p-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.9)] z-[9999] animate-scale-in">
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl border-2 border-line bg-card dark:bg-[#101712] p-3.5 shadow-2xl z-[9999] animate-scale-in">
                 <div className="flex items-center gap-3 p-2 border-b border-line pb-3">
                   <Avatar initials={profile.avatarInitials} src={profile.avatarUrl} size="md" accent="emerald" />
                   <div className="min-w-0 flex-1 overflow-hidden">
-                    <div className="truncate text-sm font-bold text-[#F2F7F3]">
+                    <div className="truncate text-sm font-bold text-ink">
                       {formattedName}
                     </div>
-                    <div className="truncate text-xs text-[#A0B2A3]">{profile.department}</div>
+                    <div className="truncate text-xs text-muted">{profile.department}</div>
                     <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-brand-emerald bg-brand-emerald/15 px-2 py-0.5 rounded-full border border-brand-emerald/30">
                       Code: {profile.teacherCode}
                     </div>
@@ -161,27 +161,27 @@ export function TopBar({
                   <button
                     type="button"
                     onClick={() => { setMenuOpen(false); onNavigate('settings'); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-[#F2F7F3] hover:bg-[#162019] transition-colors cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-ink hover:bg-panel transition-colors cursor-pointer"
                   >
-                    <User size={15} className="text-[#A0B2A3]" />
+                    <User size={15} className="text-muted" />
                     <span>Profile & Settings</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => { setMenuOpen(false); onNavigate('courses'); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-[#F2F7F3] hover:bg-[#162019] transition-colors cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-ink hover:bg-panel transition-colors cursor-pointer"
                   >
-                    <BookOpen size={15} className="text-[#A0B2A3]" />
+                    <BookOpen size={15} className="text-muted" />
                     <span>My Courses</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => { setMenuOpen(false); onNavigate('activity'); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-[#F2F7F3] hover:bg-[#162019] transition-colors cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-ink hover:bg-panel transition-colors cursor-pointer"
                   >
-                    <Bell size={15} className="text-[#A0B2A3]" />
+                    <Bell size={15} className="text-muted" />
                     <span>Activity Center</span>
                   </button>
                 </div>

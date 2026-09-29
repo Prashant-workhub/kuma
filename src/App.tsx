@@ -125,12 +125,14 @@ export default function App() {
   // Sync theme attribute on <html> element & persist in localStorage
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
     localStorage.setItem('kuma_theme', theme);
+    localStorage.setItem('kuma.theme', theme);
   }, [theme]);
 
   // Persist theme preference in localStorage

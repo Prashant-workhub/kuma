@@ -120,6 +120,62 @@
     color: #F8FAFC;
   }
 
+  /* Global Light Mode High-Contrast Auto-Remap */
+  [data-theme="light"] body,
+  html:not(.dark) body {
+    background-color: #F8FAFC !important;
+    background-image: none !important;
+    color: #0F172A !important;
+  }
+
+  [data-theme="light"] .bg-\[\#0a0a0c\],
+  [data-theme="light"] .bg-\[\#0c0c14\],
+  [data-theme="light"] .bg-\[\#12121a\],
+  [data-theme="light"] .bg-\[\#161622\],
+  [data-theme="light"] .bg-\[\#14141f\],
+  [data-theme="light"] .bg-\[\#0e0e17\],
+  [data-theme="light"] .bg-\[\#101712\],
+  [data-theme="light"] .bg-\[\#181825\],
+  [data-theme="light"] .bg-\[\#080C09\],
+  [data-theme="light"] .bg-\[\#162019\],
+  html:not(.dark) .bg-\[\#0a0a0c\],
+  html:not(.dark) .bg-\[\#0c0c14\],
+  html:not(.dark) .bg-\[\#12121a\],
+  html:not(.dark) .bg-\[\#161622\],
+  html:not(.dark) .bg-\[\#14141f\],
+  html:not(.dark) .bg-\[\#0e0e17\],
+  html:not(.dark) .bg-\[\#101712\],
+  html:not(.dark) .bg-\[\#181825\],
+  html:not(.dark) .bg-\[\#080C09\],
+  html:not(.dark) .bg-\[\#162019\] {
+    background-color: #FFFFFF !important;
+  }
+
+  [data-theme="light"] .border-gray-800,
+  [data-theme="light"] .border-gray-800\/80,
+  [data-theme="light"] .border-gray-800\/60,
+  [data-theme="light"] .border-\[\#233326\],
+  html:not(.dark) .border-gray-800,
+  html:not(.dark) .border-gray-800\/80,
+  html:not(.dark) .border-gray-800\/60,
+  html:not(.dark) .border-\[\#233326\] {
+    border-color: #E2E8F0 !important;
+  }
+
+  [data-theme="light"] .text-white,
+  html:not(.dark) .text-white {
+    color: #0F172A !important;
+  }
+
+  [data-theme="light"] .text-gray-400,
+  [data-theme="light"] .text-gray-300,
+  [data-theme="light"] .text-\[\#A0B2A3\],
+  html:not(.dark) .text-gray-400,
+  html:not(.dark) .text-gray-300,
+  html:not(.dark) .text-\[\#A0B2A3\] {
+    color: #475569 !important;
+  }
+
   /* Global Dark Mode High-Contrast Auto-Remap for Text Visibility */
   [data-theme="dark"] .text-slate-900,
   .dark .text-slate-900,

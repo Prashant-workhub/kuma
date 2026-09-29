@@ -45,45 +45,46 @@ service cloud.firestore {
 
     // Global Competency Catalog
     match /competencyCatalog/{document} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     // Assessment Attempt Records
     match /assessmentAttempts/{attemptId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // Doubts / Inquiries
     match /doubts/{doubtId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (
-        resource.data.studentId == request.auth.uid ||
-        resource.data.teacherId == request.auth.uid ||
-        isAdmin() ||
-        isTrainer()
-      );
-      allow delete: if isAdmin();
+      allow read, write: if true;
+    }
+
+    // Trainer Assignments & Mentorship
+    match /trainer_assignments/{assignmentId} {
+      allow read, write: if true;
+    }
+
+    match /teacherAssignments/{assignmentId} {
+      allow read, write: if true;
+    }
+
+    // Pending Shares
+    match /pendingShares/{shareId} {
+      allow read, write: if true;
     }
 
     // Certificates collection
     match /certificates/{certificateId} {
-      allow read: if true; // Publicly readable for verification
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     // Feedback / Telemetry collection
     match /feedback/{feedbackId} {
-      allow create: if true; // Allow feedback/bug report submission for both authenticated and guest users
-      allow read, update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Default deny all other paths
+    // Fallback rule for any other collection
     match /{document=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
   }
 }

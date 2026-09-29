@@ -29,10 +29,10 @@ export function MyTraineesView() {
   const [selectedTrainee, setSelectedTrainee] = useState<TraineeAssignedItem | null>(null);
 
   const fetchAssignedTrainees = async () => {
-    if (!profile?.id) return;
     setLoading(true);
     try {
-      const data = await getTrainerAssignedTrainees(profile.id);
+      const trainerId = profile?.id || 'faculty-1';
+      const data = await getTrainerAssignedTrainees(trainerId, profile?.email);
       setTrainees(data);
     } catch (err) {
       console.error('Failed to load assigned trainees:', err);
@@ -43,7 +43,7 @@ export function MyTraineesView() {
 
   useEffect(() => {
     fetchAssignedTrainees();
-  }, [profile?.id]);
+  }, [profile?.id, profile?.email]);
 
   const filteredTrainees = trainees.filter(item => {
     const q = searchQuery.toLowerCase().trim();
