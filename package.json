@@ -11,7 +11,9 @@
     "server": "node server/index.js",
     "reset-users": "npx tsx scripts/deleteFirebaseUserProfiles.ts",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx --test src/utils/__tests__/*.test.ts",
+    "test:watch": "tsx --test --watch src/utils/__tests__/*.test.ts"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.1",

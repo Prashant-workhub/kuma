@@ -10,6 +10,7 @@ import { ACTIVITY, ANNOUNCEMENTS, COURSES, DOUBTS } from '../lib/mockData'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebaseConfig'
 import { updateDoubtResponse } from '../../services/teacherDoubtService'
+import { toEpochMs } from '../../utils/dateUtils'
 
 interface DataContextValue {
   doubts: DoubtItem[]
@@ -76,7 +77,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
 
       const combined = Array.from(map.values());
-      combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      combined.sort((a, b) => toEpochMs(b.createdAt) - toEpochMs(a.createdAt));
 
       setDoubts(combined);
     };
@@ -100,14 +101,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 ? (rawStatus as DoubtStatus)
                 : 'pending';
 
-              let createdIso = new Date().toISOString();
-              if (data.createdAt) {
-                if (typeof data.createdAt.toDate === 'function') {
-                  createdIso = data.createdAt.toDate().toISOString();
-                } else if (typeof data.createdAt === 'string') {
-                  createdIso = data.createdAt;
-                }
-              }
+              // toDate() can throw on malformed Firestore Timestamps; toEpochMs
+              // degrades to 0 rather than breaking the whole snapshot mapping.
+              const createdMs = toEpochMs(data.createdAt);
+              const createdIso = createdMs > 0 ? new Date(createdMs).toISOString() : new Date().toISOString();
+              const respondedMs = toEpochMs(data.respondedAt);
 
               let attachmentObj = undefined;
               if (data.attachmentName) {
@@ -133,11 +131,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 priority: data.priority || 'medium',
                 createdAt: createdIso,
                 response: data.response || undefined,
-                respondedAt: data.respondedAt
-                  ? typeof data.respondedAt.toDate === 'function'
-                    ? data.respondedAt.toDate().toISOString()
-                    : data.respondedAt
-                  : undefined,
+                respondedAt: respondedMs > 0 ? new Date(respondedMs).toISOString() : undefined,
               };
             });
           }

@@ -16,6 +16,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { toEpochMs } from '../utils/dateUtils';
 import { DoubtItem, FacultyProfile, TeacherAssignment, ClassLearningAlert } from '../types';
 
 export interface FileValidationResult {
@@ -616,7 +617,7 @@ export function subscribeFacultyDoubts(
     } catch (e) {}
 
     // Sort by createdAt descending
-    list.sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime());
+    list.sort((a, b) => toEpochMs(b.createdAt) - toEpochMs(a.createdAt));
 
     onUpdate(list);
   }, (err) => {

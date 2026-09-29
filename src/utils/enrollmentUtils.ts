@@ -4,6 +4,7 @@
 
 import { TrainingEnrollment, TeacherAssignment, UserSettings, TrainingCertificate } from '../types';
 import { issueCertificateForCompletion } from './certificateUtils';
+import { readJson, writeJson } from './safeStorage';
 
 const ENROLLMENT_STORAGE_KEY = 'kuma_user_enrollments';
 
@@ -30,18 +31,8 @@ let inMemoryEnrollments: TrainingEnrollment[] = [
  * Returns all stored training enrollments.
  */
 export function getAllEnrollments(): TrainingEnrollment[] {
-  if (typeof localStorage !== 'undefined') {
-    try {
-      const raw = localStorage.getItem(ENROLLMENT_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (err) {
-      console.warn('Failed to parse stored enrollments:', err);
-    }
-  }
-
+  const parsed = readJson<TrainingEnrollment[] | null>(ENROLLMENT_STORAGE_KEY, null);
+  if (Array.isArray(parsed) && parsed.length > 0) return parsed;
   return inMemoryEnrollments;
 }
 
@@ -127,13 +118,7 @@ export function enrollInCourse(
 
   const updated = [newEnrollment, ...enrollments];
   inMemoryEnrollments = updated;
-  if (typeof localStorage !== 'undefined') {
-    try {
-      localStorage.setItem(ENROLLMENT_STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.warn('Failed to save enrollment:', err);
-    }
-  }
+  writeJson(ENROLLMENT_STORAGE_KEY, updated);
 
   return newEnrollment;
 }
@@ -150,8 +135,7 @@ export function updateEnrollmentProgress(
   progressPercentage: number,
   quizPassed: boolean = true
 ): { enrollment: TrainingEnrollment; certificate?: TrainingCertificate } {
-  const enrollments = getAllEnrollments();
-  let enrollment = enrollments.find(
+  let enrollment = getAllEnrollments().find(
     (e) => (e.userId === userId || e.userEmail === userProfile.emailAddress) && e.courseId === course.id
   );
 
@@ -159,6 +143,11 @@ export function updateEnrollmentProgress(
   if (!enrollment) {
     enrollment = enrollInCourse(userId, userProfile, course);
   }
+
+  // Re-read the list AFTER enrollment creation. `enrollInCourse` persists the new
+  // record, so the list captured beforehand is stale and would drop the new
+  // enrollment when written back below.
+  const enrollments = getAllEnrollments();
 
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercentage)));
   let newStatus: 'enrolled' | 'in_progress' | 'completed' = enrollment.status;
@@ -188,14 +177,7 @@ export function updateEnrollmentProgress(
 
   const nextList = enrollments.map((e) => (e.id === updatedEnrollment.id ? updatedEnrollment : e));
   inMemoryEnrollments = nextList;
-
-  if (typeof localStorage !== 'undefined') {
-    try {
-      localStorage.setItem(ENROLLMENT_STORAGE_KEY, JSON.stringify(nextList));
-    } catch (err) {
-      console.warn('Failed to update enrollment progress:', err);
-    }
-  }
+  writeJson(ENROLLMENT_STORAGE_KEY, nextList);
 
   return { enrollment: updatedEnrollment, certificate: cert };
 }

@@ -5,6 +5,7 @@
 
 import { TrainingCertificate, TeacherAssignment, UserSettings } from '../types';
 import { saveCertificateToCloudStorage } from '../services/storageService';
+import { readJson, writeJson } from './safeStorage';
 
 const CERT_STORAGE_KEY = 'kuma_user_certificates';
 const ENROLLMENT_STORAGE_KEY = 'kuma_user_enrollments';
@@ -12,11 +13,41 @@ const ENROLLMENT_STORAGE_KEY = 'kuma_user_enrollments';
 /**
  * Generates a unique, non-sequential Certificate ID.
  * Format: KUMA-2026-XXXXXXXX (e.g. KUMA-2026-A89B2C4E)
+ *
+ * Uses a cryptographically strong source when available. `crypto.randomUUID`
+ * requires a secure context and is missing on older browsers, so we fall back to
+ * `crypto.getRandomValues` and finally to a Math.random-based generator. The
+ * previous `Math.random().toString(36).substring(2, 10)` could emit fewer than 8
+ * characters (e.g. Math.random() === 0.5 yields "I"), producing weak IDs such as
+ * "KUMA-2026-I" that are both guessable and far more likely to collide.
  */
 export function generateCertificateId(): string {
   const year = new Date().getFullYear();
-  const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
+  const randomPart = generateRandomPart();
   return `KUMA-${year}-${randomPart}`;
+}
+
+/** Returns exactly 8 uppercase hexadecimal characters. */
+function generateRandomPart(): string {
+  const cryptoObj: Crypto | undefined = typeof crypto !== 'undefined' ? crypto : undefined;
+
+  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+    return cryptoObj.randomUUID().replace(/-/g, '').substring(0, 8).toUpperCase();
+  }
+
+  if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
+    const bytes = new Uint8Array(4);
+    cryptoObj.getRandomValues(bytes);
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase();
+  }
+
+  // Last-resort fallback: pad so the segment is never short.
+  let out = '';
+  while (out.length < 8) out += Math.random().toString(36).substring(2, 10);
+  return out.substring(0, 8).toUpperCase();
 }
 
 let inMemoryCertificates: TrainingCertificate[] = [
@@ -44,17 +75,8 @@ let inMemoryCertificates: TrainingCertificate[] = [
  * Returns all stored certificate records.
  */
 export function getAllCertificates(): TrainingCertificate[] {
-  if (typeof localStorage !== 'undefined') {
-    try {
-      const raw = localStorage.getItem(CERT_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (err) {
-      console.warn('Failed to parse stored certificates:', err);
-    }
-  }
+  const parsed = readJson<TrainingCertificate[] | null>(CERT_STORAGE_KEY, null);
+  if (Array.isArray(parsed) && parsed.length > 0) return parsed;
   return inMemoryCertificates;
 }
 
@@ -126,8 +148,20 @@ export function issueCertificateForCompletion(
     return existingCert;
   }
 
-  const certId = generateCertificateId();
   const today = new Date().toISOString().split('T')[0];
+
+  // Guarantee a globally unique ID. Random collisions are rare but would make
+  // two different trainees share a certificate ID, causing verifyCertificate() to
+  // return the wrong record. Retry until the ID is unused.
+  const takenIds = new Set(certs.map((c) => c.id.toUpperCase()));
+  let certId = generateCertificateId();
+  for (let attempt = 0; attempt < 10 && takenIds.has(certId); attempt++) {
+    certId = generateCertificateId();
+  }
+  if (takenIds.has(certId)) {
+    // Extremely unlikely; append a monotonic counter to force uniqueness.
+    certId = `${certId}-${certs.length + 1}`;
+  }
 
   const newCertificate: TrainingCertificate = {
     id: certId,
@@ -150,13 +184,7 @@ export function issueCertificateForCompletion(
 
   const updatedCerts = [newCertificate, ...certs];
   inMemoryCertificates = updatedCerts;
-  if (typeof localStorage !== 'undefined') {
-    try {
-      localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(updatedCerts));
-    } catch (err) {
-      console.warn('Failed to save certificate record:', err);
-    }
-  }
+  writeJson(CERT_STORAGE_KEY, updatedCerts);
 
   // Asynchronously backup certificate metadata & verification payload to Azure Cloud Storage
   saveCertificateToCloudStorage(newCertificate).catch((err) => {
