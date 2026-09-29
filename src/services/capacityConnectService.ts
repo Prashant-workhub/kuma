@@ -18,6 +18,7 @@ import { auth, db } from '../firebaseConfig';
 import { INITIAL_QUIZZES } from '../data';
 import { generateCertificateId } from '../utils/certificateUtils';
 import { summarizeModuleProgress } from '../utils/trainingProgress';
+import { capAssessmentHistory } from '../models/firestoreModels';
 
 export type TrainingProgram = TeacherAssignment & {
   trainerId: string;
@@ -434,10 +435,17 @@ export async function persistAssessmentOutcome(
     attemptId,
     submittedAt: serverTimestamp()
   });
-  batch.set(userRef, { competencies, updated_at: serverTimestamp() }, { merge: true });
+
+  // Cap assessment history array for each competency to prevent unbounded document size growth
+  const cappedCompetencies = (competencies || []).map((comp) => ({
+    ...comp,
+    assessmentHistory: capAssessmentHistory(comp.assessmentHistory)
+  }));
+
+  batch.set(userRef, { competencies: cappedCompetencies, updated_at: serverTimestamp() }, { merge: true });
 
   const profileProjection = traineeProfileSnapshot.exists()
-    ? { competencies, updatedAt: serverTimestamp() }
+    ? { competencies: cappedCompetencies, updatedAt: serverTimestamp() }
     : {
         uid: currentUser.uid,
         primaryTrainerId: userData.primaryTrainerId || trainerId,
@@ -452,7 +460,7 @@ export async function persistAssessmentOutcome(
         domain: userData.domain || '',
         bio: userData.bio || '',
         skills: Array.isArray(userData.skills) ? userData.skills : [],
-        competencies,
+        competencies: cappedCompetencies,
         updatedAt: serverTimestamp()
       };
   batch.set(traineeProfileRef, profileProjection, { merge: true });

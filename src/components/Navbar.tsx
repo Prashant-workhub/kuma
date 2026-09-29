@@ -10,6 +10,8 @@ import { TraineeAvatar } from './trainee/TraineeUI';
 import { ThemeToggle } from '../design-system/ThemeToggle';
 import { PortalHeader } from '../design-system/PortalShell';
 
+import NetworkStatusIndicator from './NetworkStatusIndicator';
+
 interface NavbarProps {
   activePage: PageId;
   setActivePage: (page: PageId) => void;
@@ -100,19 +102,7 @@ export default function Navbar({
     >
 
         {/* Network status indicator */}
-        {isOnline !== undefined && (
-          <div
-            className={`hidden items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] sm:flex ${
-              isOnline
-                ? 'border-brand-emerald/30 bg-brand-emerald/10 text-brand-emerald'
-                : 'border-brand-rose/30 bg-brand-rose/10 text-brand-rose'
-            }`}
-            title={isOnline ? 'Network Connected' : 'No Connection'}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-brand-emerald' : 'animate-pulse bg-brand-rose'}`} />
-            {isOnline ? 'Online' : 'Offline'}
-          </div>
-        )}
+        <NetworkStatusIndicator compact={true} userId={settings.profile.uid} />
 
         <ThemeToggle />
 

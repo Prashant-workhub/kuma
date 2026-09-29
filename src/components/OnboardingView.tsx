@@ -24,6 +24,7 @@ import { doc, setDoc, serverTimestamp, getDoc, collection, query, where, getDocs
 import { db, auth } from '../firebaseConfig';
 import { API_BASE_URL } from '../config';
 import { validateApiKeyDirect } from '../providers/ValidationAdapters';
+import { normalizeProfileFields } from '../models/firestoreModels';
 
 const PROVIDER_METADATA: Record<string, {
   name: string;
@@ -318,20 +319,23 @@ export default function OnboardingView({
         console.warn('Uniqueness check skipped or network fallback:', checkErr);
       }
 
-      const profileData = {
+      const profileData = normalizeProfileFields({
+        fullName: `${firstName.trim()} ${lastName.trim()}`.trim(),
         first_name: firstName.trim(),
         last_name: lastName.trim(),
+        organization: school.trim(),
         school_or_university: school.trim(),
         uid: studentUid.trim(),
         student_uid: studentUid.trim(),
         email: email.trim(),
         country_code: countryCode,
+        phone: cleanPhone,
         phone_number: cleanPhone,
         profile_image_url: null,
         onboarding_completed: false,
         created_at: serverTimestamp(),
         updated_at: serverTimestamp()
-      };
+      });
 
       console.log("Onboarding Save Attempt:", {
         currentUserUID: userId,

@@ -636,3 +636,47 @@ export const saveSkillGapSnapshotToCloudStorage = async (
   return { success: true, storageProvider: 'local_cache' };
 };
 
+/**
+ * Phase I — Writes file metadata record to Firestore `files/{fileId}`
+ * collection to track files uploaded to Azure Blob or Firebase Storage.
+ */
+export const saveFileMetadata = async (metadata: {
+  fileId?: string;
+  ownerId: string;
+  container?: string;
+  blobPath: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  purpose: 'profile_photo' | 'certificate' | 'learning_resource' | 'course_material' | 'assessment_asset' | 'organization_document' | 'transcript' | 'other';
+  associatedDocId?: string;
+  associatedCollection?: string;
+}): Promise<string> => {
+  const fileId = metadata.fileId || `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  try {
+    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+    const { db } = await import('../firebaseConfig');
+    const docRef = doc(db, 'files', fileId);
+    await setDoc(docRef, {
+      fileId,
+      ownerId: metadata.ownerId,
+      container: metadata.container || 'kuma-media',
+      blobPath: metadata.blobPath,
+      fileName: metadata.fileName,
+      contentType: metadata.contentType,
+      size: metadata.size,
+      purpose: metadata.purpose,
+      associatedDocId: metadata.associatedDocId || null,
+      associatedCollection: metadata.associatedCollection || null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      uploadStatus: 'completed'
+    }, { merge: true });
+    console.log(`[Storage] File metadata written to files/${fileId}`);
+  } catch (err) {
+    console.warn('[Storage] Failed to write file metadata to Firestore:', err);
+  }
+  return fileId;
+};
+
+

@@ -65,6 +65,9 @@ import NotificationPermissionBanner from './components/NotificationPermissionBan
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
 import { subscribeFacultyDoubts, generateTeacherCode } from './services/teacherDoubtService';
 import FacultyOnboardingView from './components/faculty/FacultyOnboardingView';
+import { startSyncManager } from './services/syncManager';
+import { normalizeProfileFields } from './models/firestoreModels';
+import { queueOperation } from './services/offlineOutbox';
 
 // Code Splitting (React.lazy dynamic imports for heavy portals and sub-views)
 const TeacherPortalApp = lazy(() => import('./teacher-portal/TeacherPortalApp'));
@@ -195,6 +198,14 @@ export default function App() {
       setDoubts(list);
     });
   }, [sessionUser]);
+
+  // Initialize offline sync manager whenever user session changes
+  useEffect(() => {
+    if (sessionUser?.uid) {
+      const cleanup = startSyncManager(sessionUser.uid);
+      return cleanup;
+    }
+  }, [sessionUser?.uid]);
 
   // Hook up Firestore notes in real-time
   const { notes, isLoading: notesLoading, error: notesError, addNote, updateNote, deleteNote } = useNotes(sessionUser?.uid);
@@ -634,7 +645,7 @@ export default function App() {
       }
       const fullDisplayName = `${newSettings.profile.firstName || ''} ${newSettings.profile.lastName || ''}`.trim() || newSettings.profile.fullName;
 
-      const profileData = {
+      const profileData = normalizeProfileFields({
         uid: currentUser.uid,
         fullName: fullDisplayName,
         first_name: newSettings.profile.firstName || '',
@@ -659,32 +670,38 @@ export default function App() {
         theme: newSettings.profile.theme || theme,
         onboarding_completed: true,
         updated_at: serverTimestamp()
-      };
-      const batch = writeBatch(db);
-      batch.set(doc(db, 'users', currentUser.uid), profileData, { merge: true });
-      if (userRole === 'student') {
-        batch.set(doc(db, 'traineeProfiles', currentUser.uid), {
-          uid: currentUser.uid,
-          fullName: fullDisplayName,
-          email: newSettings.profile.emailAddress || '',
-          phone: newSettings.profile.phoneNumber || '',
-          organization: newSettings.profile.organization || newSettings.profile.institution || '',
-          department: newSettings.profile.department || '',
-          designation: newSettings.profile.designation || '',
-          yearsOfExperience: Math.max(0, Number(newSettings.profile.yearsOfExperience) || 0),
-          qualification: newSettings.profile.qualification || newSettings.profile.degree || '',
-          domain: newSettings.profile.domain || '',
-          bio: newSettings.profile.bio || '',
-          skills: newSettings.profile.skills || [],
-          competencies: newSettings.profile.competencies || [],
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
-      try {
-        await batch.commit();
-      } catch (error) {
-        console.error('[Settings] Firestore profile save failed:', error);
-        throw new Error('Unable to save your profile. Check your connection and try again.');
+      });
+
+      if (!isOnline) {
+        // Queue to IndexedDB outbox when offline
+        await queueOperation(currentUser.uid, 'profile_update', profileData);
+      } else {
+        const batch = writeBatch(db);
+        batch.set(doc(db, 'users', currentUser.uid), profileData, { merge: true });
+        if (userRole === 'student') {
+          batch.set(doc(db, 'traineeProfiles', currentUser.uid), {
+            uid: currentUser.uid,
+            fullName: fullDisplayName,
+            email: newSettings.profile.emailAddress || '',
+            phone: newSettings.profile.phoneNumber || '',
+            organization: newSettings.profile.organization || newSettings.profile.institution || '',
+            department: newSettings.profile.department || '',
+            designation: newSettings.profile.designation || '',
+            yearsOfExperience: Math.max(0, Number(newSettings.profile.yearsOfExperience) || 0),
+            qualification: newSettings.profile.qualification || newSettings.profile.degree || '',
+            domain: newSettings.profile.domain || '',
+            bio: newSettings.profile.bio || '',
+            skills: newSettings.profile.skills || [],
+            competencies: newSettings.profile.competencies || [],
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+        try {
+          await batch.commit();
+        } catch (error) {
+          console.warn('[Settings] Firestore online save failed; fallback queue to IndexedDB outbox:', error);
+          await queueOperation(currentUser.uid, 'profile_update', profileData);
+        }
       }
 
       updateFirebaseProfile(currentUser, {

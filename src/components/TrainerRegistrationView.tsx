@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
+import { normalizeProfileFields } from '../models/firestoreModels';
 import {
   User,
   Mail,
@@ -434,7 +435,7 @@ export default function TrainerRegistrationView({
       }
 
       // 2. Build Trainer Profile Document
-      const trainerProfile = {
+      const trainerProfile = normalizeProfileFields({
         uid,
         role: 'faculty', // 'faculty' maps to Trainer role across Project Kuma portals
         trainerRole: 'trainer',
@@ -460,7 +461,7 @@ export default function TrainerRegistrationView({
         onboarding_completed: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      };
+      });
 
       // 3. Write profile to Firestore
       const batch = writeBatch(db);
