@@ -1,7 +1,53 @@
 @import "tailwindcss";
 
 @layer base {
-  :root {
+  :root,
+  [data-theme="dark"],
+  .dark {
+    --bg-paper: #050814;
+    --bg-main: #050814;
+    --card-bg: #0C1220;
+    --panel-bg: #10182A;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --border-main: #1E293B;
+    --border-subtle: #0F172A;
+    --accent-yellow: #F59E0B;
+    --accent-red: #F43F5E;
+    --accent-blue: #38BDF8;
+    --accent-green: #22C55E;
+    --hover-bg: #1E293B;
+    --shadow-color: #02040A;
+    --input-bg: #0C1220;
+    --sidebar-bg: #050814;
+    --navbar-bg: #050814;
+    --brand-header-bg: #0C1220;
+    --hero-banner-bg: #0C1220;
+    --hero-banner-text: #F8FAFC;
+    --hero-banner-subtext: #94A3B8;
+    --hero-banner-border: #1E293B;
+
+    /* Teacher Portal Dark Tokens */
+    --app-bg: #050814;
+    --app-surface: #0C1220;
+    --app-surface-alt: #10182A;
+    --app-border: #1E293B;
+    --app-text: #F8FAFC;
+    --app-muted: #94A3B8;
+    --app-brand: #38BDF8;
+    --app-brand-strong: #0284C7;
+
+    /* Teachers LMS Portal Dark Tokens */
+    --canvas: 5 8 20;
+    --card: 12 18 32;
+    --panel: 16 24 42;
+    --line: 30 41 59;
+    --ink: 248 250 252;
+    --muted: 148 163 184;
+    --faint: 100 116 139;
+  }
+
+  [data-theme="light"] {
     --bg-paper: #F8FAFC;
     --bg-main: #F8FAFC;
     --card-bg: #FFFFFF;
@@ -25,7 +71,6 @@
     --hero-banner-subtext: #475569;
     --hero-banner-border: #E2E8F0;
 
-    /* Teacher Portal Academic Management Theme Tokens */
     --app-bg: #F8FAFC;
     --app-surface: #FFFFFF;
     --app-surface-alt: #F1F5F9;
@@ -35,67 +80,12 @@
     --app-brand: #0284C7;
     --app-brand-strong: #0369A1;
 
-    /* Teachers LMS Portal Theme Tokens - Light Mode */
     --canvas: 248 250 252;
     --card: 255 255 255;
     --panel: 241 245 249;
     --line: 226 232 240;
     --ink: 15 23 42;
     --muted: 71 85 105;
-    --faint: 100 116 139;
-  }
-
-  [data-theme="dark"],
-  .dark {
-    --bg-paper: #050814;
-    /* Deep Dark Obsidian Navy Black */
-    --bg-main: #050814;
-    --card-bg: #0C1220;
-    /* Dark Navy Surface */
-    --panel-bg: #10182A;
-    /* Dark Navy Panel */
-    --text-primary: #F8FAFC;
-    /* Crisp Silver-White Text */
-    --text-secondary: #94A3B8;
-    /* Muted Slate Subtext */
-    --border-main: #1E293B;
-    /* Subtle Navy Border */
-    --border-subtle: #0F172A;
-    /* Dark Border */
-    --accent-yellow: #F59E0B;
-    --accent-red: #F43F5E;
-    --accent-blue: #38BDF8;
-    --accent-green: #22C55E;
-    /* Rich Green */
-    --hover-bg: #1E293B;
-    /* Deep Hover State */
-    --shadow-color: #02040A;
-    --input-bg: #0C1220;
-    --sidebar-bg: #050814;
-    --navbar-bg: #050814;
-    --brand-header-bg: #0C1220;
-    --hero-banner-bg: var(--card-bg);
-    --hero-banner-text: var(--text-primary);
-    --hero-banner-subtext: var(--text-secondary);
-    --hero-banner-border: var(--border-main);
-
-    /* Teacher Portal Academic Management Dark Tokens */
-    --app-bg: #050814;
-    --app-surface: #0C1220;
-    --app-surface-alt: #10182A;
-    --app-border: #1E293B;
-    --app-text: #F8FAFC;
-    --app-muted: #94A3B8;
-    --app-brand: #38BDF8;
-    --app-brand-strong: #0284C7;
-
-    /* Teachers LMS Portal Dark Tokens - Navy & Black */
-    --canvas: 5 8 20;
-    --card: 12 18 32;
-    --panel: 16 24 42;
-    --line: 30 41 59;
-    --ink: 248 250 252;
-    --muted: 148 163 184;
     --faint: 100 116 139;
   }
 
@@ -110,7 +100,8 @@
   }
 
   [data-theme="dark"] body,
-  .dark body {
+  .dark body,
+  body {
     background-color: #030610;
     background-image:
       radial-gradient(circle at 50% -10%, rgba(30, 58, 138, 0.25) 0%, rgba(15, 23, 42, 0.5) 40%, rgba(3, 7, 18, 0.95) 80%, #02040A 100%),
@@ -119,25 +110,13 @@
     color: #F8FAFC;
   }
 
-  /* Global Light Mode High-Contrast Clean Palette Remapping */
-  html:not(.dark) body,
   [data-theme="light"] body {
     background-color: #F8FAFC !important;
     background-image: none !important;
     color: #0F172A !important;
   }
 
-  html:not(.dark) .bg-\[\#0a0a0c\],
-  html:not(.dark) .bg-\[\#0c0c14\],
-  html:not(.dark) .bg-\[\#12121a\],
-  html:not(.dark) .bg-\[\#161622\],
-  html:not(.dark) .bg-\[\#14141f\],
-  html:not(.dark) .bg-\[\#101712\],
-  html:not(.dark) .bg-\[\#181825\],
-  html:not(.dark) .bg-\[\#080C09\],
-  html:not(.dark) .bg-\[\#162019\],
-  html:not(.dark) .bg-\[\#0C1220\],
-  html:not(.dark) .bg-\[\#050814\],
+  /* Explicit Light Mode Container Remapping (Only applied when data-theme="light" is explicitly selected) */
   [data-theme="light"] .bg-\[\#0a0a0c\],
   [data-theme="light"] .bg-\[\#0c0c14\],
   [data-theme="light"] .bg-\[\#12121a\],
@@ -152,17 +131,10 @@
     background-color: #FFFFFF !important;
   }
 
-  html:not(.dark) .bg-\[\#0e0e17\],
   [data-theme="light"] .bg-\[\#0e0e17\] {
     background-color: #F8FAFC !important;
   }
 
-  html:not(.dark) .border-gray-800,
-  html:not(.dark) .border-gray-800\/80,
-  html:not(.dark) .border-gray-800\/60,
-  html:not(.dark) .border-\[\#233326\],
-  html:not(.dark) .border-slate-800,
-  html:not(.dark) .border-slate-800\/80,
   [data-theme="light"] .border-gray-800,
   [data-theme="light"] .border-gray-800\/80,
   [data-theme="light"] .border-gray-800\/60,
@@ -172,11 +144,6 @@
     border-color: #E2E8F0 !important;
   }
 
-  html:not(.dark) .text-slate-400,
-  html:not(.dark) .text-slate-500,
-  html:not(.dark) .text-gray-400,
-  html:not(.dark) .text-gray-500,
-  html:not(.dark) .text-\[\#A0B2A3\],
   [data-theme="light"] .text-slate-400,
   [data-theme="light"] .text-slate-500,
   [data-theme="light"] .text-gray-400,
