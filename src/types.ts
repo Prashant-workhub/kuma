@@ -185,6 +185,9 @@ export interface QuizQuestion {
 
 export interface Quiz {
   id: string;
+  assignmentId?: string;
+  trainerId?: string;
+  trainingProgramId?: string;
   title: string;
   topic: string;
   courseCode?: string;
@@ -490,6 +493,11 @@ export interface FacultyProfile {
 
 export interface TeacherAssignment {
   id: string;
+  trainerId?: string;
+  organization?: string;
+  status?: 'draft' | 'published' | 'archived';
+  createdAt?: any;
+  updatedAt?: any;
   teacherId?: string;
   teacherName?: string;
   teacherCode?: string;
@@ -558,6 +566,9 @@ export interface ClassLearningAlert {
 export interface QuizAttemptRecord {
   id: string;
   userId: string;
+  trainerId?: string;
+  assignmentId?: string;
+  trainingProgramId?: string;
   userName: string;
   quizId: string;
   quizTitle?: string;
@@ -577,21 +588,39 @@ export interface QuizAttemptRecord {
   completedAt: any;
 }
 
+export interface TrainingAssessmentAssignment {
+  id: string;
+  assessmentId: string;
+  traineeId: string;
+  trainerId: string;
+  trainingProgramId?: string;
+  status: 'assigned' | 'submitted';
+  attemptStatus: 'pending' | 'submitted';
+  assignedAt: any;
+  attemptId?: string;
+  submittedAt?: any;
+  deadline?: string;
+}
+
 export interface TrainingEnrollment {
   id: string;
   userId: string;
+  trainerId?: string;
   userName?: string;
   userEmail?: string;
   courseId: string;
   courseCode: string;
   courseName: string;
   subject?: string;
+  organizationId?: string;
   enrolledAt: string;
   status: 'enrolled' | 'in_progress' | 'completed';
   completionRate: number; // 0 to 100
+  moduleProgress?: Record<string, boolean>;
   completedAt?: string;
   quizPassed?: boolean;
   certificateId?: string;
+  updatedAt?: any;
 }
 
 export interface TrainingCertificate {
@@ -611,6 +640,21 @@ export interface TrainingCertificate {
   verificationUrl: string;
   competenciesAddressed?: string[];
   enrollmentId?: string;
+  assessmentAttemptId?: string;
+  verificationIdentifier?: string;
+}
+
+export interface CertificateVerificationRecord {
+  certificateId: string;
+  traineeName: string;
+  trainingProgramName: string;
+  courseCode: string;
+  organization: string;
+  issueDate: string;
+  completionDate: string;
+  competenciesAddressed: string[];
+  verificationIdentifier: string;
+  verificationStatus: 'valid' | 'revoked';
 }
 
 export interface TrainerCompetencyItem {

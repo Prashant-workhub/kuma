@@ -7,16 +7,22 @@ import type {
   TeacherAssignment,
 } from '../types'
 import { ACTIVITY, ANNOUNCEMENTS, COURSES, DOUBTS } from '../lib/mockData'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore'
 import { db } from '../../firebaseConfig'
 import { updateDoubtResponse } from '../../services/teacherDoubtService'
 import { toEpochMs } from '../../utils/dateUtils'
+import { useAuth } from './AuthContext'
+import { isDemoTrainerIdentity } from '../../utils/demoDataSeeder'
+import { createTrainingProgram, subscribeTrainerPrograms, updateTrainingProgram } from '../../services/capacityConnectService'
 
 interface DataContextValue {
   doubts: DoubtItem[]
   courses: TeacherAssignment[]
+  coursesLoading: boolean
+  coursesError: string | null
   announcements: Announcement[]
   activity: ActivityEvent[]
+  createCourse: (course: Omit<TeacherAssignment, 'id'>) => Promise<TeacherAssignment>
   answerDoubt: (id: string, response: string) => void
   setDoubtStatus: (id: string, status: DoubtStatus) => void
   toggleSyllabusItem: (courseId: string, itemId: string) => void
@@ -31,14 +37,58 @@ let seq = 0
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${seq++}`
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [doubts, setDoubts] = useState<DoubtItem[]>(DOUBTS)
-  const [courses, setCourses] = useState<TeacherAssignment[]>(COURSES)
-  const [announcements, setAnnouncements] = useState<Announcement[]>(ANNOUNCEMENTS)
-  const [activity, setActivity] = useState<ActivityEvent[]>(ACTIVITY)
+  const { profile } = useAuth()
+  const isDemoTrainer = isDemoTrainerIdentity(profile?.id, profile?.email)
+  const [doubts, setDoubts] = useState<DoubtItem[]>(isDemoTrainer ? DOUBTS : [])
+  const [courses, setCourses] = useState<TeacherAssignment[]>(isDemoTrainer ? COURSES : [])
+  const [coursesLoading, setCoursesLoading] = useState(!isDemoTrainer)
+  const [coursesError, setCoursesError] = useState<string | null>(null)
+  const [announcements, setAnnouncements] = useState<Announcement[]>(isDemoTrainer ? ANNOUNCEMENTS : [])
+  const [activity, setActivity] = useState<ActivityEvent[]>(isDemoTrainer ? ACTIVITY : [])
+
+  useEffect(() => {
+    if (!profile?.id) {
+      setCourses([])
+      setCoursesLoading(false)
+      setCoursesError(null)
+      return
+    }
+    if (isDemoTrainer) {
+      setCourses(COURSES)
+      setCoursesLoading(false)
+      setCoursesError(null)
+      return
+    }
+
+    setCoursesLoading(true)
+    setCoursesError(null)
+    return subscribeTrainerPrograms(
+      profile.id,
+      (programs) => {
+        setCourses(programs)
+        setCoursesLoading(false)
+      },
+      (error) => {
+        console.error('[TrainerData] Program subscription failed:', error)
+        setCourses([])
+        setCoursesError('Unable to load training programs. Check your connection and try again.')
+        setCoursesLoading(false)
+      }
+    )
+  }, [profile?.id, isDemoTrainer])
+
+  useEffect(() => {
+    setAnnouncements(isDemoTrainer ? ANNOUNCEMENTS : [])
+    setActivity(isDemoTrainer ? ACTIVITY : [])
+  }, [isDemoTrainer])
 
   // Real-time synchronization of student doubts from Firestore, localStorage, and window events
   useEffect(() => {
-    let unsubscribe = () => {};
+    if (!isDemoTrainer) {
+      setDoubts([])
+      return
+    }
+    let unsubscribe = () => { };
 
     const loadCombinedDoubts = (fsDoubts: DoubtItem[] = []) => {
       // Check local storage for fallback doubts
@@ -66,7 +116,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }));
           }
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // Deduplicate and combine (Firestore + Local + Demo)
       const map = new Map<string, DoubtItem>();
@@ -160,11 +210,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('kuma_doubt_created', handleDoubtCreated);
       window.removeEventListener('storage', handleDoubtCreated);
     };
-  }, []);
+  }, [isDemoTrainer]);
 
   const logActivity = useCallback((event: Omit<ActivityEvent, 'id' | 'at'>) => {
     setActivity((list) => [{ ...event, id: uid('e'), at: new Date().toISOString() }, ...list])
   }, [])
+
+  const createCourse = useCallback(async (course: Omit<TeacherAssignment, 'id'>) => {
+    if (isDemoTrainer) {
+      const demoCourse: TeacherAssignment = {
+        ...course,
+        id: uid('demo-course'),
+        trainerId: profile?.id || 'faculty-1',
+        organization: profile?.university || 'Capacity Connect Demo Organization',
+        status: 'published',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      setCourses((list) => [demoCourse, ...list])
+      return demoCourse
+    }
+    if (!profile?.id || !profile.university) {
+      throw new Error('Your trainer profile needs a Firebase UID and organization before publishing a program.')
+    }
+    const savedCourse = await createTrainingProgram(profile.id, profile.university, course)
+    return savedCourse
+  }, [isDemoTrainer, profile])
 
   const answerDoubt = useCallback(
     async (id: string, response: string) => {
@@ -198,10 +269,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const setDoubtStatus = useCallback(async (id: string, status: DoubtStatus) => {
     const previousStatus = doubts.find((d) => d.id === id)?.status
-    
+
     // Optimistic update
     setDoubts((list) => list.map((d) => (d.id === id ? { ...d, status } : d)))
-    
+
     // Sync status change to Firestore
     const firestoreStatusMap: Record<DoubtStatus, any> = {
       pending: 'NEW',
@@ -209,17 +280,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       resolved: 'RESOLVED',
       escalated: 'ESCALATED',
     }
-    
+
     try {
       await updateDoubtResponse(id, '', firestoreStatusMap[status] || 'ANSWERED')
     } catch (err) {
       console.warn('Failed to update doubt status in Firestore:', err)
-      
+
       // Rollback on failure
       if (previousStatus) {
         setDoubts((list) => list.map((d) => (d.id === id ? { ...d, status: previousStatus } : d)))
       }
-      
+
       // Notify user of failure
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
@@ -236,59 +307,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [doubts])
 
   const toggleSyllabusItem = useCallback(
-    (courseId: string, itemId: string) => {
-      let courseCode = ''
-      let itemTitle = ''
-      let willBeDone = false
-      setCourses((list) =>
-        list.map((c) => {
-          if (c.id !== courseId) return c
-          courseCode = c.courseCode
-          return {
-            ...c,
-            syllabus: c.syllabus.map((s) => {
-              if (s.id !== itemId) return s
-              itemTitle = s.title
-              willBeDone = !s.done
-              return { ...s, done: !s.done }
-            }),
-          }
-        }),
-      )
+    async (courseId: string, itemId: string) => {
+      const current = courses.find((course) => course.id === courseId)
+      if (!current) throw new Error('Training program not found.')
+      const itemTitle = current.syllabus.find((item) => item.id === itemId)?.title || 'Module'
+      const updatedSyllabus = current.syllabus.map((item) => item.id === itemId ? { ...item, done: !item.done } : item)
+      const willBeDone = updatedSyllabus.find((item) => item.id === itemId)?.done === true
+      if (isDemoTrainer) {
+        setCourses((list) => list.map((course) => course.id === courseId ? { ...course, syllabus: updatedSyllabus } : course))
+      } else {
+        if (!profile?.id) throw new Error('Trainer profile is not authenticated.')
+        await updateTrainingProgram(profile.id, courseId, { syllabus: updatedSyllabus })
+      }
       if (willBeDone) {
         logActivity({
           kind: 'syllabus-edit',
           title: 'Syllabus updated',
-          detail: `Marked "${itemTitle}" complete in ${courseCode}.`,
-          courseCode,
+          detail: `Marked "${itemTitle}" complete in ${current.courseCode}.`,
+          courseCode: current.courseCode,
         })
       }
     },
-    [logActivity],
+    [courses, isDemoTrainer, profile?.id, logActivity],
   )
 
   const updateCourseCompetencies = useCallback(
-    (courseId: string, competencyIds: string[], competencyNames: string[]) => {
-      let courseCode = ''
-      setCourses((list) =>
-        list.map((c) => {
-          if (c.id !== courseId) return c
-          courseCode = c.courseCode
-          return {
-            ...c,
-            competencyIds,
-            competencyNames,
-          }
-        }),
-      )
+    async (courseId: string, competencyIds: string[], competencyNames: string[]) => {
+      const current = courses.find((course) => course.id === courseId)
+      if (!current) throw new Error('Training program not found.')
+      if (isDemoTrainer) {
+        setCourses((list) => list.map((course) => course.id === courseId ? { ...course, competencyIds, competencyNames } : course))
+      } else {
+        if (!profile?.id) throw new Error('Trainer profile is not authenticated.')
+        await updateTrainingProgram(profile.id, courseId, { competencyIds, competencyNames })
+      }
       logActivity({
         kind: 'syllabus-edit',
         title: 'Competencies updated',
-        detail: `Mapped ${competencyIds.length} competencies to ${courseCode}.`,
-        courseCode,
+        detail: `Mapped ${competencyIds.length} competencies to ${current.courseCode}.`,
+        courseCode: current.courseCode,
       })
     },
-    [logActivity],
+    [courses, isDemoTrainer, profile?.id, logActivity],
   )
 
   const addAnnouncement = useCallback(
@@ -320,8 +380,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     () => ({
       doubts,
       courses,
+      coursesLoading,
+      coursesError,
       announcements,
       activity,
+      createCourse,
       answerDoubt,
       setDoubtStatus,
       toggleSyllabusItem,
@@ -329,7 +392,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addAnnouncement,
       logActivity,
     }),
-    [doubts, courses, announcements, activity, answerDoubt, setDoubtStatus, toggleSyllabusItem, updateCourseCompetencies, addAnnouncement, logActivity],
+    [doubts, courses, coursesLoading, coursesError, announcements, activity, createCourse, answerDoubt, setDoubtStatus, toggleSyllabusItem, updateCourseCompetencies, addAnnouncement, logActivity],
   )
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

@@ -8,7 +8,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import {
   User,
@@ -314,12 +314,13 @@ export default function TraineeRegistrationView({
 
     try {
       // 1. Create user in Firebase Auth
-      let uid = `trainee_${Date.now()}`;
       let authEmail = email.trim().toLowerCase();
+      let uid: string;
 
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, authEmail, password);
         uid = userCredential.user.uid;
+        authEmail = userCredential.user.email || authEmail;
         if (userCredential.user) {
           await updateProfile(userCredential.user, { displayName: fullName.trim() });
         }
@@ -356,19 +357,32 @@ export default function TraineeRegistrationView({
       };
 
       // 3. Store in Firestore
-      try {
-        const userRef = doc(db, 'users', uid);
-        await setDoc(userRef, traineeProfile, { merge: true });
-      } catch (dbErr) {
-        console.warn('[Registration] Firestore document write warning:', dbErr);
-      }
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'users', uid), traineeProfile, { merge: true });
+      batch.set(doc(db, 'traineeProfiles', uid), {
+        uid,
+        fullName: traineeProfile.fullName,
+        email: traineeProfile.email,
+        phone: traineeProfile.phone,
+        organization: traineeProfile.organization,
+        department: traineeProfile.department,
+        designation: traineeProfile.designation,
+        yearsOfExperience: traineeProfile.experienceYears,
+        qualification: traineeProfile.qualification,
+        domain: traineeProfile.domain,
+        bio: traineeProfile.bio,
+        skills: traineeProfile.skills,
+        competencies: traineeProfile.competencies,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await batch.commit();
 
       // 4. Save to local storage for immediate app session sync
       try {
         const localSettingsKey = 'kuma_user_settings';
         const existingSettingsRaw = localStorage.getItem(localSettingsKey);
         const existingSettings = existingSettingsRaw ? JSON.parse(existingSettingsRaw) : {};
-        
+
         const mergedSettings = {
           ...existingSettings,
           profile: {
@@ -389,7 +403,7 @@ export default function TraineeRegistrationView({
           }
         };
         localStorage.setItem(localSettingsKey, JSON.stringify(mergedSettings));
-      } catch (lsErr) {}
+      } catch (lsErr) { }
 
       // 5. Trigger Success Callback
       onLoginSuccess({
@@ -405,14 +419,14 @@ export default function TraineeRegistrationView({
     }
   };
 
-  const catalogFiltered = INITIAL_COMPETENCY_CATALOG.filter(c => 
+  const catalogFiltered = INITIAL_COMPETENCY_CATALOG.filter(c =>
     c.name.toLowerCase().includes(competencySearch.toLowerCase()) ||
     c.category.toLowerCase().includes(competencySearch.toLowerCase())
   );
 
   return (
     <div className="min-h-screen w-full bg-white dark:bg-[#030610] text-slate-900 dark:text-slate-100 font-sans select-none flex flex-col justify-between p-4 md:p-8">
-      
+
       {/* Top Header Navigation */}
       <header className="max-w-4xl mx-auto w-full flex items-center justify-between py-4 border-b border-purple-100 dark:border-slate-800">
         <div className="flex items-center gap-3 cursor-pointer" onClick={onNavigateToLogin}>
@@ -446,7 +460,7 @@ export default function TraineeRegistrationView({
 
       {/* Main Registration Card Container */}
       <main className="max-w-3xl mx-auto w-full my-8 bg-white dark:bg-[#0C1220] rounded-[11px] border border-slate-200/80 dark:border-slate-800 p-6 md:p-8 shadow-xl space-y-6">
-        
+
         {/* Title & Role Indicator */}
         <div className="space-y-2 text-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/50 text-[#992e9d] dark:text-purple-300 text-xs font-semibold border border-purple-200/60 dark:border-purple-800/60">
@@ -474,26 +488,23 @@ export default function TraineeRegistrationView({
               onClick={() => {
                 if (item.s < step) setStep(item.s);
               }}
-              className={`flex flex-col items-center gap-1 py-1.5 px-1 rounded-full text-center transition-all ${
-                item.s < step ? 'cursor-pointer' : ''
-              }`}
+              className={`flex flex-col items-center gap-1 py-1.5 px-1 rounded-full text-center transition-all ${item.s < step ? 'cursor-pointer' : ''
+                }`}
             >
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  step === item.s
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === item.s
                     ? 'bg-[#992e9d] text-white shadow-sm'
                     : item.s < step
-                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                }`}
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                  }`}
               >
                 {item.s < step ? '✓' : item.s}
               </div>
-              <span className={`text-[10px] font-medium truncate ${
-                step === item.s
+              <span className={`text-[10px] font-medium truncate ${step === item.s
                   ? 'text-[#992e9d] dark:text-purple-300 font-semibold'
                   : 'text-slate-400'
-              }`}>
+                }`}>
                 {item.label}
               </span>
             </div>
@@ -750,7 +761,7 @@ export default function TraineeRegistrationView({
               {/* Skills Tags Input */}
               <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Technical & Operational Skills</label>
-                
+
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -849,11 +860,10 @@ export default function TraineeRegistrationView({
                 return (
                   <div
                     key={catComp.id}
-                    className={`p-3.5 rounded-[11px] border transition-all ${
-                      isSelected
+                    className={`p-3.5 rounded-[11px] border transition-all ${isSelected
                         ? 'border-[#992e9d] bg-purple-50/40 dark:bg-purple-950/20'
                         : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-0.5 flex-1">

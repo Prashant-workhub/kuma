@@ -13,7 +13,7 @@ interface CreateAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   catalog: CatalogCompetency[];
-  onCreateQuiz: (quiz: Quiz) => void;
+  onCreateQuiz: (quiz: Quiz) => Promise<void> | void;
 }
 
 export default function CreateAssessmentModal({
@@ -29,6 +29,7 @@ export default function CreateAssessmentModal({
   const [passingScore, setPassingScore] = useState<number>(60);
   const [estimatedTime, setEstimatedTime] = useState('15 mins');
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Default initial question
   const [questions, setQuestions] = useState<Omit<QuizQuestion, 'id'>[]>([
@@ -89,7 +90,7 @@ export default function CreateAssessmentModal({
     setQuestions(updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -154,8 +155,16 @@ export default function CreateAssessmentModal({
       }))
     };
 
-    onCreateQuiz(newQuiz);
-    onClose();
+    setSaving(true);
+    try {
+      await onCreateQuiz(newQuiz);
+      onClose();
+    } catch (saveError) {
+      console.error('[Assessment] Save failed:', saveError);
+      setError(saveError instanceof Error ? saveError.message : 'Unable to publish this assessment. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -166,7 +175,7 @@ export default function CreateAssessmentModal({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-6 select-none p-1">
-        
+
         {/* Validation Error Alert */}
         {error && (
           <div className="p-3.5 rounded-[6px] border-2 border-red-500 bg-red-500/10 text-red-600 dark:text-red-400 font-mono text-xs font-bold flex items-start gap-2.5">
@@ -324,11 +333,10 @@ export default function CreateAssessmentModal({
                         placeholder={`Option ${String.fromCharCode(65 + optIdx)}...`}
                         value={opt}
                         onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
-                        className={`w-full rounded-[4px] border p-1.5 text-xs font-mono ${
-                          q.correctAnswerIndex === optIdx
+                        className={`w-full rounded-[4px] border p-1.5 text-xs font-mono ${q.correctAnswerIndex === optIdx
                             ? 'border-[#19B56B] bg-[#19B56B]/10 font-bold'
                             : 'border-[var(--border-main)] bg-[var(--bg-main)]'
-                        }`}
+                          }`}
                       />
                     </div>
                   ))}
@@ -351,8 +359,8 @@ export default function CreateAssessmentModal({
           <Button type="button" variant="tertiary" size="sm" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" variant="secondary" size="sm" className="bg-[#FFC400]">
-            Create Assessment
+          <Button type="submit" variant="secondary" size="sm" className="bg-[#FFC400]" disabled={saving}>
+            {saving ? 'Saving & Assigning…' : 'Create Assessment'}
           </Button>
         </div>
       </form>

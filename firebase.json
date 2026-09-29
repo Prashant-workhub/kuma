@@ -1,6 +1,7 @@
 {
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "auth": {
     "providers": {
@@ -9,6 +10,14 @@
         "oAuthBrandDisplayName": "KUMA",
         "supportEmail": "devmail.prashant@gmail.com"
       }
+    }
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8085
+    },
+    "ui": {
+      "enabled": false
     }
   }
 }

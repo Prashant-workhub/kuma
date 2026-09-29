@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ClipboardCheck, Percent, Target, Users, Plus, Award, CheckCircle2, XCircle } from 'lucide-react'
 import { COURSES, QUIZZES, TOPIC_ACCURACY } from '../lib/mockData'
 import { shortDate } from '../lib/format'
@@ -13,6 +13,9 @@ import { ProgressBar } from '../components/ui/ProgressBar'
 import { Quiz, QuizAttemptRecord, CatalogCompetency } from '../../types'
 import { INITIAL_COMPETENCY_CATALOG, INITIAL_QUIZZES } from '../../data'
 import CreateAssessmentModal from '../../components/CreateAssessmentModal'
+import { useAuth } from '../context/AuthContext'
+import { isDemoTrainerIdentity } from '../../utils/demoDataSeeder'
+import { createAssessmentAndAssignToTrainees, subscribeTrainerAssessmentAttempts, subscribeTrainerAssessments } from '../../services/capacityConnectService'
 
 const accentFor = (courseCode: string): Accent =>
   COURSES.find((c) => c.courseCode === courseCode)?.accent ?? 'cyan'
@@ -92,35 +95,88 @@ export function QuizPerformance({
   catalog = INITIAL_COMPETENCY_CATALOG,
   onAddQuiz
 }: QuizPerformanceProps) {
+  const { profile } = useAuth()
+  const isDemoTrainer = isDemoTrainerIdentity(profile?.id, profile?.email)
   const [quizzesList, setQuizzesList] = useState<Quiz[]>(
-    customQuizzes && customQuizzes.length > 0 ? customQuizzes : INITIAL_QUIZZES
+    customQuizzes && customQuizzes.length > 0 ? customQuizzes : isDemoTrainer ? INITIAL_QUIZZES : []
   )
-  const [attemptsList] = useState<QuizAttemptRecord[]>(
-    customAttempts && customAttempts.length > 0 ? customAttempts : INITIAL_TRAINEE_ATTEMPTS
+  const [attemptsList, setAttemptsList] = useState<QuizAttemptRecord[]>(
+    customAttempts && customAttempts.length > 0 ? customAttempts : isDemoTrainer ? INITIAL_TRAINEE_ATTEMPTS : []
   )
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [loading, setLoading] = useState(!isDemoTrainer)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const [saveNotice, setSaveNotice] = useState<string | null>(null)
 
-  const handleCreateQuiz = (newQuiz: Quiz) => {
-    setQuizzesList([newQuiz, ...quizzesList])
-    if (onAddQuiz) {
-      onAddQuiz(newQuiz)
+  useEffect(() => {
+    if (!profile?.id || isDemoTrainer) {
+      setLoading(false)
+      if (isDemoTrainer) {
+        setQuizzesList(customQuizzes?.length ? customQuizzes : INITIAL_QUIZZES)
+        setAttemptsList(customAttempts?.length ? customAttempts : INITIAL_TRAINEE_ATTEMPTS)
+      }
+      return
     }
+
+    let quizzesLoaded = false
+    let attemptsLoaded = false
+    const finishLoading = () => {
+      if (quizzesLoaded && attemptsLoaded) setLoading(false)
+    }
+    setLoading(true)
+    setDataError(null)
+    const onError = (error: Error) => {
+      console.error('[QuizPerformance] Firestore read failed:', error)
+      setDataError('Unable to load assessments or results. Check your connection and try again.')
+      setLoading(false)
+    }
+    const stopAssessments = subscribeTrainerAssessments(profile.id, (items) => {
+      setQuizzesList(items)
+      quizzesLoaded = true
+      finishLoading()
+    }, onError)
+    const stopAttempts = subscribeTrainerAssessmentAttempts(profile.id, (items) => {
+      setAttemptsList(items)
+      attemptsLoaded = true
+      finishLoading()
+    }, onError)
+    return () => {
+      stopAssessments()
+      stopAttempts()
+    }
+  }, [profile?.id, isDemoTrainer, customQuizzes, customAttempts])
+
+  const handleCreateQuiz = async (newQuiz: Quiz) => {
+    setSaveNotice(null)
+    setDataError(null)
+    if (isDemoTrainer) {
+      setQuizzesList((list) => [newQuiz, ...list])
+      onAddQuiz?.(newQuiz)
+      setSaveNotice('Demo assessment saved to the current demo session.')
+      return
+    }
+    if (!profile?.id || !profile.university) throw new Error('Your trainer profile needs an organization before publishing assessments.')
+    const assignedCount = await createAssessmentAndAssignToTrainees(profile.id, profile.university, newQuiz)
+    onAddQuiz?.(newQuiz)
+    setSaveNotice(`Assessment published and assigned to ${assignedCount} active trainee${assignedCount === 1 ? '' : 's'}.`)
   }
 
-  const totalQuizzesCount = quizzesList.length + QUIZZES.length
-  const totalAttemptsCount = attemptsList.length + QUIZZES.reduce((s, q) => s + q.attempts, 0)
+  const totalQuizzesCount = quizzesList.length + (isDemoTrainer ? QUIZZES.length : 0)
+  const totalAttemptsCount = attemptsList.length + (isDemoTrainer ? QUIZZES.reduce((s, q) => s + q.attempts, 0) : 0)
   const avgScore = Math.round(
-    [...attemptsList.map((a) => a.scorePercentage || a.accuracy), ...QUIZZES.map((q) => q.averageScore)].reduce(
+    [...attemptsList.map((a) => a.scorePercentage || a.accuracy), ...(isDemoTrainer ? QUIZZES.map((q) => q.averageScore) : [])].reduce(
       (s, v) => s + v,
       0
-    ) / Math.max(1, attemptsList.length + QUIZZES.length)
+    ) / Math.max(1, attemptsList.length + (isDemoTrainer ? QUIZZES.length : 0))
   )
 
-  const accuracyData: ChartDatum[] = TOPIC_ACCURACY.map((t) => ({
-    label: t.topic,
-    value: t.accuracy,
-    accent: scoreAccent(t.accuracy),
-  }))
+  const accuracyData: ChartDatum[] = isDemoTrainer
+    ? TOPIC_ACCURACY.map((t) => ({ label: t.topic, value: t.accuracy, accent: scoreAccent(t.accuracy) }))
+    : attemptsList.map((attempt) => ({
+      label: attempt.topic,
+      value: attempt.scorePercentage || attempt.accuracy,
+      accent: scoreAccent(attempt.scorePercentage || attempt.accuracy)
+    }))
 
   return (
     <div className="space-y-6">
@@ -148,6 +204,10 @@ export function QuizPerformance({
         </button>
       </div>
 
+      {saveNotice && <div role="status" className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">{saveNotice}</div>}
+      {dataError && <div role="alert" className="rounded-md border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">{dataError}</div>}
+      {loading && <div className="rounded-md border border-line bg-panel px-4 py-3 text-sm text-muted">Loading assessments and submitted results…</div>}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Avg assessment score" value={`${avgScore}%`} icon={<ClipboardCheck size={18} />} accent="cyan" delta="+5 pts" deltaDir="up" />
         <KpiCard label="Competencies mapped" value={catalog.filter(c => c.isActive !== false).length} icon={<Target size={18} />} accent="violet" />
@@ -163,7 +223,9 @@ export function QuizPerformance({
         </h3>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {quizzesList.map((q) => (
+          {quizzesList.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-line p-6 text-sm text-muted">No assessments have been published yet.</div>
+          ) : quizzesList.map((q) => (
             <Card key={q.id} hover className="p-4 space-y-3 border-2 border-line">
               <div className="flex items-center justify-between">
                 <CodePill className={cn(accentText['cyan'])}>{q.courseCode || 'TRN-2026'}</CodePill>
@@ -208,7 +270,9 @@ export function QuizPerformance({
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {attemptsList.map((att) => (
+              {attemptsList.length === 0 ? (
+                <tr><td colSpan={7} className="py-8 text-center text-muted">No submitted assessment results yet.</td></tr>
+              ) : attemptsList.map((att) => (
                 <tr key={att.id} className="hover:bg-muted/10 transition-colors">
                   <td className="py-3 px-3 font-bold text-ink">{att.userName}</td>
                   <td className="py-3 px-3 text-ink">{att.quizTitle}</td>
@@ -222,9 +286,8 @@ export function QuizPerformance({
                     </span>
                   </td>
                   <td className="py-3 px-3 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      att.passed !== false ? 'bg-emerald-500/20 text-emerald-600' : 'bg-rose-500/20 text-rose-600'
-                    }`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${att.passed !== false ? 'bg-emerald-500/20 text-emerald-600' : 'bg-rose-500/20 text-rose-600'
+                      }`}>
                       {att.passed !== false ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
                       {att.passed !== false ? 'PASSED' : 'NOT PASSED'}
                     </span>

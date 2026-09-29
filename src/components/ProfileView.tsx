@@ -4,36 +4,36 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  User, 
-  Mail, 
-  Building, 
-  Briefcase, 
-  Award, 
-  CheckCircle, 
-  Save, 
-  ArrowLeft, 
-  Phone, 
-  AlertCircle, 
-  Plus, 
-  Trash2, 
-  Sparkles, 
-  Calendar, 
-  ShieldCheck, 
-  Clock, 
+import {
+  User,
+  Mail,
+  Building,
+  Briefcase,
+  Award,
+  CheckCircle,
+  Save,
+  ArrowLeft,
+  Phone,
+  AlertCircle,
+  Plus,
+  Trash2,
+  Sparkles,
+  Calendar,
+  ShieldCheck,
+  Clock,
   BadgeCheck,
   Settings,
   Layers,
   Edit3
 } from 'lucide-react';
-import { 
-  UserSettings, 
-  SkillProficiencyLevel, 
+import {
+  UserSettings,
+  SkillProficiencyLevel,
   CompetencyCategory,
   CatalogCompetency,
-  TraineeSkill, 
-  TraineeCompetency, 
-  TraineeCertification 
+  TraineeSkill,
+  TraineeCompetency,
+  TraineeCertification
 } from '../types';
 import { Button, Card, Input } from './bauhaus';
 import { INITIAL_COMPETENCY_CATALOG } from '../data';
@@ -43,7 +43,7 @@ import CompetencyHistoryModal from './CompetencyHistoryModal';
 
 interface ProfileViewProps {
   settings: UserSettings;
-  onUpdateSettings: (newSettings: UserSettings) => void;
+  onUpdateSettings: (newSettings: UserSettings) => Promise<void>;
   setActivePage: (page: any) => void;
   theme: 'light' | 'dark';
 }
@@ -89,7 +89,7 @@ export default function ProfileView({
   setActivePage,
   theme
 }: ProfileViewProps) {
-  
+
   // Basic Info State
   const [firstName, setFirstName] = useState(settings.profile.firstName || (settings.profile.fullName ? settings.profile.fullName.split(' ')[0] : ''));
   const [lastName, setLastName] = useState(settings.profile.lastName || (settings.profile.fullName ? settings.profile.fullName.split(' ').slice(1).join(' ') : ''));
@@ -97,7 +97,7 @@ export default function ProfileView({
   const [countryCode, setCountryCode] = useState(settings.profile.countryCode || '+91');
   const [phoneNumber, setPhoneNumber] = useState(settings.profile.phoneNumber || '');
   const [avatarUrl, setAvatarUrl] = useState(settings.profile.avatarUrl || '');
-  
+
   // Professional Information State
   const [organization, setOrganization] = useState(settings.profile.organization || settings.profile.institution || '');
   const [department, setDepartment] = useState(settings.profile.department || '');
@@ -136,6 +136,7 @@ export default function ProfileView({
 
   const [showToast, setShowToast] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Active catalog options for selection (excluding deactivated items and already added competencies)
   const availableCatalogOptions = competencyCatalog.filter(
@@ -191,13 +192,13 @@ export default function ProfileView({
   };
 
   const handleUpdateCompetencyLevel = (id: string, newLevel: SkillProficiencyLevel) => {
-    setCompetencies(competencies.map(c => 
+    setCompetencies(competencies.map(c =>
       c.id === id ? { ...c, level: newLevel, numericLevel: LEVEL_TO_NUM[newLevel] } : c
     ));
   };
 
   const handleUpdateTargetCompetencyLevel = (id: string, newTargetLevel: SkillProficiencyLevel) => {
-    setCompetencies(competencies.map(c => 
+    setCompetencies(competencies.map(c =>
       c.id === id ? { ...c, targetLevel: newTargetLevel, targetNumericLevel: LEVEL_TO_NUM[newTargetLevel] } : c
     ));
   };
@@ -236,10 +237,10 @@ export default function ProfileView({
   };
 
   // Save profile changes
-  const handleSaveChanges = (e: React.FormEvent) => {
+  const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     if (!firstName.trim() || !lastName.trim() || !email.trim()) {
       setError('First Name, Last Name, and Email are required.');
       return;
@@ -281,12 +282,16 @@ export default function ProfileView({
       }
     };
 
-    onUpdateSettings(updatedSettings);
-    setShowToast(true);
-
-    setTimeout(() => {
-      setShowToast(false);
-    }, 2500);
+    setSaving(true);
+    try {
+      await onUpdateSettings(updatedSettings);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2500);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save your profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Visual Step Progress Bar (1-4 blocks)
@@ -298,9 +303,8 @@ export default function ProfileView({
           {blocks.map((b) => (
             <div
               key={b}
-              className={`h-2.5 w-3.5 rounded-sm transition-all ${
-                b <= numLevel ? activeColor : 'bg-slate-200 dark:bg-slate-800'
-              }`}
+              className={`h-2.5 w-3.5 rounded-sm transition-all ${b <= numLevel ? activeColor : 'bg-slate-200 dark:bg-slate-800'
+                }`}
             />
           ))}
         </div>
@@ -313,7 +317,7 @@ export default function ProfileView({
 
   return (
     <div className="max-w-6xl mx-auto pb-16 space-y-6 bg-grid-paper p-4 md:p-8 select-none">
-      
+
       {/* Save Success Toast */}
       {showToast && (
         <div className="fixed top-6 right-6 z-50 bg-[#19B56B] text-white rounded-[6px] p-4 border-2 border-[#111111] shadow-paper-lg flex items-center gap-3 animate-fade-in">
@@ -373,6 +377,7 @@ export default function ProfileView({
             variant="secondary"
             size="md"
             onClick={handleSaveChanges}
+            disabled={saving}
             icon={<Save className="h-4 w-4" />}
             className="bg-[#FFC400] font-bold"
           >
@@ -389,10 +394,10 @@ export default function ProfileView({
       )}
 
       <form onSubmit={handleSaveChanges} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column: Avatar & Summary & Basic Info */}
         <div className="space-y-6 lg:col-span-1">
-          
+
           {/* Avatar Card */}
           <Card shadow="md" className="p-5 bg-[var(--card-bg)] border-2 border-[var(--border-main)] flex flex-col items-center text-center space-y-4 w-full">
             <div className="relative">
@@ -449,7 +454,7 @@ export default function ProfileView({
 
         {/* Right Columns: Main Credentials, Skills, Competencies, Certifications */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* SECTION 1 & 2: Basic & Professional Information */}
           <Card shadow="md" className="p-6 bg-[var(--card-bg)] border-2 border-[var(--border-main)] space-y-5">
             <h3 className="section-label text-xs font-bold text-[var(--text-primary)] uppercase tracking-[2px] border-b-2 border-[var(--border-main)] pb-3 flex items-center gap-2">
@@ -588,7 +593,7 @@ export default function ProfileView({
                 competencies.map((comp) => {
                   const style = LEVEL_COLORS[comp.level] || LEVEL_COLORS.Intermediate;
                   const numLvl = comp.numericLevel || LEVEL_TO_NUM[comp.level] || 2;
-                  
+
                   return (
                     <div
                       key={comp.id}
@@ -639,7 +644,7 @@ export default function ProfileView({
 
                       {/* 3 Columns: DECLARED LEVEL | ASSESSED LEVEL | TARGET LEVEL */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                        
+
                         {/* 1. DECLARED LEVEL (User Editable) */}
                         <div className="p-3.5 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#080D1A] space-y-2 overflow-hidden">
                           <div className="flex items-center justify-between">

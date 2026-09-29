@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getTrainerAssignedTrainees } from '../../services/trainerDiscoveryService';
+import { subscribeTrainerEnrollments } from '../../services/capacityConnectService';
 import { Users, Search, RefreshCw, UserCheck, Award, AlertCircle, BookOpen, ExternalLink, X, ShieldCheck } from 'lucide-react';
 
-import { TrainerAssignmentRecord } from '../../types';
+import { TrainerAssignmentRecord, TrainingEnrollment } from '../../types';
 
 interface TraineeAssignedItem {
   assignment: TrainerAssignmentRecord;
@@ -21,21 +22,35 @@ interface TraineeAssignedItem {
   };
 }
 
+function getTraineeEnrollmentProgress(enrollments: TrainingEnrollment[], traineeId: string): number | null {
+  const traineeEnrollments = enrollments.filter((enrollment) => enrollment.userId === traineeId);
+  if (traineeEnrollments.length === 0) return null;
+  return Math.round(traineeEnrollments.reduce((sum, enrollment) => sum + enrollment.completionRate, 0) / traineeEnrollments.length);
+}
+
 export function MyTraineesView() {
   const { profile } = useAuth();
   const [trainees, setTrainees] = useState<TraineeAssignedItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>([]);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressError, setProgressError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTrainee, setSelectedTrainee] = useState<TraineeAssignedItem | null>(null);
 
   const fetchAssignedTrainees = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const trainerId = profile?.id || 'faculty-1';
-      const data = await getTrainerAssignedTrainees(trainerId, profile?.email);
+      const trainerId = profile?.id;
+      if (!trainerId) throw new Error('Trainer profile has no Firebase UID.');
+      const includeDemoAssignments = profile?.email?.toLowerCase() === 'trainer@acme.com' || trainerId === 'faculty-1';
+      const data = await getTrainerAssignedTrainees(trainerId, includeDemoAssignments);
       setTrainees(data);
     } catch (err) {
       console.error('Failed to load assigned trainees:', err);
+      setLoadError('Unable to load assigned trainees. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -43,6 +58,31 @@ export function MyTraineesView() {
 
   useEffect(() => {
     fetchAssignedTrainees();
+  }, [profile?.id, profile?.email]);
+
+  useEffect(() => {
+    const trainerId = profile?.id;
+    const isDemoTrainer = profile?.email?.toLowerCase() === 'trainer@acme.com' || trainerId === 'faculty-1';
+    if (!trainerId || isDemoTrainer) {
+      setEnrollments([]);
+      setProgressLoading(false);
+      setProgressError(null);
+      return;
+    }
+    setProgressLoading(true);
+    setProgressError(null);
+    return subscribeTrainerEnrollments(
+      trainerId,
+      (records) => {
+        setEnrollments(records);
+        setProgressLoading(false);
+      },
+      (error) => {
+        console.error('[MyTrainees] Enrollment subscription failed:', error);
+        setProgressError('Unable to load training progress. Check your connection and try again.');
+        setProgressLoading(false);
+      }
+    );
   }, [profile?.id, profile?.email]);
 
   const filteredTrainees = trainees.filter(item => {
@@ -94,6 +134,17 @@ export function MyTraineesView() {
           className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#161622] text-white border border-gray-800 focus:border-[#992e9d] focus:outline-none focus:ring-1 focus:ring-[#992e9d] text-sm transition placeholder-gray-500 shadow-inner"
         />
       </div>
+
+      {loadError && (
+        <div role="alert" className="rounded-xl border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-200 flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button onClick={fetchAssignedTrainees} className="font-semibold underline">Retry</button>
+        </div>
+      )}
+
+      {progressError && (
+        <div role="alert" className="rounded-xl border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-200">{progressError}</div>
+      )}
 
       {/* Trainees Grid */}
       {loading ? (
@@ -147,12 +198,14 @@ export function MyTraineesView() {
                 <div className="space-y-1.5 bg-[#0e0e17] p-3 rounded-xl border border-gray-800">
                   <div className="flex justify-between text-xs font-semibold">
                     <span className="text-gray-400">Training Progress</span>
-                    <span className="text-purple-300">{traineeProfile.trainingProgress || 75}%</span>
+                    <span className="text-purple-300">
+                      {progressLoading ? 'Loading…' : `${getTraineeEnrollmentProgress(enrollments, traineeProfile.uid) ?? 0}%`}
+                    </span>
                   </div>
                   <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-purple-500 to-[#992e9d] h-full rounded-full transition-all duration-500"
-                      style={{ width: `${traineeProfile.trainingProgress || 75}%` }}
+                      style={{ width: `${getTraineeEnrollmentProgress(enrollments, traineeProfile.uid) ?? 0}%` }}
                     />
                   </div>
                 </div>
@@ -185,7 +238,7 @@ export function MyTraineesView() {
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-800/60 text-gray-400">
                   <span className="flex items-center gap-1.5 text-amber-400 font-medium">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    {traineeProfile.skillGapsCount || 1} Identified Skill Gap{(traineeProfile.skillGapsCount || 1) > 1 ? 's' : ''}
+                    {traineeProfile.skillGapsCount ?? 0} Identified Skill Gap{(traineeProfile.skillGapsCount ?? 0) !== 1 ? 's' : ''}
                   </span>
                   <span className="text-[11px] text-gray-500">
                     Assigned {new Date(assignment.createdAt).toLocaleDateString()}

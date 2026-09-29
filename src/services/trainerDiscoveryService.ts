@@ -3,7 +3,7 @@
  * Handles querying trainers, filtering, profile inspection, and trainee-trainer assignment persistence.
  */
 
-import { collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { TrainerProfile, TrainerCompetencyItem, TrainerAssignmentRecord, SkillProficiencyLevel } from '../types';
 
@@ -178,14 +178,15 @@ function sanitizeCompetencies(raw: any[]): TrainerCompetencyItem[] {
 /**
  * Fetches all available Trainers / Faculty from Firestore and local storage.
  */
-export async function getAvailableTrainers(): Promise<TrainerProfile[]> {
+export async function getAvailableTrainers(includeDemoTrainers = false): Promise<TrainerProfile[]> {
   const trainersMap = new Map<string, TrainerProfile>();
 
-  // 1. Load default demo trainers into map
-  DEMO_TRAINERS.forEach(t => trainersMap.set(t.uid, {
-    ...t,
-    competencies: sanitizeCompetencies(t.competencies)
-  }));
+  if (includeDemoTrainers) {
+    DEMO_TRAINERS.forEach(t => trainersMap.set(t.uid, {
+      ...t,
+      competencies: sanitizeCompetencies(t.competencies)
+    }));
+  }
 
   // 2. Fetch non-PII trainer directory records. Private users/{uid} profiles
   // are intentionally not readable as a directory.
@@ -221,11 +222,12 @@ export async function getAvailableTrainers(): Promise<TrainerProfile[]> {
       trainersMap.set(uid, trainer);
     });
   } catch (err) {
-    console.warn('[TrainerDiscovery] Firestore fetch warning, using available trainers:', err);
+    if (!includeDemoTrainers) throw err;
+    console.warn('[TrainerDiscovery] Firestore fetch warning, using demo trainers:', err);
   }
 
   // 3. Load from local storage
-  if (typeof localStorage !== 'undefined') {
+  if (includeDemoTrainers && typeof localStorage !== 'undefined') {
     try {
       const raw = localStorage.getItem('kuma_registered_trainers');
       if (raw) {
@@ -267,7 +269,7 @@ export function getAllTrainerAssignments(): TrainerAssignmentRecord[] {
 /**
  * Gets the active selected trainer assignment for a specific Trainee UID.
  */
-export async function getTraineeSelectedTrainer(traineeId: string): Promise<{
+export async function getTraineeSelectedTrainer(traineeId: string, includeDemoTrainers = false): Promise<{
   assignment: TrainerAssignmentRecord;
   trainer: TrainerProfile;
 } | null> {
@@ -275,32 +277,30 @@ export async function getTraineeSelectedTrainer(traineeId: string): Promise<{
 
   let assignment: TrainerAssignmentRecord | null = null;
 
-  // 1. Try local storage first for fast response
-  const allAssignments = getAllTrainerAssignments();
-  assignment = allAssignments.find(a => a.traineeId === traineeId && a.status === 'Active') || null;
-
-  // 2. Try Firestore if not in local storage
-  if (!assignment) {
-    try {
-      const q = query(
-        collection(db, 'trainer_assignments'),
-        where('traineeId', '==', traineeId),
-        where('status', '==', 'Active')
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const firstDoc = snap.docs[0];
-        assignment = { id: firstDoc.id, ...firstDoc.data() } as TrainerAssignmentRecord;
-      }
-    } catch (err) {
-      console.warn('[TrainerDiscovery] Firestore assignment fetch warning:', err);
+  try {
+    const q = query(
+      collection(db, 'trainer_assignments'),
+      where('traineeId', '==', traineeId),
+      where('status', '==', 'Active')
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const firstDoc = snap.docs[0];
+      assignment = { id: firstDoc.id, ...firstDoc.data() } as TrainerAssignmentRecord;
     }
+  } catch (err) {
+    if (!includeDemoTrainers) throw err;
+    console.warn('[TrainerDiscovery] Firestore assignment fetch warning:', err);
+  }
+
+  if (!assignment && includeDemoTrainers) {
+    assignment = getAllTrainerAssignments().find(a => a.traineeId === traineeId && a.status === 'Active') || null;
   }
 
   if (!assignment) return null;
 
   // Fetch full trainer profile for this assignment
-  const trainers = await getAvailableTrainers();
+  const trainers = await getAvailableTrainers(includeDemoTrainers);
   let trainer = trainers.find(t => t.uid === assignment!.trainerId || t.email === assignment!.trainerEmail);
 
   if (!trainer) {
@@ -324,8 +324,10 @@ export async function getTraineeSelectedTrainer(traineeId: string): Promise<{
 export async function selectTrainerForTrainee(
   traineeId: string,
   traineeProfile: { fullName: string; emailAddress?: string; organization?: string },
-  trainer: TrainerProfile
+  trainer: TrainerProfile,
+  includeDemoTrainers = false
 ): Promise<TrainerAssignmentRecord> {
+  if (!traineeId) throw new Error('A Firebase trainee UID is required to select a trainer.');
   const assignmentId = `assign_${traineeId}_${trainer.uid}`;
   const now = new Date().toISOString();
 
@@ -342,26 +344,52 @@ export async function selectTrainerForTrainee(
     createdAt: now
   };
 
-  // 1. Save to local storage
-  const existingAssignments = getAllTrainerAssignments();
-  // Deactivate any previous active assignment for this trainee
-  const updatedAssignments = existingAssignments.map(a => 
-    a.traineeId === traineeId ? { ...a, status: 'Completed' as const } : a
+  const existingQuery = query(
+    collection(db, 'trainer_assignments'),
+    where('traineeId', '==', traineeId),
+    where('status', '==', 'Active')
   );
-  updatedAssignments.unshift(record);
+  const existingSnapshot = await getDocs(existingQuery);
+  const batch = writeBatch(db);
+  const traineeUserRef = doc(db, 'users', traineeId);
+  const traineeUserSnap = await getDoc(traineeUserRef);
+  if (!traineeUserSnap.exists()) throw new Error('Trainee profile is not available.');
+  const traineeData = traineeUserSnap.data();
+  existingSnapshot.docs.forEach((assignmentDoc) => {
+    if (assignmentDoc.id !== assignmentId) {
+      batch.update(assignmentDoc.ref, { status: 'Completed', updatedAt: serverTimestamp() });
+    }
+  });
+  batch.set(doc(db, 'trainer_assignments', assignmentId), { ...record, updatedAt: serverTimestamp() }, { merge: true });
+  batch.set(traineeUserRef, { primaryTrainerId: trainer.uid, updated_at: serverTimestamp() }, { merge: true });
+  batch.set(doc(db, 'traineeProfiles', traineeId), {
+    uid: traineeId,
+    primaryTrainerId: trainer.uid,
+    fullName: traineeData.fullName || traineeProfile.fullName,
+    email: traineeData.email || traineeProfile.emailAddress || '',
+    phone: traineeData.phone || traineeData.phone_number || '',
+    organization: traineeData.organization || traineeProfile.organization || '',
+    department: traineeData.department || '',
+    designation: traineeData.designation || '',
+    yearsOfExperience: Number(traineeData.experienceYears || traineeData.yearsOfExperience || 0),
+    qualification: traineeData.qualification || '',
+    domain: traineeData.domain || '',
+    bio: traineeData.bio || '',
+    skills: Array.isArray(traineeData.skills) ? traineeData.skills : [],
+    competencies: Array.isArray(traineeData.competencies) ? traineeData.competencies : [],
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  await batch.commit();
 
-  if (typeof localStorage !== 'undefined') {
+  if (includeDemoTrainers && typeof localStorage !== 'undefined') {
+    const existingAssignments = getAllTrainerAssignments();
+    const updatedAssignments = existingAssignments
+      .map(a => a.traineeId === traineeId ? { ...a, status: 'Completed' as const } : a)
+      .filter(a => a.id !== assignmentId);
+    updatedAssignments.unshift(record);
     try {
       localStorage.setItem(TRAINER_ASSIGNMENTS_STORAGE_KEY, JSON.stringify(updatedAssignments));
     } catch (err) {}
-  }
-
-  // 2. Save to Firestore doc
-  try {
-    const docRef = doc(db, 'trainer_assignments', assignmentId);
-    await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
-  } catch (err) {
-    console.warn('[TrainerDiscovery] Firestore setDoc assignment notice:', err);
   }
 
   return record;
@@ -370,7 +398,7 @@ export async function selectTrainerForTrainee(
 /**
  * Retrieves all trainees assigned to a specific Trainer UID.
  */
-export async function getTrainerAssignedTrainees(trainerId: string, trainerEmail?: string): Promise<Array<{
+export async function getTrainerAssignedTrainees(trainerId: string, includeDemoAssignments = false): Promise<Array<{
   assignment: TrainerAssignmentRecord;
   traineeProfile: {
     uid: string;
@@ -387,11 +415,9 @@ export async function getTrainerAssignedTrainees(trainerId: string, trainerEmail
 }>> {
   if (!trainerId) return [];
 
-  const localAssignments = getAllTrainerAssignments().filter(a => 
-    a.trainerId === trainerId || 
-    a.trainerEmail === trainerId ||
-    (trainerEmail && a.trainerEmail === trainerEmail)
-  );
+  const localAssignments = includeDemoAssignments
+    ? getAllTrainerAssignments().filter(a => a.trainerId === trainerId)
+    : [];
 
   // Firestore query
   const firestoreAssignments: TrainerAssignmentRecord[] = [];
@@ -402,16 +428,10 @@ export async function getTrainerAssignedTrainees(trainerId: string, trainerEmail
     );
     const snap = await getDocs(q);
     snap.docs.forEach(d => firestoreAssignments.push({ id: d.id, ...d.data() } as TrainerAssignmentRecord));
-
-    if (trainerEmail) {
-      const qEmail = query(
-        collection(db, 'trainer_assignments'),
-        where('trainerEmail', '==', trainerEmail)
-      );
-      const snapEmail = await getDocs(qEmail);
-      snapEmail.docs.forEach(d => firestoreAssignments.push({ id: d.id, ...d.data() } as TrainerAssignmentRecord));
-    }
-  } catch (err) {}
+  } catch (err) {
+    if (!includeDemoAssignments) throw err;
+    console.warn('[TrainerDiscovery] Firestore trainee assignment fetch warning:', err);
+  }
 
   const mergedMap = new Map<string, TrainerAssignmentRecord>();
   localAssignments.forEach(a => mergedMap.set(a.id, a));
@@ -424,23 +444,25 @@ export async function getTrainerAssignedTrainees(trainerId: string, trainerEmail
     // Attempt to fetch full trainee profile from Firestore or localStorage
     let traineeData: any = null;
     try {
-      const uSnap = await getDoc(doc(db, 'users', assignment.traineeId));
+      const uSnap = await getDoc(doc(db, 'traineeProfiles', assignment.traineeId));
       if (uSnap.exists()) {
         traineeData = uSnap.data();
       }
-    } catch (e) {}
+    } catch (e) {
+      if (!includeDemoAssignments) throw e;
+    }
 
     const profile = {
       uid: assignment.traineeId,
       fullName: traineeData?.fullName || assignment.traineeName || 'Trainee Learner',
       email: traineeData?.email || assignment.traineeEmail || '',
-      organization: traineeData?.organization || 'Capacity Building Unit',
-      department: traineeData?.department || 'Operations',
-      designation: traineeData?.designation || 'Trainee Associate',
-      skills: Array.isArray(traineeData?.skills) ? traineeData.skills.map((s: any) => typeof s === 'string' ? s : s.name) : ['Data Analysis', 'React'],
+      organization: traineeData?.organization || '',
+      department: traineeData?.department || '',
+      designation: traineeData?.designation || '',
+      skills: Array.isArray(traineeData?.skills) ? traineeData.skills.map((s: any) => typeof s === 'string' ? s : s.name) : [],
       competencies: Array.isArray(traineeData?.competencies) ? traineeData.competencies : [],
-      skillGapsCount: Array.isArray(traineeData?.competencies) ? traineeData.competencies.filter((c: any) => (c.targetNumericLevel || 3) > (c.numericLevel || 1)).length : 1,
-      trainingProgress: 75
+      skillGapsCount: Array.isArray(traineeData?.competencies) ? traineeData.competencies.filter((c: any) => (c.targetNumericLevel || 3) > (c.latestAssessedNumericLevel || c.numericLevel || 0)).length : 0,
+      trainingProgress: 0
     };
 
     results.push({

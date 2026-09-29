@@ -4,9 +4,11 @@
  * Clean Tutedude Dashboard style architecture.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserSettings, TrainingCertificate } from '../types';
 import { getUserCertificates } from '../utils/certificateUtils';
+import { isDemoTraineeIdentity } from '../utils/demoDataSeeder';
+import { subscribeUserCertificates } from '../services/capacityConnectService';
 import CertificateModal from './CertificateModal';
 import { Award, CheckCircle2, ArrowLeft, ExternalLink, Printer, ShieldCheck, GraduationCap, Building, Calendar } from 'lucide-react';
 
@@ -17,11 +19,46 @@ interface CertificatesViewProps {
 
 export default function CertificatesView({ settings, setActivePage }: CertificatesViewProps) {
   const [selectedCert, setSelectedCert] = useState<TrainingCertificate | null>(null);
-  const userCerts = getUserCertificates(settings.profile.uid || 'user-demo-1');
+  const userId = settings.profile.uid || '';
+  const isDemoTrainee = isDemoTraineeIdentity(userId, settings.profile.emailAddress);
+  const [userCerts, setUserCerts] = useState<TrainingCertificate[]>(() =>
+    isDemoTrainee ? getUserCertificates(settings.profile.emailAddress) : []
+  );
+  const [loading, setLoading] = useState(!isDemoTrainee);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isDemoTrainee) {
+      setUserCerts(getUserCertificates(settings.profile.emailAddress));
+      setLoading(false);
+      setLoadError(null);
+      return;
+    }
+    if (!userId) {
+      setUserCerts([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError(null);
+    return subscribeUserCertificates(
+      userId,
+      (certificates) => {
+        setUserCerts(certificates);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('[Certificates] Certificate subscription failed:', error);
+        setLoadError('Unable to load your certificates. Check your connection and try again.');
+        setLoading(false);
+      }
+    );
+  }, [userId, settings.profile.emailAddress, isDemoTrainee]);
+  const verifiedCount = userCerts.filter((certificate) => certificate.verified).length;
 
   return (
     <div className="max-w-7xl mx-auto pb-16 space-y-6 p-4 md:p-8 select-none font-sans">
-      
+
       {/* Header Banner */}
       <div className="rounded-[11px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -50,7 +87,7 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
           <div>
             <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Verification Status</div>
             <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" /> 100% Verified
+              <CheckCircle2 className="h-3.5 w-3.5" /> {userCerts.length ? `${verifiedCount}/${userCerts.length} Verified` : 'No certificates'}
             </div>
           </div>
         </div>
@@ -68,7 +105,11 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
           </span>
         </div>
 
-        {userCerts.length === 0 ? (
+        {loading ? (
+          <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">Loading certificates…</div>
+        ) : loadError ? (
+          <div role="alert" className="p-5 rounded-lg border border-rose-300 bg-rose-50 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">{loadError}</div>
+        ) : userCerts.length === 0 ? (
           <div className="p-10 text-center rounded-[11px] border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
             <GraduationCap className="h-10 w-10 text-slate-400 mx-auto opacity-50" />
             <h4 className="font-semibold text-sm text-slate-900 dark:text-white">
@@ -92,7 +133,7 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
                 className="p-5 rounded-[11px] border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-[#080D1A] flex flex-col justify-between space-y-4 hover:border-[#992e9d] dark:hover:border-purple-600 transition-all relative overflow-hidden group"
               >
                 <div className="space-y-3">
-                  
+
                   {/* Top Line */}
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[10px] font-semibold uppercase px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">

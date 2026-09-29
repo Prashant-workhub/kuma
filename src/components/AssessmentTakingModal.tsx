@@ -16,7 +16,7 @@ interface AssessmentTakingModalProps {
   catalog: CatalogCompetency[];
   userId: string;
   userName: string;
-  onCompleteAttempt: (attempt: QuizAttemptRecord) => void;
+  onCompleteAttempt: (attempt: QuizAttemptRecord) => Promise<void> | void;
 }
 
 export default function AssessmentTakingModal({
@@ -32,6 +32,8 @@ export default function AssessmentTakingModal({
   const [userAnswers, setUserAnswers] = useState<{ [questionId: string]: number }>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [latestAttempt, setLatestAttempt] = useState<QuizAttemptRecord | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen || !quiz) return null;
 
@@ -60,7 +62,12 @@ export default function AssessmentTakingModal({
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!userId) {
+      setSubmitError('Your Firebase profile is unavailable. Sign in again before submitting.');
+      return;
+    }
+    setSubmitError(null);
     let correctCount = 0;
     quiz.questions.forEach(q => {
       if (userAnswers[q.id] === q.correctAnswerIndex) {
@@ -74,7 +81,10 @@ export default function AssessmentTakingModal({
 
     const attemptRecord: QuizAttemptRecord = {
       id: `attempt-${Date.now()}`,
-      userId: userId || 'trainee-current',
+      userId,
+      trainerId: quiz.trainerId,
+      assignmentId: quiz.assignmentId,
+      trainingProgramId: quiz.trainingProgramId,
       userName: userName || 'Trainee Learner',
       quizId: quiz.id,
       quizTitle: quiz.title,
@@ -92,9 +102,17 @@ export default function AssessmentTakingModal({
       completedAt: new Date().toISOString()
     };
 
-    setLatestAttempt(attemptRecord);
-    setIsSubmitted(true);
-    onCompleteAttempt(attemptRecord);
+    setIsSubmitting(true);
+    try {
+      await onCompleteAttempt(attemptRecord);
+      setLatestAttempt(attemptRecord);
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error('[Assessment] Submission failed:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Unable to submit assessment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -102,6 +120,7 @@ export default function AssessmentTakingModal({
     setUserAnswers({});
     setIsSubmitted(false);
     setLatestAttempt(null);
+    setSubmitError(null);
   };
 
   const answeredCount = Object.keys(userAnswers).length;
@@ -114,7 +133,7 @@ export default function AssessmentTakingModal({
       size="lg"
     >
       <div className="space-y-6 select-none p-1">
-        
+
         {/* Header Metadata Banner */}
         <div className="rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-paper-xs">
           <div>
@@ -139,7 +158,12 @@ export default function AssessmentTakingModal({
         {/* NOT SUBMITTED: QUESTION VIEW */}
         {!isSubmitted && (
           <div className="space-y-6">
-            
+            {submitError && (
+              <div role="alert" className="rounded-md border-2 border-red-500 bg-red-500/10 p-3 text-xs font-bold text-red-600 dark:text-red-300">
+                {submitError}
+              </div>
+            )}
+
             {/* Question Progress Bar */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-mono font-bold text-[var(--text-secondary)]">
@@ -169,16 +193,14 @@ export default function AssessmentTakingModal({
                       key={idx}
                       type="button"
                       onClick={() => handleSelectOption(idx)}
-                      className={`w-full text-left p-3.5 rounded-[6px] border-2 transition-all font-mono text-xs font-bold flex items-center justify-between cursor-pointer ${
-                        isSelected
+                      className={`w-full text-left p-3.5 rounded-[6px] border-2 transition-all font-mono text-xs font-bold flex items-center justify-between cursor-pointer ${isSelected
                           ? 'border-[var(--border-main)] bg-[#FFC400] text-[#111111] shadow-paper-xs font-extrabold'
                           : 'border-[var(--border-main)] bg-[var(--bg-main)] text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className={`h-6 w-6 rounded-full border-2 flex items-center justify-center text-[11px] font-black shrink-0 ${
-                          isSelected ? 'border-[#111111] bg-white text-[#111111]' : 'border-[var(--border-main)] bg-[var(--card-bg)]'
-                        }`}>
+                        <span className={`h-6 w-6 rounded-full border-2 flex items-center justify-center text-[11px] font-black shrink-0 ${isSelected ? 'border-[#111111] bg-white text-[#111111]' : 'border-[var(--border-main)] bg-[var(--card-bg)]'
+                          }`}>
                           {String.fromCharCode(65 + idx)}
                         </span>
                         <span>{opt}</span>
@@ -215,11 +237,11 @@ export default function AssessmentTakingModal({
                   variant="primary"
                   size="sm"
                   onClick={handleSubmit}
-                  disabled={answeredCount < totalQuestions}
+                  disabled={answeredCount < totalQuestions || isSubmitting}
                   icon={<ArrowRight className="h-4 w-4" />}
                   className="bg-[#19B56B] text-white border-2 border-[#111111]"
                 >
-                  Submit Assessment
+                  {isSubmitting ? 'Saving assessment…' : 'Submit Assessment'}
                 </Button>
               )}
             </div>
@@ -229,11 +251,10 @@ export default function AssessmentTakingModal({
         {/* SUBMITTED: RESULT VIEW */}
         {isSubmitted && latestAttempt && (
           <div className="space-y-6 animate-fade-in">
-            
+
             {/* Result Header Card */}
-            <div className={`p-6 rounded-[6px] border-2 border-[var(--border-main)] text-center space-y-3 shadow-paper-md ${
-              latestAttempt.passed ? 'bg-[#19B56B]/15 border-[#19B56B]' : 'bg-red-500/15 border-red-500'
-            }`}>
+            <div className={`p-6 rounded-[6px] border-2 border-[var(--border-main)] text-center space-y-3 shadow-paper-md ${latestAttempt.passed ? 'bg-[#19B56B]/15 border-[#19B56B]' : 'bg-red-500/15 border-red-500'
+              }`}>
               <div className="inline-flex items-center justify-center p-3 rounded-full bg-white dark:bg-neutral-900 border-2 border-[var(--border-main)] shadow-paper-xs">
                 {latestAttempt.passed ? (
                   <Award className="h-8 w-8 text-[#19B56B]" />
@@ -295,19 +316,17 @@ export default function AssessmentTakingModal({
                   return (
                     <div
                       key={q.id}
-                      className={`p-3.5 rounded-[6px] border-2 font-mono text-xs space-y-1.5 ${
-                        isCorrect
+                      className={`p-3.5 rounded-[6px] border-2 font-mono text-xs space-y-1.5 ${isCorrect
                           ? 'border-[#19B56B]/40 bg-[#19B56B]/5'
                           : 'border-red-500/40 bg-red-500/5'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-bold text-[var(--text-primary)]">
                           Q{idx + 1}. {q.question}
                         </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
-                          isCorrect ? 'bg-[#19B56B] text-white' : 'bg-red-500 text-white'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${isCorrect ? 'bg-[#19B56B] text-white' : 'bg-red-500 text-white'
+                          }`}>
                           {isCorrect ? 'CORRECT' : 'INCORRECT'}
                         </span>
                       </div>

@@ -80,6 +80,11 @@ export interface SyllabusItem {
 
 export interface TeacherAssignment {
   id: string
+  trainerId?: string
+  organization?: string
+  status?: 'draft' | 'published' | 'archived'
+  createdAt?: string
+  updatedAt?: string
   /** Course code badge, e.g. "CS301" */
   courseCode: string
   courseName: string

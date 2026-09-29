@@ -8,7 +8,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import {
   User,
@@ -411,12 +411,13 @@ export default function TrainerRegistrationView({
 
     try {
       // 1. Register with Firebase Auth
-      let uid = `trainer_${Date.now()}`;
       let authEmail = email.trim().toLowerCase();
+      let uid: string;
 
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, authEmail, password);
         uid = userCredential.user.uid;
+        authEmail = userCredential.user.email || authEmail;
         if (userCredential.user) {
           await updateProfile(userCredential.user, { displayName: fullName.trim() });
         }
@@ -462,36 +463,33 @@ export default function TrainerRegistrationView({
       };
 
       // 3. Write profile to Firestore
-      try {
-        const userRef = doc(db, 'users', uid);
-        await setDoc(userRef, trainerProfile, { merge: true });
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'users', uid), trainerProfile, { merge: true });
 
-        // Publish only discovery-safe fields. Email and phone remain private
-        // in users/{uid}; this record powers authenticated trainer search.
-        await setDoc(doc(db, 'trainerProfiles', uid), {
-          uid,
-          fullName: trainerProfile.fullName,
-          organization: trainerProfile.organization,
-          department: trainerProfile.department,
-          designation: trainerProfile.designation,
-          yearsOfExperience: trainerProfile.yearsOfExperience,
-          qualification: trainerProfile.qualification,
-          bio: trainerProfile.bio,
-          areaOfExpertise: trainerProfile.areaOfExpertise,
-          specialization: trainerProfile.specialization,
-          skills: trainerProfile.skills,
-          trainerExperience: trainerProfile.trainerExperience,
-          profilePhoto: trainerProfile.profilePhoto || '',
-          competencies: trainerProfile.competencies,
-          trainingPrograms: trainerProfile.trainingPrograms,
-          trainingTopics: trainerProfile.trainingTopics,
-          preferredTrainingMode: trainerProfile.preferredTrainingMode,
-          certifications: trainerProfile.certifications,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      } catch (dbErr) {
-        console.warn('[Trainer Registration] Firestore document write warning:', dbErr);
-      }
+      // Publish only discovery-safe fields. Email and phone remain private
+      // in users/{uid}; this record powers authenticated trainer search.
+      batch.set(doc(db, 'trainerProfiles', uid), {
+        uid,
+        fullName: trainerProfile.fullName,
+        organization: trainerProfile.organization,
+        department: trainerProfile.department,
+        designation: trainerProfile.designation,
+        yearsOfExperience: trainerProfile.yearsOfExperience,
+        qualification: trainerProfile.qualification,
+        bio: trainerProfile.bio,
+        areaOfExpertise: trainerProfile.areaOfExpertise,
+        specialization: trainerProfile.specialization,
+        skills: trainerProfile.skills,
+        trainerExperience: trainerProfile.trainerExperience,
+        profilePhoto: trainerProfile.profilePhoto || '',
+        competencies: trainerProfile.competencies,
+        trainingPrograms: trainerProfile.trainingPrograms,
+        trainingTopics: trainerProfile.trainingTopics,
+        preferredTrainingMode: trainerProfile.preferredTrainingMode,
+        certifications: trainerProfile.certifications,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await batch.commit();
 
       // 4. Save to local storage for immediate app session sync
       try {
@@ -524,7 +522,7 @@ export default function TrainerRegistrationView({
           }
         };
         localStorage.setItem(localSettingsKey, JSON.stringify(mergedSettings));
-      } catch (lsErr) {}
+      } catch (lsErr) { }
 
       // 5. Trigger Success Callback (Reroutes to Trainer/Faculty Portal)
       onLoginSuccess({
@@ -610,26 +608,23 @@ export default function TrainerRegistrationView({
               onClick={() => {
                 if (item.s < step) setStep(item.s);
               }}
-              className={`flex flex-col items-center gap-1 py-1.5 px-1 rounded-full text-center transition-all ${
-                item.s < step ? 'cursor-pointer' : ''
-              }`}
+              className={`flex flex-col items-center gap-1 py-1.5 px-1 rounded-full text-center transition-all ${item.s < step ? 'cursor-pointer' : ''
+                }`}
             >
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  step === item.s
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === item.s
                     ? 'bg-[#992e9d] text-white shadow-sm'
                     : item.s < step
-                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                }`}
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                  }`}
               >
                 {item.s < step ? '✓' : item.s}
               </div>
-              <span className={`text-[10px] font-medium truncate ${
-                step === item.s
+              <span className={`text-[10px] font-medium truncate ${step === item.s
                   ? 'text-[#992e9d] dark:text-purple-300 font-semibold'
                   : 'text-slate-400'
-              }`}>
+                }`}>
                 {item.label}
               </span>
             </div>
@@ -1009,20 +1004,18 @@ export default function TrainerRegistrationView({
                   <div
                     key={c.id}
                     onClick={() => handleToggleCompetency(c)}
-                    className={`p-3 rounded-[9px] border transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${
-                      isSelected
+                    className={`p-3 rounded-[9px] border transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${isSelected
                         ? 'border-[#992e9d] bg-purple-50/50 dark:bg-purple-950/20'
                         : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 hover:border-purple-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-semibold text-xs text-slate-900 dark:text-white">{c.name}</div>
                         <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">{c.category}</span>
                       </div>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
-                        isSelected ? 'bg-[#992e9d] text-white' : 'border border-slate-300 text-transparent'
-                      }`}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${isSelected ? 'bg-[#992e9d] text-white' : 'border border-slate-300 text-transparent'
+                        }`}>
                         ✓
                       </div>
                     </div>
@@ -1109,11 +1102,10 @@ export default function TrainerRegistrationView({
                         <button
                           type="button"
                           onClick={() => handleCompetencyCanTrainChange(item.id, !item.canTrain)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-colors border ${
-                            item.canTrain
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-colors border ${item.canTrain
                               ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
                               : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-300 dark:border-slate-700'
-                          }`}
+                            }`}
                         >
                           {item.canTrain ? '✓ Yes (Train)' : '✕ No'}
                         </button>
@@ -1162,11 +1154,10 @@ export default function TrainerRegistrationView({
                       <div
                         key={m.mode}
                         onClick={() => setPreferredTrainingMode(m.mode as any)}
-                        className={`p-3 rounded-[11px] border cursor-pointer transition-all flex flex-col justify-between space-y-1 ${
-                          isSelected
+                        className={`p-3 rounded-[11px] border cursor-pointer transition-all flex flex-col justify-between space-y-1 ${isSelected
                             ? 'border-[#992e9d] bg-purple-50/60 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300'
                             : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 text-slate-600 dark:text-slate-400 hover:border-purple-300'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <Icon className="w-4 h-4" />
@@ -1414,11 +1405,10 @@ export default function TrainerRegistrationView({
                         <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#992e9d] dark:text-purple-300 font-bold text-[10px]">
                           {c.level}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          c.canTrain
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${c.canTrain
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                             : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                        }`}>
+                          }`}>
                           {c.canTrain ? 'Can Train: Yes' : 'Can Train: No'}
                         </span>
                       </div>

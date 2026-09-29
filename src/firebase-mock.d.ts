@@ -22,6 +22,7 @@ declare module 'firebase/firestore' {
   export const getDoc: any;
   export const getDocs: any;
   export const setDoc: any;
+  export const writeBatch: any;
   export const updateDoc: any;
   export const addDoc: any;
   export const deleteDoc: any;

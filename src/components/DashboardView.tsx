@@ -26,6 +26,7 @@ import {
 } from './trainee/TraineeUI';
 import { PageId, Lecture, Note, Source, Quiz, UserSettings, TrainerProfile, TrainerAssignmentRecord } from '../types';
 import { getUserCertificates } from '../utils/certificateUtils';
+import { isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import { getUserEnrollments } from '../utils/enrollmentUtils';
 import { LEVEL_TO_NUMERIC } from '../utils/competencyUtils';
 import { getTraineeSelectedTrainer } from '../services/trainerDiscoveryService';
@@ -59,10 +60,12 @@ export default function DashboardView({
     role: 'trainee'
   };
   const userId = userProfile.uid || '';
+  const demoIdentity = isDemoTraineeIdentity(userId, userProfile.emailAddress);
+  const localRecordIdentity = demoIdentity ? userProfile.emailAddress : userId;
 
   // Real user specific records
-  const userCertificates = useMemo(() => getUserCertificates(userId), [userId]);
-  const userEnrollments = useMemo(() => getUserEnrollments(userId), [userId]);
+  const userCertificates = useMemo(() => getUserCertificates(localRecordIdentity), [localRecordIdentity]);
+  const userEnrollments = useMemo(() => getUserEnrollments(localRecordIdentity), [localRecordIdentity]);
   const userCompetencies = useMemo(() => userProfile.competencies || [], [userProfile.competencies]);
 
   // Selected Trainer State
@@ -156,10 +159,10 @@ export default function DashboardView({
 
       {/* 3. Main Dashboard Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left 2 Columns: Skill Gap & Actionable Content */}
         <div className="lg:col-span-2 space-y-8">
-          
+
           {/* Skill Gap Analysis Summary */}
           <section className="space-y-4">
             <SectionHeading
@@ -235,7 +238,7 @@ export default function DashboardView({
             {quizzes.length === 0 ? (
               <TraineeEmptyState
                 icon={<ClipboardCheck size={20} />}
-                title="No upcoming assessments requiring attention"
+                title="No assessments assigned yet."
                 description="Your trainer will publish new assessments here as they become available."
               />
             ) : (
@@ -274,7 +277,7 @@ export default function DashboardView({
 
         {/* Right 1 Column: My Trainer & Quick Controls */}
         <div className="space-y-6">
-          
+
           {/* My Trainer Card */}
           <section className="space-y-3">
             <SectionHeading title="Your trainer" />

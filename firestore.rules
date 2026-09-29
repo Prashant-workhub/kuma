@@ -1,13 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // users/{uid} stores private profile data (including PII and settings).
-    // trainer_assignments/{id} stores traineeId, trainerId and status.
+    // Data model:
+    // users/{uid}: private profile/settings, including provider credentials.
+    // traineeProfiles/{uid}: limited profile projection; selected trainer only.
+    // trainerProfiles/{uid}: discovery-safe trainer directory projection.
+    // trainer_assignments/assign_{traineeUid}_{trainerUid}: relationship record.
+    // trainingPrograms/{id}: trainer-owned program with organization visibility.
+    // trainingEnrollments/enr_{traineeUid}_{programId}: trainee-owned progress.
+    // assessments/{id}: trainer-authored quiz definition.
+    // assessmentAssignments/{traineeUid}_{assessmentId}: trainer/trainee assignment.
+    // assessmentAttempts/{id}: immutable submitted result, keyed to trainee UID.
+    // userCertificates/{id}: private UID-owned certificate details.
+    // certificateVerifications/{id}: public certificate-safe projection only.
     // Administrative access requires the Firebase Auth custom claim admin: true.
 
     function signedIn() { return request.auth != null; }
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
-    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function isAdmin() { return signedIn() && request.auth.token.get('admin', false) == true; }
+
+    function isTrainer() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['faculty', 'teacher', 'trainer'];
+    }
+
+    function sameOrganization(organization) {
+      return signedIn() && organization is string && organization.size() > 0 &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organization == organization;
+    }
 
     function isSelfServiceRole(role) {
       return role == 'student' || role == 'trainee' || role == 'faculty' ||
@@ -23,7 +43,9 @@ service cloud.firestore {
         (!('email' in request.resource.data) ||
           (request.resource.data.email is string && request.resource.data.email.size() <= 254)) &&
         (!('fullName' in request.resource.data) ||
-          (request.resource.data.fullName is string && request.resource.data.fullName.size() <= 120));
+          (request.resource.data.fullName is string && request.resource.data.fullName.size() <= 120)) &&
+        (!('primaryTrainerId' in request.resource.data) ||
+          (request.resource.data.primaryTrainerId is string && request.resource.data.primaryTrainerId.size() <= 128));
     }
 
     function validPrivateDocument() {
@@ -37,6 +59,162 @@ service cloud.firestore {
         request.resource.data.traineeId.size() > 0 && request.resource.data.traineeId.size() <= 128 &&
         request.resource.data.trainerId.size() > 0 && request.resource.data.trainerId.size() <= 128 &&
         request.resource.data.status in ['Active', 'Completed'];
+    }
+
+    function validTrainingProgram() {
+      return request.resource.data.keys().hasOnly([
+          'id', 'trainerId', 'organization', 'status', 'createdAt', 'updatedAt',
+          'courseCode', 'courseName', 'subject', 'semester', 'students',
+          'completionRate', 'accent', 'syllabus', 'competencyIds', 'competencyNames',
+          'description', 'duration', 'isActive'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'id', 'trainerId', 'organization', 'status', 'createdAt', 'updatedAt',
+          'courseCode', 'courseName', 'subject', 'students', 'completionRate',
+          'accent', 'syllabus', 'competencyIds', 'competencyNames', 'description',
+          'duration', 'isActive'
+        ]) &&
+        request.resource.data.id is string && request.resource.data.id.size() <= 128 &&
+        request.resource.data.trainerId == request.auth.uid &&
+        request.resource.data.organization is string && request.resource.data.organization.size() <= 160 &&
+        request.resource.data.status in ['draft', 'published', 'archived'] &&
+        request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp &&
+        request.resource.data.courseCode is string && request.resource.data.courseCode.size() > 0 && request.resource.data.courseCode.size() <= 32 &&
+        request.resource.data.courseName is string && request.resource.data.courseName.size() > 0 && request.resource.data.courseName.size() <= 160 &&
+        request.resource.data.subject is string && request.resource.data.subject.size() <= 120 &&
+        request.resource.data.students is number && request.resource.data.students >= 0 && request.resource.data.students <= 100000 &&
+        request.resource.data.completionRate is number && request.resource.data.completionRate >= 0 && request.resource.data.completionRate <= 100 &&
+        request.resource.data.accent in ['gold', 'cyan', 'emerald', 'violet', 'rose'] &&
+        request.resource.data.syllabus is list && request.resource.data.syllabus.size() <= 100 &&
+        request.resource.data.competencyIds is list && request.resource.data.competencyIds.size() <= 40 &&
+        request.resource.data.competencyNames is list && request.resource.data.competencyNames.size() <= 40 &&
+        request.resource.data.description is string && request.resource.data.description.size() <= 4000 &&
+        request.resource.data.duration is string && request.resource.data.duration.size() <= 80 &&
+        request.resource.data.isActive is bool;
+    }
+
+    function programMatchesEnrollment(traineeUid, trainerUid, programId, organization) {
+      let program = get(/databases/$(database)/documents/trainingPrograms/$(programId)).data;
+      let trainee = get(/databases/$(database)/documents/users/$(traineeUid)).data;
+      let assignmentId = 'assign_' + traineeUid + '_' + trainerUid;
+      let assignmentPath = /databases/$(database)/documents/trainer_assignments/$(assignmentId);
+      return program.trainerId == trainerUid && program.status == 'published' &&
+        program.organization == organization && trainee.organization == organization &&
+        exists(assignmentPath) && get(assignmentPath).data.status == 'Active';
+    }
+
+    function validTrainingEnrollment(traineeUid) {
+      return request.resource.data.keys().hasOnly([
+          'id', 'userId', 'trainerId', 'userName', 'courseId', 'courseCode',
+          'courseName', 'subject', 'organizationId', 'enrolledAt', 'status',
+          'completionRate', 'moduleProgress', 'completedAt', 'quizPassed',
+          'certificateId', 'assessmentAttemptId', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'id', 'userId', 'trainerId', 'courseId', 'courseCode', 'courseName',
+          'organizationId', 'enrolledAt', 'status', 'completionRate',
+          'moduleProgress', 'quizPassed', 'updatedAt'
+        ]) &&
+        request.resource.data.id is string && request.resource.data.id.size() <= 256 &&
+        request.resource.data.userId == traineeUid &&
+        request.resource.data.trainerId is string && request.resource.data.trainerId.size() <= 128 &&
+        request.resource.data.courseId is string && request.resource.data.courseId.size() <= 128 &&
+        request.resource.data.courseCode is string && request.resource.data.courseCode.size() <= 32 &&
+        request.resource.data.courseName is string && request.resource.data.courseName.size() <= 160 &&
+        request.resource.data.organizationId is string && request.resource.data.organizationId.size() <= 160 &&
+        request.resource.data.enrolledAt is string && request.resource.data.enrolledAt.size() <= 40 &&
+        request.resource.data.status in ['enrolled', 'in_progress', 'completed'] &&
+        request.resource.data.completionRate is number && request.resource.data.completionRate >= 0 && request.resource.data.completionRate <= 100 &&
+        request.resource.data.moduleProgress is map && request.resource.data.moduleProgress.keys().size() <= 100 &&
+        request.resource.data.quizPassed is bool &&
+        request.resource.data.updatedAt is timestamp &&
+        (!('userName' in request.resource.data) ||
+          (request.resource.data.userName is string && request.resource.data.userName.size() <= 120)) &&
+        (!('subject' in request.resource.data) ||
+          (request.resource.data.subject is string && request.resource.data.subject.size() <= 120)) &&
+        (!('completedAt' in request.resource.data) ||
+          (request.resource.data.completedAt is string && request.resource.data.completedAt.size() <= 40)) &&
+        (!('certificateId' in request.resource.data) ||
+          (request.resource.data.certificateId is string && request.resource.data.certificateId.size() <= 64)) &&
+        (!('assessmentAttemptId' in request.resource.data) ||
+          (request.resource.data.assessmentAttemptId is string && request.resource.data.assessmentAttemptId.size() <= 128));
+    }
+
+    function validAssessment() {
+      return request.resource.data.keys().hasOnly([
+          'id', 'trainerId', 'organization', 'publicationStatus', 'title', 'topic',
+          'courseCode', 'courseName', 'description', 'questionsCount', 'estimatedTime',
+          'passingScore', 'competencyId', 'competencyName', 'competencyIds',
+          'competencyNames', 'questions', 'easyQuestions', 'mediumQuestions',
+          'hardQuestions', 'status', 'contextText', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'id', 'trainerId', 'organization', 'publicationStatus', 'title', 'topic',
+          'questionsCount', 'estimatedTime', 'passingScore', 'questions', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.id is string && request.resource.data.id.size() <= 128 &&
+        request.resource.data.trainerId == request.auth.uid &&
+        request.resource.data.organization is string && request.resource.data.organization.size() <= 160 &&
+        request.resource.data.publicationStatus == 'published' &&
+        request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 160 &&
+        request.resource.data.topic is string && request.resource.data.topic.size() <= 240 &&
+        request.resource.data.questionsCount is number && request.resource.data.questionsCount > 0 && request.resource.data.questionsCount <= 100 &&
+        request.resource.data.estimatedTime is string && request.resource.data.estimatedTime.size() <= 40 &&
+        request.resource.data.passingScore is number && request.resource.data.passingScore >= 1 && request.resource.data.passingScore <= 100 &&
+        request.resource.data.questions is list && request.resource.data.questions.size() <= 100 &&
+        request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validAssessmentAssignment() {
+      return request.resource.data.keys().hasOnly([
+          'id', 'assessmentId', 'traineeId', 'trainerId', 'trainingProgramId',
+          'status', 'attemptStatus', 'assignedAt', 'attemptId', 'submittedAt', 'deadline'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'id', 'assessmentId', 'traineeId', 'trainerId', 'status', 'attemptStatus', 'assignedAt'
+        ]) &&
+        request.resource.data.id is string && request.resource.data.id.size() <= 256 &&
+        request.resource.data.assessmentId is string && request.resource.data.assessmentId.size() <= 128 &&
+        request.resource.data.traineeId is string && request.resource.data.traineeId.size() <= 128 &&
+        request.resource.data.trainerId is string && request.resource.data.trainerId.size() <= 128 &&
+        request.resource.data.status in ['assigned', 'submitted'] &&
+        request.resource.data.attemptStatus in ['pending', 'submitted'] &&
+        request.resource.data.assignedAt is timestamp &&
+        (!('trainingProgramId' in request.resource.data) ||
+          (request.resource.data.trainingProgramId is string && request.resource.data.trainingProgramId.size() <= 128)) &&
+        (!('attemptId' in request.resource.data) ||
+          (request.resource.data.attemptId is string && request.resource.data.attemptId.size() <= 128)) &&
+        (!('deadline' in request.resource.data) ||
+          (request.resource.data.deadline is string && request.resource.data.deadline.size() <= 40));
+    }
+
+    function validAssessmentAttempt(traineeUid) {
+      return request.resource.data.keys().hasOnly([
+          'id', 'userId', 'userName', 'trainerId', 'assignmentId', 'trainingProgramId',
+          'quizId', 'quizTitle', 'subject', 'topic', 'competencyId', 'competencyName',
+          'competencyIds', 'competencyNames', 'score', 'totalQuestions', 'scorePercentage',
+          'accuracy', 'passed', 'assessedLevel', 'assessedNumericLevel', 'completedAt', 'submittedAt'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'id', 'userId', 'assignmentId', 'quizId', 'score', 'totalQuestions',
+          'scorePercentage', 'accuracy', 'passed', 'completedAt'
+        ]) &&
+        request.resource.data.id is string && request.resource.data.id.size() <= 128 &&
+        request.resource.data.userId == traineeUid &&
+        request.resource.data.assignmentId is string && request.resource.data.assignmentId.size() <= 256 &&
+        request.resource.data.quizId is string && request.resource.data.quizId.size() <= 128 &&
+        request.resource.data.score is number && request.resource.data.score >= 0 &&
+        request.resource.data.totalQuestions is number && request.resource.data.totalQuestions > 0 && request.resource.data.totalQuestions <= 100 &&
+        request.resource.data.score <= request.resource.data.totalQuestions &&
+        request.resource.data.scorePercentage is number && request.resource.data.scorePercentage >= 0 && request.resource.data.scorePercentage <= 100 &&
+        request.resource.data.accuracy is number && request.resource.data.accuracy >= 0 && request.resource.data.accuracy <= 100 &&
+        request.resource.data.passed is bool && request.resource.data.completedAt is string &&
+        (!('trainerId' in request.resource.data) ||
+          (request.resource.data.trainerId is string && request.resource.data.trainerId.size() <= 128)) &&
+        (!('trainingProgramId' in request.resource.data) ||
+          (request.resource.data.trainingProgramId is string && request.resource.data.trainingProgramId.size() <= 128)) &&
+        (!('assessedNumericLevel' in request.resource.data) ||
+          request.resource.data.assessedNumericLevel in [1, 2, 3, 4]);
     }
 
     // trainerProfiles/{uid} is the authenticated, non-PII trainer directory.
@@ -70,6 +248,38 @@ service cloud.firestore {
           request.resource.data.preferredTrainingMode in ['Online', 'Offline', 'Hybrid']);
     }
 
+    function validTraineeProfile(uid) {
+      return request.resource.data.keys().hasOnly([
+          'uid', 'primaryTrainerId', 'fullName', 'email', 'phone', 'organization',
+          'department', 'designation', 'yearsOfExperience', 'qualification',
+          'domain', 'bio', 'skills', 'competencies', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'uid', 'fullName', 'email', 'phone', 'organization', 'department',
+          'designation', 'skills', 'competencies', 'updatedAt'
+        ]) &&
+        request.resource.data.uid == uid &&
+        request.resource.data.fullName is string && request.resource.data.fullName.size() <= 120 &&
+        request.resource.data.email is string && request.resource.data.email.size() <= 254 &&
+        request.resource.data.phone is string && request.resource.data.phone.size() <= 32 &&
+        request.resource.data.organization is string && request.resource.data.organization.size() <= 160 &&
+        request.resource.data.department is string && request.resource.data.department.size() <= 120 &&
+        request.resource.data.designation is string && request.resource.data.designation.size() <= 120 &&
+        request.resource.data.skills is list && request.resource.data.skills.size() <= 50 &&
+        request.resource.data.competencies is list && request.resource.data.competencies.size() <= 40 &&
+        request.resource.data.updatedAt is timestamp &&
+        (!('primaryTrainerId' in request.resource.data) ||
+          (request.resource.data.primaryTrainerId is string && request.resource.data.primaryTrainerId.size() <= 128)) &&
+        (!('yearsOfExperience' in request.resource.data) ||
+          (request.resource.data.yearsOfExperience is number && request.resource.data.yearsOfExperience >= 0 && request.resource.data.yearsOfExperience <= 80)) &&
+        (!('qualification' in request.resource.data) ||
+          (request.resource.data.qualification is string && request.resource.data.qualification.size() <= 160)) &&
+        (!('domain' in request.resource.data) ||
+          (request.resource.data.domain is string && request.resource.data.domain.size() <= 160)) &&
+        (!('bio' in request.resource.data) ||
+          (request.resource.data.bio is string && request.resource.data.bio.size() <= 1500));
+    }
+
     match /users/{uid} {
       // No public directory or email lookup: this document includes PII.
       allow get: if isOwner(uid) || isAdmin();
@@ -101,6 +311,17 @@ service cloud.firestore {
       allow delete: if isOwner(uid) || isAdmin();
     }
 
+    match /traineeProfiles/{uid} {
+      // Contact/profile details are visible only to the trainee and selected trainer.
+      allow get: if isOwner(uid) || isAdmin() ||
+        (signedIn() && resource.data.primaryTrainerId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isOwner(uid) && validTraineeProfile(uid);
+      allow update: if isOwner(uid) && validTraineeProfile(uid) &&
+        request.resource.data.uid == resource.data.uid;
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
     match /trainer_assignments/{assignmentId} {
       allow read: if signedIn() &&
         (resource.data.traineeId == request.auth.uid || resource.data.trainerId == request.auth.uid || isAdmin());
@@ -111,6 +332,162 @@ service cloud.firestore {
           request.resource.data.traineeId == resource.data.traineeId &&
           request.resource.data.trainerId == resource.data.trainerId));
       allow delete: if isAdmin() || (signedIn() && resource.data.traineeId == request.auth.uid);
+    }
+
+    match /trainingPrograms/{programId} {
+      allow read: if signedIn() && (isAdmin() || resource.data.trainerId == request.auth.uid ||
+        (resource.data.status == 'published' && sameOrganization(resource.data.organization)));
+      allow create: if isTrainer() && request.resource.data.trainerId == request.auth.uid &&
+        sameOrganization(request.resource.data.organization) && validTrainingProgram();
+      allow update: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid &&
+        request.resource.data.trainerId == resource.data.trainerId &&
+        request.resource.data.organization == resource.data.organization && validTrainingProgram());
+      allow delete: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid);
+    }
+
+    match /trainingEnrollments/{enrollmentId} {
+      allow read: if isAdmin() || (signedIn() &&
+        (resource.data.userId == request.auth.uid || resource.data.trainerId == request.auth.uid));
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid &&
+        validTrainingEnrollment(request.auth.uid) &&
+        request.resource.data.status == 'enrolled' && request.resource.data.completionRate == 0 &&
+        request.resource.data.quizPassed == false &&
+        request.resource.data.moduleProgress.values().hasOnly([false]) &&
+        programMatchesEnrollment(request.auth.uid, request.resource.data.trainerId,
+          request.resource.data.courseId, request.resource.data.organizationId);
+      allow update: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.trainerId == resource.data.trainerId &&
+        request.resource.data.courseId == resource.data.courseId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'completionRate', 'moduleProgress', 'completedAt', 'quizPassed',
+          'certificateId', 'assessmentAttemptId', 'updatedAt'
+        ]) && validTrainingEnrollment(request.auth.uid) &&
+        (request.resource.data.status != 'completed' ||
+          (request.resource.data.completionRate == 100 && request.resource.data.quizPassed == true &&
+            request.resource.data.assessmentAttemptId is string &&
+            getAfter(/databases/$(database)/documents/assessmentAttempts/$(request.resource.data.assessmentAttemptId)).data.userId == request.auth.uid &&
+            getAfter(/databases/$(database)/documents/assessmentAttempts/$(request.resource.data.assessmentAttemptId)).data.trainingProgramId == request.resource.data.courseId &&
+            getAfter(/databases/$(database)/documents/assessmentAttempts/$(request.resource.data.assessmentAttemptId)).data.passed == true)));
+      allow delete: if isAdmin();
+    }
+
+    match /assessments/{assessmentId} {
+      allow get: if isAdmin() || (signedIn() &&
+        (resource.data.trainerId == request.auth.uid ||
+          exists(/databases/$(database)/documents/assessmentAssignments/$(request.auth.uid + '_' + assessmentId))));
+      allow list: if isAdmin() || (signedIn() && resource.data.trainerId == request.auth.uid);
+      allow create: if isTrainer() && request.resource.data.trainerId == request.auth.uid && validAssessment();
+      allow update: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid &&
+        request.resource.data.trainerId == resource.data.trainerId && validAssessment());
+      allow delete: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid);
+    }
+
+    match /assessmentAssignments/{assignmentId} {
+      allow read: if isAdmin() || (signedIn() &&
+        (resource.data.traineeId == request.auth.uid || resource.data.trainerId == request.auth.uid));
+      allow create: if validAssessmentAssignment() && (
+        (isTrainer() && request.resource.data.trainerId == request.auth.uid &&
+          getAfter(/databases/$(database)/documents/assessments/$(request.resource.data.assessmentId)).data.trainerId == request.auth.uid &&
+          exists(/databases/$(database)/documents/trainer_assignments/$("assign_" + request.resource.data.traineeId + "_" + request.auth.uid)) &&
+          get(/databases/$(database)/documents/trainer_assignments/$("assign_" + request.resource.data.traineeId + "_" + request.auth.uid)).data.status == 'Active') ||
+        (signedIn() && request.resource.data.traineeId == request.auth.uid &&
+          'trainingProgramId' in request.resource.data &&
+          get(/databases/$(database)/documents/trainingEnrollments/$("enr_" + request.auth.uid + "_" + request.resource.data.trainingProgramId)).data.trainerId == request.resource.data.trainerId &&
+          get(/databases/$(database)/documents/trainingPrograms/$(request.resource.data.trainingProgramId)).data.trainerId == request.resource.data.trainerId &&
+          exists(/databases/$(database)/documents/trainer_assignments/$("assign_" + request.auth.uid + "_" + request.resource.data.trainerId))));
+      allow update: if isAdmin() || (signedIn() && resource.data.traineeId == request.auth.uid &&
+        request.resource.data.traineeId == resource.data.traineeId &&
+        request.resource.data.trainerId == resource.data.trainerId &&
+        request.resource.data.assessmentId == resource.data.assessmentId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'attemptStatus', 'attemptId', 'submittedAt']) &&
+        request.resource.data.status == 'submitted' && request.resource.data.attemptStatus == 'submitted' &&
+        request.resource.data.attemptId is string && request.resource.data.submittedAt is timestamp);
+      allow delete: if isAdmin();
+    }
+
+    match /assessmentAttempts/{attemptId} {
+      allow read: if isAdmin() || (signedIn() &&
+        (resource.data.userId == request.auth.uid || resource.data.trainerId == request.auth.uid));
+      allow create: if signedIn() && validAssessmentAttempt(request.auth.uid) &&
+        exists(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)) &&
+        getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.traineeId == request.auth.uid &&
+        getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.assessmentId == request.resource.data.quizId &&
+        getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.status == 'submitted' &&
+        getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.attemptId == attemptId &&
+        request.resource.data.trainerId == getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.trainerId;
+      allow update, delete: if false;
+    }
+
+    function validPrivateCertificate(uid, certificateId) {
+      let data = request.resource.data;
+      let enrollmentPath = /databases/$(database)/documents/trainingEnrollments/$("enr_" + uid + "_" + data.courseId);
+      let attemptPath = /databases/$(database)/documents/assessmentAttempts/$(data.assessmentAttemptId);
+      return data.keys().hasOnly([
+          'id', 'userId', 'userName', 'userEmail', 'courseId', 'courseCode',
+          'courseName', 'organization', 'department', 'designation', 'issueDate',
+          'completionDate', 'verified', 'verificationUrl', 'competenciesAddressed',
+          'enrollmentId', 'assessmentAttemptId', 'verificationIdentifier'
+        ]) &&
+        data.keys().hasAll([
+          'id', 'userId', 'userName', 'courseId', 'courseCode', 'courseName',
+          'organization', 'issueDate', 'completionDate', 'verified', 'assessmentAttemptId',
+          'verificationIdentifier'
+        ]) &&
+        data.id == certificateId && data.userId == uid && data.userName is string && data.userName.size() <= 120 &&
+        data.courseId is string && data.courseCode is string && data.courseCode.size() <= 32 &&
+        data.courseName is string && data.courseName.size() <= 160 &&
+        data.organization is string && data.organization.size() <= 160 &&
+        data.verified == true && data.verificationIdentifier == certificateId &&
+        data.issueDate is string && data.completionDate is string &&
+        exists(enrollmentPath) && get(enrollmentPath).data.userId == uid &&
+        get(enrollmentPath).data.courseId == data.courseId && get(enrollmentPath).data.status == 'completed' &&
+        get(enrollmentPath).data.completionRate == 100 && get(enrollmentPath).data.quizPassed == true &&
+        get(enrollmentPath).data.assessmentAttemptId == data.assessmentAttemptId &&
+        exists(attemptPath) && get(attemptPath).data.userId == uid &&
+        get(attemptPath).data.trainingProgramId == data.courseId && get(attemptPath).data.passed == true;
+    }
+
+    function validPublicCertificate(certificateId) {
+      let data = request.resource.data;
+      let privatePath = /databases/$(database)/documents/userCertificates/$(certificateId);
+      return data.keys().hasOnly([
+          'certificateId', 'traineeName', 'trainingProgramName', 'courseCode',
+          'organization', 'issueDate', 'completionDate', 'competenciesAddressed',
+          'verificationIdentifier', 'verificationStatus'
+        ]) &&
+        data.keys().hasAll([
+          'certificateId', 'traineeName', 'trainingProgramName', 'courseCode',
+          'organization', 'issueDate', 'completionDate', 'verificationIdentifier',
+          'verificationStatus'
+        ]) &&
+        data.certificateId == certificateId && data.traineeName is string && data.traineeName.size() <= 120 &&
+        data.trainingProgramName is string && data.trainingProgramName.size() <= 160 &&
+        data.courseCode is string && data.courseCode.size() <= 32 &&
+        data.organization is string && data.organization.size() <= 160 &&
+        data.issueDate is string && data.completionDate is string &&
+        data.verificationIdentifier == certificateId && data.verificationStatus == 'valid' &&
+        (!('competenciesAddressed' in data) ||
+          (data.competenciesAddressed is list && data.competenciesAddressed.size() <= 40)) &&
+        existsAfter(privatePath) && getAfter(privatePath).data.id == certificateId &&
+        getAfter(privatePath).data.userId == request.auth.uid &&
+        getAfter(privatePath).data.courseName == data.trainingProgramName &&
+        getAfter(privatePath).data.courseCode == data.courseCode &&
+        getAfter(privatePath).data.organization == data.organization;
+    }
+
+    match /userCertificates/{certificateId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && validPrivateCertificate(request.auth.uid, certificateId);
+      allow update, delete: if isAdmin();
+    }
+
+    match /certificateVerifications/{certificateId} {
+      // Public verification is explicitly requested; this projection contains no UID, email, or phone.
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn() && validPublicCertificate(certificateId);
+      allow update, delete: if isAdmin();
     }
 
     match /feedback/{feedbackId} {

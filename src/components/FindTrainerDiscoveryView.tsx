@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { UserSettings, TrainerProfile, TrainerAssignmentRecord, SkillProficiencyLevel } from '../types';
 import { rankTrainersForTrainee } from '../utils/trainerMatching';
+import { isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import {
   getAvailableTrainers,
   getTraineeSelectedTrainer,
@@ -46,6 +47,7 @@ export default function FindTrainerDiscoveryView({
 }: FindTrainerDiscoveryViewProps) {
   const traineeProfile = settings.profile;
   const traineeId = traineeProfile.uid || 'trainee-current';
+  const includeDemoTrainers = isDemoTraineeIdentity(traineeProfile.uid, traineeProfile.emailAddress);
 
   const [trainers, setTrainers] = useState<TrainerProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,18 +67,21 @@ export default function FindTrainerDiscoveryView({
   const [inspectedTrainer, setInspectedTrainer] = useState<TrainerProfile | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Load trainers and trainee's existing selection record
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
-        const available = await getAvailableTrainers();
+        const available = await getAvailableTrainers(includeDemoTrainers);
         if (isMounted) setTrainers(available);
 
         if (traineeId) {
-          const activeRel = await getTraineeSelectedTrainer(traineeId);
+          const activeRel = await getTraineeSelectedTrainer(traineeId, includeDemoTrainers);
           if (isMounted && activeRel) {
             setSelectedAssignment(activeRel.assignment);
             setActiveTrainerId(activeRel.trainer.uid);
@@ -84,13 +89,14 @@ export default function FindTrainerDiscoveryView({
         }
       } catch (err) {
         console.warn('[FindTrainer] Load error:', err);
+        if (isMounted) setLoadError('Unable to load trainers or your saved selection. Check the connection and try again.');
       } finally {
         if (isMounted) setLoading(false);
       }
     };
     loadData();
     return () => { isMounted = false; };
-  }, [traineeId]);
+  }, [traineeId, includeDemoTrainers]);
 
   // Extract unique filter options present in current trainer dataset
   const filterOptions = useMemo(() => {
@@ -206,8 +212,9 @@ export default function FindTrainerDiscoveryView({
   // Select a trainer action
   const handleSelectTrainer = async (trainer: TrainerProfile) => {
     setIsSelecting(true);
+    setSelectionError(null);
     try {
-      const record = await selectTrainerForTrainee(traineeId, traineeProfile, trainer);
+      const record = await selectTrainerForTrainee(traineeId, traineeProfile, trainer, includeDemoTrainers);
       setSelectedAssignment(record);
       setActiveTrainerId(trainer.uid);
 
@@ -215,6 +222,7 @@ export default function FindTrainerDiscoveryView({
       setTimeout(() => setSuccessToast(null), 4000);
     } catch (err: any) {
       console.warn('[FindTrainer] Select error:', err);
+      setSelectionError('Unable to save this trainer selection. Please try again.');
     } finally {
       setIsSelecting(false);
     }
@@ -231,6 +239,18 @@ export default function FindTrainerDiscoveryView({
           <button onClick={() => setSuccessToast(null)} className="ml-2 hover:opacity-80">
             <X className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {loadError && (
+        <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+          {loadError}
+        </div>
+      )}
+
+      {selectionError && (
+        <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+          {selectionError}
         </div>
       )}
 
@@ -259,7 +279,7 @@ export default function FindTrainerDiscoveryView({
 
       {/* SEARCH BAR & FILTERS SECTION */}
       <div className="p-4 rounded-lg bg-white dark:bg-[#0C1220] border border-slate-200 dark:border-slate-800 space-y-3">
-        
+
         {/* Search Bar Input */}
         <div className="relative">
           <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
@@ -282,7 +302,7 @@ export default function FindTrainerDiscoveryView({
 
         {/* Filter Dropdowns Row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          
+
           {/* Department Filter */}
           <select
             value={selectedDepartment}
@@ -386,8 +406,8 @@ export default function FindTrainerDiscoveryView({
             {trainers.length === 0
               ? 'No trainers available yet.'
               : searchQuery
-              ? 'No trainers match your search.'
-              : 'No trainers match the selected filters.'}
+                ? 'No trainers match your search.'
+                : 'No trainers match the selected filters.'}
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
             {hasActiveFilters
@@ -414,11 +434,10 @@ export default function FindTrainerDiscoveryView({
             return (
               <div
                 key={t.uid}
-                className={`p-5 rounded-lg border transition-all bg-white dark:bg-[#0C1220] flex flex-col justify-between space-y-4 ${
-                  isSelected
-                    ? 'border-emerald-500/80 ring-1 ring-emerald-500/30'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-purple-500/40'
-                }`}
+                className={`p-5 rounded-lg border transition-all bg-white dark:bg-[#0C1220] flex flex-col justify-between space-y-4 ${isSelected
+                  ? 'border-emerald-500/80 ring-1 ring-emerald-500/30'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-purple-500/40'
+                  }`}
               >
                 <div className="space-y-3">
 
@@ -519,7 +538,7 @@ export default function FindTrainerDiscoveryView({
       {inspectedTrainer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white dark:bg-[#0C1220] border border-slate-200 dark:border-slate-800 rounded-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-6 shadow-xl">
-            
+
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-4">

@@ -3,22 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
-import { UserSettings, TraineeCompetency, SkillProficiencyLevel, RoleSkillGapRecord, TrainingCertificate, Quiz, TeacherAssignment } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { UserSettings, TraineeCompetency, SkillProficiencyLevel, RoleSkillGapRecord, TrainingCertificate, TrainingEnrollment, Quiz, TeacherAssignment } from '../types';
 import TrainingLifecycleModal from './TrainingLifecycleModal';
 import CertificateModal from './CertificateModal';
-import { 
-  calculateSkillGap, 
+import {
+  calculateSkillGap,
   calculateDesignationSkillGaps,
-  LEVEL_TO_NUMERIC, 
-  NUMERIC_TO_LEVEL, 
-  GapPriority, 
-  GapStatus 
+  LEVEL_TO_NUMERIC,
+  NUMERIC_TO_LEVEL,
+  GapPriority,
+  GapStatus
 } from '../utils/competencyUtils';
-import { DEMO_ORG_DESIGNATIONS_FULL } from '../utils/demoDataSeeder';
+import { DEMO_ORG_DESIGNATIONS_FULL, isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import { getTrainingRecommendations } from '../utils/recommendationUtils';
 import { enrollInCourse, updateEnrollmentProgress } from '../utils/enrollmentUtils';
 import { COURSES } from '../teacher-portal/lib/mockData';
+import { getUserEnrollments } from '../utils/enrollmentUtils';
+import { subscribePublishedPrograms, subscribeTraineeEnrollments } from '../services/capacityConnectService';
 import { INITIAL_COMPETENCY_CATALOG } from '../data';
 import { cn } from '../teacher-portal/lib/cn';
 import {
@@ -32,13 +34,13 @@ import {
   type Accent,
 } from './trainee/TraineeUI';
 
-import { 
-  Target, 
-  TrendingUp, 
-  CheckCircle2, 
-  AlertTriangle, 
-  AlertCircle, 
-  ShieldAlert, 
+import {
+  Target,
+  TrendingUp,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  ShieldAlert,
   ArrowLeft,
   BookOpen,
   GraduationCap,
@@ -82,16 +84,64 @@ export default function SkillGapView({
   onTakeAssessment,
   onViewCertificate
 }: SkillGapViewProps) {
+  const traineeId = settings.profile.uid || '';
+  const isDemoTrainee = isDemoTraineeIdentity(traineeId, settings.profile.emailAddress);
   const [competencies, setCompetencies] = useState<TraineeCompetency[]>(
     settings.profile.competencies || []
   );
-
-  const [courseProgressState, setCourseProgressState] = useState<Record<string, number>>({});
+  const [trainingPrograms, setTrainingPrograms] = useState<TeacherAssignment[]>(() => isDemoTrainee ? COURSES : []);
+  const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>(() =>
+    isDemoTrainee ? getUserEnrollments(settings.profile.emailAddress) : []
+  );
+  const [trainingLoading, setTrainingLoading] = useState(!isDemoTrainee);
+  const [trainingError, setTrainingError] = useState<string | null>(null);
 
   // Training Program Lifecycle & Certificate Modal States
   const [selectedCourseForLifecycle, setSelectedCourseForLifecycle] = useState<TeacherAssignment | null>(null);
   const [showLifecycleModal, setShowLifecycleModal] = useState(false);
   const [selectedCertForModal, setSelectedCertForModal] = useState<TrainingCertificate | null>(null);
+
+  useEffect(() => {
+    if (isDemoTrainee) {
+      setTrainingPrograms(COURSES);
+      setTrainingLoading(false);
+      setTrainingError(null);
+      return;
+    }
+    if (!traineeId) {
+      setTrainingPrograms([]);
+      setEnrollments([]);
+      setTrainingLoading(false);
+      return;
+    }
+    const organization = settings.profile.organization || settings.profile.institution || '';
+    setTrainingLoading(true);
+    setTrainingError(null);
+    const unsubscribePrograms = subscribePublishedPrograms(
+      organization,
+      (programs) => {
+        setTrainingPrograms(programs);
+        setTrainingLoading(false);
+      },
+      (error) => {
+        console.error('[SkillGap] Published programs subscription failed:', error);
+        setTrainingError('Unable to load published training programs. Check your connection and try again.');
+        setTrainingLoading(false);
+      }
+    );
+    const unsubscribeEnrollments = subscribeTraineeEnrollments(
+      traineeId,
+      setEnrollments,
+      (error) => {
+        console.error('[SkillGap] Enrollment subscription failed:', error);
+        setTrainingError('Unable to load your enrollments. Check your connection and try again.');
+      }
+    );
+    return () => {
+      unsubscribePrograms();
+      unsubscribeEnrollments();
+    };
+  }, [traineeId, settings.profile.organization, settings.profile.institution, settings.profile.emailAddress, isDemoTrainee]);
 
   const handleUpdateTargetLevel = (id: string, newTargetLevel: SkillProficiencyLevel) => {
     const updated = competencies.map((c) => {
@@ -124,7 +174,7 @@ export default function SkillGapView({
 
     const matched = DEMO_ORG_DESIGNATIONS_FULL.find(
       (d) => (desigName && d.name.toLowerCase() === desigName) ||
-             (deptName && d.departmentName.toLowerCase() === deptName)
+        (deptName && d.departmentName.toLowerCase() === deptName)
     );
 
     if (matched) return matched;
@@ -153,23 +203,20 @@ export default function SkillGapView({
 
 
   // Recommendation Engine execution against Trainee Designation Skill Gaps
-  const { recommendedCourses, unmatchedGaps } = getTrainingRecommendations(
+  const { recommendedCourses, unmatchedGaps, activeGaps } = getTrainingRecommendations(
     competencies,
-    COURSES,
+    trainingPrograms,
     [],
     INITIAL_COMPETENCY_CATALOG,
-    Object.fromEntries(
-      Object.entries(courseProgressState).map(([cid, prog]) => [cid, { completionRate: prog }])
-    ),
+    Object.fromEntries(enrollments.map((enrollment) => [enrollment.courseId, {
+      completionRate: enrollment.completionRate,
+      status: enrollment.status === 'enrolled' ? 'not_started' : enrollment.status
+    }])),
     traineeDesignation
   );
 
-
-  const handleStartCourse = (courseId: string) => {
-    setCourseProgressState((prev) => ({
-      ...prev,
-      [courseId]: prev[courseId] ? Math.min(100, prev[courseId] + 25) : 25
-    }));
+  const refreshDemoEnrollments = () => {
+    if (isDemoTrainee) setEnrollments(getUserEnrollments(settings.profile.emailAddress));
   };
 
   return (
@@ -395,7 +442,17 @@ export default function SkillGapView({
           subtitle="Targeted training programs dynamically mapped to your identified skill gaps."
         />
 
-        {recommendedCourses.length === 0 ? (
+        {trainingLoading ? (
+          <div className="rounded-xl border border-line bg-panel p-8 text-center text-sm text-muted">Loading published programs and enrollment…</div>
+        ) : trainingError ? (
+          <div role="alert" className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-700 dark:text-rose-300">{trainingError}</div>
+        ) : recommendedCourses.length === 0 && activeGaps.length > 0 && trainingPrograms.length === 0 ? (
+          <TraineeEmptyState
+            icon={<BookOpen size={20} />}
+            title="No published training programs"
+            description="There are no published programs for your organization that address these competency gaps yet."
+          />
+        ) : recommendedCourses.length === 0 ? (
           <TraineeEmptyState
             icon={<CheckCircle2 size={20} />}
             title="No active skill gaps requiring training"
@@ -554,6 +611,7 @@ export default function SkillGapView({
           onClose={() => setShowLifecycleModal(false)}
           course={selectedCourseForLifecycle}
           settings={settings}
+          onEnrollmentUpdated={refreshDemoEnrollments}
           onUpdateSettings={onUpdateSettings}
           onTakeAssessment={(quiz) => {
             if (onTakeAssessment) {

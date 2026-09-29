@@ -8,17 +8,19 @@ import { TeacherAssignment, UserSettings, TrainingEnrollment, TrainingCertificat
 import { enrollInCourse, updateEnrollmentProgress, getEnrollmentByCourse } from '../utils/enrollmentUtils';
 import { getCertificateById, getAllCertificates } from '../utils/certificateUtils';
 import { INITIAL_QUIZZES } from '../data';
+import { isDemoTraineeIdentity } from '../utils/demoDataSeeder';
+import { enrollInTrainingProgram, getPersistentEnrollment, getPersistentUserCertificate, setPersistentModuleProgress } from '../services/capacityConnectService';
 import { Modal, Button, Badge } from './bauhaus';
-import { 
-  BookOpen, 
-  CheckCircle2, 
-  Clock, 
-  Award, 
-  Layers, 
-  PlayCircle, 
-  Check, 
-  AlertCircle, 
-  Lock, 
+import {
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  Award,
+  Layers,
+  PlayCircle,
+  Check,
+  AlertCircle,
+  Lock,
   ArrowRight,
   ShieldCheck,
   RotateCcw
@@ -32,6 +34,7 @@ interface TrainingLifecycleModalProps {
   onUpdateSettings: (newSettings: UserSettings) => void;
   onTakeAssessment: (quiz: Quiz) => void;
   onViewCertificate: (cert: TrainingCertificate) => void;
+  onEnrollmentUpdated: () => void;
 }
 
 export default function TrainingLifecycleModal({
@@ -41,39 +44,71 @@ export default function TrainingLifecycleModal({
   settings,
   onUpdateSettings,
   onTakeAssessment,
-  onViewCertificate
+  onViewCertificate,
+  onEnrollmentUpdated
 }: TrainingLifecycleModalProps) {
   const [syllabusItems, setSyllabusItems] = useState<{ id: string; title: string; done: boolean }[]>([]);
   const [enrollment, setEnrollment] = useState<TrainingEnrollment | null>(null);
   const [certificate, setCertificate] = useState<TrainingCertificate | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const userId = settings.profile.uid || 'user-demo-1';
+  const userId = settings.profile.uid || '';
+  const isDemoTrainee = isDemoTraineeIdentity(userId, settings.profile.emailAddress);
+  const localDemoUserId = settings.profile.emailAddress || userId;
 
   useEffect(() => {
-    if (!course) return;
+    if (!course || !isOpen) return;
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
 
-    // Load initial syllabus
     const initialSyllabus = course.syllabus || [
       { id: 's1', title: 'Fundamentals & Foundational Concepts', done: false },
       { id: 's2', title: 'Core Principles & Practical Application', done: false },
       { id: 's3', title: 'Advanced Implementation & Best Practices', done: false },
       { id: 's4', title: 'Case Study & Operational Exercises', done: false }
     ];
-    setSyllabusItems(initialSyllabus);
-
-    // Load existing enrollment
-    const existingEnr = getEnrollmentByCourse(userId, course.id);
-    setEnrollment(existingEnr);
-
-    if (existingEnr && existingEnr.certificateId) {
-      const cert = getCertificateById(existingEnr.certificateId);
-      setCertificate(cert);
-    } else {
-      setCertificate(null);
-    }
-  }, [course, userId, isOpen]);
+    const loadEnrollment = async () => {
+      try {
+        if (!userId) throw new Error('Your Firebase profile is still loading.');
+        const lookupUid = isDemoTrainee ? localDemoUserId : userId;
+        const savedEnrollment = isDemoTrainee
+          ? getEnrollmentByCourse(lookupUid, course.id)
+          : await getPersistentEnrollment(userId, course.id);
+        if (!isMounted) return;
+        setEnrollment(savedEnrollment);
+        setSyllabusItems(initialSyllabus.map((item) => ({
+          ...item,
+          done: isDemoTrainee ? item.done : savedEnrollment?.moduleProgress?.[item.id] === true
+        })));
+        const savedCertificate = savedEnrollment?.certificateId
+          ? isDemoTrainee
+            ? getCertificateById(savedEnrollment.certificateId)
+            : await getPersistentUserCertificate(savedEnrollment.certificateId)
+          : null;
+        setCertificate(savedCertificate);
+      } catch (loadError) {
+        console.error('[TrainingLifecycle] Enrollment load failed:', loadError);
+        if (isMounted) setError('Unable to load training progress. Check your connection and try again.');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    void loadEnrollment();
+    return () => { isMounted = false; };
+  }, [course, userId, localDemoUserId, isDemoTrainee, isOpen, settings.profile.emailAddress]);
 
   if (!isOpen || !course) return null;
+
+  if (loading) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Loading training progress" size="lg">
+        <p className="p-6 text-sm text-[var(--text-secondary)]">Loading your enrollment and module progress…</p>
+      </Modal>
+    );
+  }
 
   const totalTopics = syllabusItems.length;
   const completedTopics = syllabusItems.filter(s => s.done).length;
@@ -83,47 +118,68 @@ export default function TrainingLifecycleModal({
   const isEnrolled = !!enrollment;
   const isCompleted = enrollment?.status === 'completed';
 
-  const handleEnroll = () => {
-    const newEnr = enrollInCourse(userId, settings.profile, course);
+  const handleEnroll = async () => {
+    if (!userId) throw new Error('Your Firebase profile is still loading.');
+    const newEnr = isDemoTrainee
+      ? enrollInCourse(localDemoUserId, settings.profile, course)
+      : await enrollInTrainingProgram(userId, settings.profile, course.id);
     setEnrollment(newEnr);
+    onEnrollmentUpdated();
+    return newEnr;
   };
 
-  const handleToggleTopic = (topicId: string) => {
-    if (!isEnrolled) {
-      // Auto-enroll when user starts interacting with syllabus
-      handleEnroll();
+  const handleEnrollClick = async () => {
+    setError(null);
+    setSaving(true);
+    try {
+      await handleEnroll();
+    } catch (enrollError) {
+      console.error('[TrainingLifecycle] Enrollment save failed:', enrollError);
+      setError(enrollError instanceof Error ? enrollError.message : 'Unable to enroll. Please try again.');
+    } finally {
+      setSaving(false);
     }
+  };
 
-    const updatedSyllabus = syllabusItems.map(item => {
-      if (item.id !== topicId) return item;
-      return { ...item, done: !item.done };
-    });
+  const handleToggleTopic = async (topicId: string) => {
+    setError(null);
+    setSaving(true);
+    try {
+      let activeEnrollment = enrollment;
+      if (!activeEnrollment) activeEnrollment = await handleEnroll();
+      const currentItem = syllabusItems.find((item) => item.id === topicId);
+      if (!currentItem) throw new Error('This module is no longer part of the program.');
+      const completed = !currentItem.done;
 
-    setSyllabusItems(updatedSyllabus);
-
-    const newDone = updatedSyllabus.filter(s => s.done).length;
-    const newProgress = Math.round((newDone / totalTopics) * 100);
-
-    // Update enrollment progress
-    const res = updateEnrollmentProgress(
-      userId,
-      settings.profile,
-      course,
-      newProgress,
-      enrollment?.quizPassed || false
-    );
-
-    setEnrollment(res.enrollment);
-    if (res.certificate) {
-      setCertificate(res.certificate);
+      if (isDemoTrainee) {
+        const updatedSyllabus = syllabusItems.map((item) => item.id === topicId ? { ...item, done: completed } : item);
+        const newProgress = totalTopics > 0
+          ? Math.round((updatedSyllabus.filter((item) => item.done).length / totalTopics) * 100)
+          : 0;
+        const result = updateEnrollmentProgress(localDemoUserId, settings.profile, course, newProgress, activeEnrollment.quizPassed || false);
+        setSyllabusItems(updatedSyllabus);
+        setEnrollment(result.enrollment);
+        if (result.certificate) setCertificate(result.certificate);
+      } else {
+        const progressResult = await setPersistentModuleProgress(userId, course, topicId, completed, settings.profile);
+        setSyllabusItems((items) => items.map((item) => item.id === topicId ? { ...item, done: completed } : item));
+        setEnrollment(progressResult.enrollment);
+        if (progressResult.certificate) setCertificate(progressResult.certificate);
+      }
+      onEnrollmentUpdated();
+    } catch (progressError) {
+      console.error('[TrainingLifecycle] Module progress save failed:', progressError);
+      setError(progressError instanceof Error ? progressError.message : 'Unable to save module progress. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   // Find associated quiz for course
-  const associatedQuiz: Quiz = INITIAL_QUIZZES.find(
+  const associatedQuiz: Quiz | null = INITIAL_QUIZZES.find(
     q => (q.courseCode && q.courseCode === course.courseCode) ||
-         (course.competencyNames && course.competencyNames.some(cn => q.competencyName?.toLowerCase() === cn.toLowerCase()))
-  ) || {
+      (course.competencyNames && course.competencyNames.some(cn => q.competencyName?.toLowerCase() === cn.toLowerCase()))
+  ) || (isDemoTrainee ? {
     id: `quiz-${course.id}`,
     title: `${course.courseName} Final Evaluation`,
     topic: course.subject || 'Capacity Building Assessment',
@@ -165,7 +221,7 @@ export default function TrainingLifecycleModal({
         explanation: 'Training completion and passed assessment are both mandatory.'
       }
     ]
-  };
+  } : null);
 
   return (
     <Modal
@@ -175,7 +231,12 @@ export default function TrainingLifecycleModal({
       size="lg"
     >
       <div className="space-y-6 select-none p-1 font-mono">
-        
+        {error && (
+          <div role="alert" className="rounded-md border-2 border-red-500 bg-red-500/10 p-3 text-xs font-bold text-red-600 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
         {/* Course Header Banner */}
         <div className="rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] p-5 space-y-3 shadow-paper-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-main)]/50 pb-3">
@@ -247,7 +308,8 @@ export default function TrainingLifecycleModal({
             <Button
               variant="primary"
               size="sm"
-              onClick={handleEnroll}
+              onClick={() => { void handleEnrollClick(); }}
+              disabled={saving}
               className="bg-[#9C27B0] hover:bg-[#8E24AA] text-white shrink-0"
             >
               Enroll Now
@@ -280,17 +342,16 @@ export default function TrainingLifecycleModal({
             {syllabusItems.map((item, idx) => (
               <div
                 key={item.id}
-                onClick={() => handleToggleTopic(item.id)}
-                className={`p-3 rounded-[6px] border-2 transition-all flex items-center justify-between cursor-pointer ${
-                  item.done
-                    ? 'border-[#19B56B]/40 bg-[#19B56B]/10 text-[var(--text-primary)]'
-                    : 'border-[var(--border-main)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:bg-[var(--panel-bg)]'
-                }`}
+                onClick={() => { if (!saving && !isCompleted) void handleToggleTopic(item.id); }}
+                aria-disabled={saving || isCompleted}
+                className={`p-3 rounded-[6px] border-2 transition-all flex items-center justify-between cursor-pointer ${item.done
+                  ? 'border-[#19B56B]/40 bg-[#19B56B]/10 text-[var(--text-primary)]'
+                  : 'border-[var(--border-main)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:bg-[var(--panel-bg)]'
+                  }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`h-5 w-5 rounded border-2 flex items-center justify-center font-bold text-xs ${
-                    item.done ? 'bg-[#19B56B] border-[#19B56B] text-white' : 'border-[var(--border-main)] bg-[var(--bg-main)]'
-                  }`}>
+                  <div className={`h-5 w-5 rounded border-2 flex items-center justify-center font-bold text-xs ${item.done ? 'bg-[#19B56B] border-[#19B56B] text-white' : 'border-[var(--border-main)] bg-[var(--bg-main)]'
+                    }`}>
                     {item.done && <Check className="h-3.5 w-3.5" />}
                   </div>
                   <span className={`text-xs font-bold ${item.done ? 'line-through text-[var(--text-primary)]' : ''}`}>
@@ -333,10 +394,12 @@ export default function TrainingLifecycleModal({
             <div className="p-4 rounded-[6px] border-2 border-purple-500/40 bg-purple-500/10 space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-purple-600 dark:text-purple-400">
                 <Award className="h-4 w-4 shrink-0 text-purple-500" />
-                <span>Training Content 100% Complete! Final Assessment Unlocked.</span>
+                <span>{associatedQuiz ? 'Training Content 100% Complete! Final Assessment Unlocked.' : 'Training content complete. Waiting for a trainer assessment assignment.'}</span>
               </div>
               <p className="text-xs text-[var(--text-secondary)]">
-                You meet all prerequisites. Pass the final assessment (Score ≥ 60%) to update your assessed competency level and earn an official digital certificate.
+                {associatedQuiz
+                  ? 'You meet all prerequisites. Pass the assigned assessment to update your assessed competency level.'
+                  : 'A trainer must assign an assessment before this program can be completed.'}
               </p>
 
               {enrollment?.quizPassed === false && (
@@ -350,9 +413,18 @@ export default function TrainingLifecycleModal({
                 variant="primary"
                 size="sm"
                 onClick={() => {
+                  if (!associatedQuiz) return;
                   onClose();
-                  onTakeAssessment(associatedQuiz);
+                  onTakeAssessment({
+                    ...associatedQuiz,
+                    ...(isDemoTrainee ? {} : {
+                      assignmentId: `${userId}_${associatedQuiz.id}`,
+                      trainerId: course.trainerId,
+                      trainingProgramId: course.id
+                    })
+                  });
                 }}
+                disabled={!associatedQuiz}
                 className="bg-[#9C27B0] hover:bg-[#8E24AA] text-white flex items-center gap-1.5"
               >
                 <PlayCircle className="h-4 w-4" />

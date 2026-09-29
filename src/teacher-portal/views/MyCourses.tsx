@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { BookOpen, Check, ChevronDown, ClipboardList, GraduationCap, Users, Layers, X, Edit3 } from 'lucide-react'
+import { BookOpen, Check, ChevronDown, ClipboardList, GraduationCap, Users, Layers, X, Edit3, Plus } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
 import { INITIAL_COMPETENCY_CATALOG } from '../../data'
@@ -12,26 +12,150 @@ import { ProgressBar } from '../components/ui/ProgressBar'
 import { accentBgSoft, accentBorder, accentText } from '../components/ui/accents'
 
 export function MyCourses({ onNavigate }: { onNavigate: (id: ViewId) => void }) {
-  const { courses } = useData()
+  const { courses, coursesLoading, coursesError, createCourse } = useData()
+  const { push } = useToast()
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [courseCode, setCourseCode] = useState('')
+  const [courseName, setCourseName] = useState('')
+  const [subject, setSubject] = useState('')
+  const [description, setDescription] = useState('')
+  const [duration, setDuration] = useState('')
+  const [syllabusText, setSyllabusText] = useState('')
+  const [competencyIds, setCompetencyIds] = useState<string[]>([])
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const handleCreateCourse = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSaveError(null)
+    const modules = syllabusText.split('\n').map((line) => line.trim()).filter(Boolean)
+    if (modules.length === 0) {
+      setSaveError('Add at least one module before publishing this program.')
+      return
+    }
+    const selectedCompetencies = INITIAL_COMPETENCY_CATALOG.filter((item) => competencyIds.includes(item.id) && item.isActive !== false)
+    setSaving(true)
+    try {
+      await createCourse({
+        courseCode: courseCode.trim().toUpperCase(),
+        courseName: courseName.trim(),
+        subject: subject.trim(),
+        semester: 'On demand',
+        students: 0,
+        completionRate: 0,
+        accent: 'cyan',
+        description: description.trim(),
+        duration: duration.trim(),
+        isActive: true,
+        competencyIds: selectedCompetencies.map((item) => item.id),
+        competencyNames: selectedCompetencies.map((item) => item.name),
+        syllabus: modules.map((title, index) => ({ id: `module-${index + 1}`, title, done: false }))
+      })
+      push({ variant: 'success', title: 'Program published', description: `${courseCode.trim().toUpperCase()} is available to your organization.` })
+      setCourseCode('')
+      setCourseName('')
+      setSubject('')
+      setDescription('')
+      setDuration('')
+      setSyllabusText('')
+      setCompetencyIds([])
+      setShowCreateForm(false)
+    } catch (error) {
+      console.error('[TrainerPrograms] Program save failed:', error)
+      setSaveError('Unable to publish this program. Check the required fields and try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
       <SectionHeading
         eyebrow="Programs"
         title="Training Programs"
-        subtitle={`${courses.length} active training programs · ${courses.reduce((s, c) => s + c.students, 0)} trainees enrolled`}
+        subtitle={`${courses.length} training programs · ${courses.reduce((sum, course) => sum + (course.students || 0), 0)} trainees enrolled`}
         action={
-          <Button variant="secondary" size="sm" iconLeft={<ClipboardList size={15} />} onClick={() => onNavigate('progress')}>
-            Progress board
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" size="sm" iconLeft={<Plus size={15} />} onClick={() => { setSaveError(null); setShowCreateForm(true) }}>
+              Create program
+            </Button>
+            <Button variant="secondary" size="sm" iconLeft={<ClipboardList size={15} />} onClick={() => onNavigate('progress')}>
+              Progress board
+            </Button>
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        {courses.map((course, i) => (
-          <CourseCard key={course.id} course={course} index={i} />
-        ))}
-      </div>
+      {coursesLoading ? (
+        <div className="rounded-xl border border-line bg-panel p-10 text-center text-sm text-muted">Loading training programs…</div>
+      ) : coursesError ? (
+        <div role="alert" className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-5 text-sm text-rose-700 dark:text-rose-300">{coursesError}</div>
+      ) : courses.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-line bg-panel p-10 text-center">
+          <h3 className="font-display text-base font-semibold text-ink">No training programs yet</h3>
+          <p className="mt-1 text-sm text-muted">Create and publish a program to make it available to trainees in your organization.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+          {courses.map((course, i) => (
+            <CourseCard key={course.id} course={course} index={i} />
+          ))}
+        </div>
+      )}
+
+      {showCreateForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="create-program-title" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-line bg-panel p-5 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 id="create-program-title" className="font-display text-lg font-bold text-ink">Create training program</h2>
+                <p className="text-sm text-muted">Programs publish to trainees in your organization.</p>
+              </div>
+              <button type="button" aria-label="Close" onClick={() => setShowCreateForm(false)} className="rounded-md p-1 text-faint hover:bg-panel-strong hover:text-ink">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateCourse} className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="space-y-1 text-xs font-medium text-muted">Program code
+                  <input required maxLength={32} value={courseCode} onChange={(event) => setCourseCode(event.target.value)} className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink" />
+                </label>
+                <label className="space-y-1 text-xs font-medium text-muted">Program title
+                  <input required maxLength={160} value={courseName} onChange={(event) => setCourseName(event.target.value)} className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink" />
+                </label>
+                <label className="space-y-1 text-xs font-medium text-muted">Subject
+                  <input required maxLength={120} value={subject} onChange={(event) => setSubject(event.target.value)} className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink" />
+                </label>
+                <label className="space-y-1 text-xs font-medium text-muted">Duration
+                  <input maxLength={80} value={duration} onChange={(event) => setDuration(event.target.value)} className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink" />
+                </label>
+              </div>
+              <label className="block space-y-1 text-xs font-medium text-muted">Description
+                <textarea rows={3} maxLength={4000} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink" />
+              </label>
+              <label className="block space-y-1 text-xs font-medium text-muted">Modules, one per line
+                <textarea required rows={4} value={syllabusText} onChange={(event) => setSyllabusText(event.target.value)} className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-ink" />
+              </label>
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-medium text-muted">Competencies</legend>
+                <div className="grid max-h-40 grid-cols-1 gap-2 overflow-y-auto rounded-md border border-line p-3 sm:grid-cols-2">
+                  {INITIAL_COMPETENCY_CATALOG.filter((item) => item.isActive !== false).map((item) => (
+                    <label key={item.id} className="flex items-center gap-2 text-sm text-ink">
+                      <input type="checkbox" checked={competencyIds.includes(item.id)} onChange={(event) => setCompetencyIds((ids) => event.target.checked ? [...ids, item.id] : ids.filter((id) => id !== item.id))} />
+                      {item.name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              {saveError && <div role="alert" className="rounded-md border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">{saveError}</div>}
+              <div className="flex justify-end gap-2 border-t border-line pt-4">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowCreateForm(false)}>Cancel</Button>
+                <Button type="submit" variant="primary" size="sm" disabled={saving}>{saving ? 'Publishing…' : 'Publish program'}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -47,10 +171,14 @@ function CourseCard({ course, index }: { course: TeacherAssignment; index: numbe
 
   const mappedCompNames = course.competencyNames || []
 
-  const toggle = (itemId: string, title: string, wasDone: boolean) => {
-    toggleSyllabusItem(course.id, itemId)
-    if (!wasDone) {
-      push({ variant: 'success', title: 'Topic marked complete', description: `${title} · ${course.courseCode}` })
+  const toggle = async (itemId: string, title: string, wasDone: boolean) => {
+    try {
+      await toggleSyllabusItem(course.id, itemId)
+      if (!wasDone) {
+        push({ variant: 'success', title: 'Topic marked complete', description: `${title} · ${course.courseCode}` })
+      }
+    } catch {
+      push({ variant: 'error', title: 'Unable to update program', description: 'The syllabus change was not saved. Please try again.' })
     }
   }
 
@@ -174,14 +302,13 @@ function CourseCard({ course, index }: { course: TeacherAssignment; index: numbe
         <ManageCompetenciesModal
           course={course}
           onClose={() => setShowCompetencyModal(false)}
-          onSave={(selectedIds, selectedNames) => {
-            updateCourseCompetencies(course.id, selectedIds, selectedNames)
+          onSave={async (selectedIds, selectedNames) => {
+            await updateCourseCompetencies(course.id, selectedIds, selectedNames)
             push({
               variant: 'success',
               title: 'Competency Mapping Saved',
               description: `Associated ${selectedIds.length} competencies with ${course.courseCode}`,
             })
-            setShowCompetencyModal(false)
           }}
         />
       )}
@@ -196,9 +323,11 @@ function ManageCompetenciesModal({
 }: {
   course: TeacherAssignment
   onClose: () => void
-  onSave: (selectedIds: string[], selectedNames: string[]) => void
+  onSave: (selectedIds: string[], selectedNames: string[]) => Promise<void>
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>(course.competencyIds || [])
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const toggleCompetency = (id: string, isActive: boolean) => {
     if (!isActive) return // Rule: Inactive competencies cannot be assigned
@@ -207,19 +336,28 @@ function ManageCompetenciesModal({
     )
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Only accept active competencies
     const activeCatalogMap = new Map(INITIAL_COMPETENCY_CATALOG.filter((c) => c.isActive).map((c) => [c.id, c.name]))
     const validIds = selectedIds.filter((id) => activeCatalogMap.has(id))
     const validNames = validIds.map((id) => activeCatalogMap.get(id) as string)
 
-    onSave(validIds, validNames)
+    setSaveError(null)
+    setSaving(true)
+    try {
+      await onSave(validIds, validNames)
+      onClose()
+    } catch {
+      setSaveError('Unable to save competency mapping. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-2xl border border-line bg-panel p-6 shadow-xl space-y-4">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between border-b border-line pb-3">
           <div>
@@ -250,8 +388,8 @@ function ManageCompetenciesModal({
                   !isActive
                     ? 'opacity-50 bg-panel/30 border-line cursor-not-allowed'
                     : isChecked
-                    ? 'border-purple-500/50 bg-purple-500/10'
-                    : 'border-line hover:bg-panel/70'
+                      ? 'border-purple-500/50 bg-purple-500/10'
+                      : 'border-line hover:bg-panel/70'
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -279,6 +417,8 @@ function ManageCompetenciesModal({
           })}
         </div>
 
+        {saveError && <div role="alert" className="rounded-md border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">{saveError}</div>}
+
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-line pt-4">
           <span className="text-xs text-muted font-mono">
@@ -288,8 +428,8 @@ function ManageCompetenciesModal({
             <Button variant="secondary" size="sm" onClick={onClose}>
               Cancel
             </Button>
-            <Button variant="primary" size="sm" onClick={handleSave}>
-              Save Mapping
+            <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save Mapping'}
             </Button>
           </div>
         </div>

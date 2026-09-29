@@ -8,17 +8,17 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { pageIdToPath, pathToPageId } from './routes';
 import { onAuthStateChanged, signOut, updateProfile as updateFirebaseProfile } from 'firebase/auth';
 import { auth, db } from './firebaseConfig';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { isNetworkAvailable } from './config';
 import { useTheme } from './theme/theme';
 import {
-  GraduationCap, 
-  Sparkles, 
-  Compass, 
-  BookMarked, 
-  Plus, 
+  GraduationCap,
+  Sparkles,
+  Compass,
+  BookMarked,
+  Plus,
   ArrowRight,
   ShieldAlert,
   HelpCircle,
@@ -33,15 +33,18 @@ import {
 // Types and mock imports
 import { PageId, Source, Lecture, NotificationItem, UserSettings, Note, DoubtItem, Quiz, QuizAttemptRecord, CompetencyAttemptHistoryItem, CatalogCompetency, TraineeCompetency } from './types';
 import { useNotes } from './hooks/useNotes';
-import { 
-  INITIAL_SOURCES, 
-  INITIAL_LECTURES, 
-  INITIAL_NOTIFICATIONS, 
+import {
+  INITIAL_SOURCES,
+  INITIAL_LECTURES,
+  INITIAL_NOTIFICATIONS,
   INITIAL_SETTINGS,
   INITIAL_QUIZZES,
   INITIAL_COMPETENCY_CATALOG
 } from './data';
-import { updateEnrollmentProgress } from './utils/enrollmentUtils';
+import { getEnrollmentByCourse, updateEnrollmentProgress } from './utils/enrollmentUtils';
+import { portalRoleFromProfile } from './utils/userRoles';
+import { isDemoTraineeIdentity } from './utils/demoDataSeeder';
+import { issuePersistentCertificate, persistAssessmentOutcome, subscribeTraineeAssignedAssessments } from './services/capacityConnectService';
 import { COURSES } from './teacher-portal/lib/mockData';
 
 // Core component imports
@@ -113,7 +116,7 @@ export default function App() {
     pauseCapture: () => void;
     stopCapture: () => void;
   } | null>(null);
-  
+
   // Theme is owned by the app-wide ThemeProvider (see `src/theme/theme.tsx`),
   // which is mounted once in `main.tsx`. This component only reads it.
   const { theme, setTheme } = useTheme()
@@ -205,34 +208,28 @@ export default function App() {
           fullName: user.displayName || (sessionUser?.fullName && !sessionUser.fullName.includes('@') ? sessionUser.fullName : (user.email?.split('@')[0] || 'Academic Scholar')),
           emailAddress: user.email || ''
         };
-        
+
         try {
           console.log("Checking onboarding status for user UID:", user.uid);
           const userDocRef = doc(db, 'users', user.uid);
-          
+
           // Race getDoc against a 5-second timeout to prevent infinite loading screens on connectivity/websocket hangs
           const userDocSnap = await Promise.race([
             getDoc(userDocRef),
-            new Promise<never>((_, reject) => 
+            new Promise<never>((_, reject) =>
               setTimeout(() => reject(new Error('Timeout fetching user document from Firestore.')), 5000)
             )
           ]);
-          
+
           if (userDocSnap.exists()) {
             const data = userDocSnap.data();
             console.log("User data loaded from Firestore database:", data);
-            
+
             const isCompleted = !!data.onboarding_completed;
             const rawRole = (data.role || '').toLowerCase();
-            
-            let detectedRole: 'student' | 'faculty' | 'admin' = 'student';
-            // Roles must come from the persisted profile, never from an email
-            // address. Email-name heuristics let an attacker self-select a role.
-            if (rawRole === 'admin') {
-              detectedRole = 'admin';
-            } else if (rawRole === 'faculty' || rawRole === 'teacher' || rawRole === 'trainer') {
-              detectedRole = 'faculty';
-            }
+
+            // A portal role comes from the UID-owned Firestore profile.
+            const detectedRole = portalRoleFromProfile(rawRole) || 'student';
             setUserRole(detectedRole);
 
             const calculatedCode = detectedRole === 'faculty'
@@ -314,12 +311,68 @@ export default function App() {
               setActivePage('dashboard');
             }
           } else {
+            setUserRole('student');
+            setSettings(prev => ({
+              ...prev,
+              profile: {
+                ...prev.profile,
+                uid: user.uid,
+                fullName: loggedUser.fullName,
+                firstName: loggedUser.fullName.split(' ')[0] || '',
+                lastName: loggedUser.fullName.split(' ').slice(1).join(' '),
+                emailAddress: loggedUser.emailAddress,
+                bio: '',
+                avatarUrl: '',
+                institution: '',
+                role: 'student',
+                organization: '',
+                department: '',
+                designation: '',
+                yearsOfExperience: 0,
+                qualification: '',
+                degree: '',
+                domain: '',
+                skills: [],
+                competencies: [],
+                certifications: [],
+                onboardingCompleted: false,
+                teacherCode: undefined
+              }
+            }));
             setSessionUser(loggedUser);
             setIsOnboarding(false);
             setActivePage('dashboard');
           }
         } catch (err: any) {
           console.error("Error checking user status:", err);
+          setUserRole('student');
+          setSettings(prev => ({
+            ...prev,
+            profile: {
+              ...prev.profile,
+              uid: user.uid,
+              fullName: loggedUser.fullName,
+              firstName: loggedUser.fullName.split(' ')[0] || '',
+              lastName: loggedUser.fullName.split(' ').slice(1).join(' '),
+              emailAddress: loggedUser.emailAddress,
+              bio: '',
+              avatarUrl: '',
+              institution: '',
+              role: 'student',
+              organization: '',
+              department: '',
+              designation: '',
+              yearsOfExperience: 0,
+              qualification: '',
+              degree: '',
+              domain: '',
+              skills: [],
+              competencies: [],
+              certifications: [],
+              onboardingCompleted: false,
+              teacherCode: undefined
+            }
+          }));
           setSessionUser(loggedUser);
           setIsOnboarding(false);
           setActivePage('dashboard');
@@ -378,9 +431,42 @@ export default function App() {
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
-  const [quizzes, setQuizzes] = useState<Quiz[]>(INITIAL_QUIZZES);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [assessmentsLoading, setAssessmentsLoading] = useState(false);
+  const [assessmentsError, setAssessmentsError] = useState<string | null>(null);
   const [competencyCatalog] = useState<CatalogCompetency[]>(INITIAL_COMPETENCY_CATALOG);
   const [activeAssessmentQuiz, setActiveAssessmentQuiz] = useState<Quiz | null>(null);
+
+  const isDemoTrainee = isDemoTraineeIdentity(sessionUser?.uid, sessionUser?.emailAddress);
+
+  useEffect(() => {
+    if (!sessionUser?.uid) {
+      setQuizzes([]);
+      setAssessmentsLoading(false);
+      setAssessmentsError(null);
+      return;
+    }
+    if (isDemoTrainee) {
+      setQuizzes(INITIAL_QUIZZES);
+      setAssessmentsLoading(false);
+      setAssessmentsError(null);
+      return;
+    }
+    setAssessmentsLoading(true);
+    setAssessmentsError(null);
+    return subscribeTraineeAssignedAssessments(
+      sessionUser.uid,
+      (assignedQuizzes) => {
+        setQuizzes(assignedQuizzes);
+        setAssessmentsLoading(false);
+      },
+      (error) => {
+        console.error('[Assessments] Assignment subscription failed:', error);
+        setAssessmentsError('Unable to load assigned assessments. Check your connection and try again.');
+        setAssessmentsLoading(false);
+      }
+    );
+  }, [sessionUser?.uid, sessionUser?.emailAddress, isDemoTrainee]);
 
   const [processingLectureId, setProcessingLectureId] = useState<string | null>(null);
   const [processingAudioBlob, setProcessingAudioBlob] = useState<Blob | null>(null);
@@ -411,7 +497,10 @@ export default function App() {
   // Callbacks: Lectures
 
 
-  const handleCompleteAssessmentAttempt = (attemptRecord: QuizAttemptRecord) => {
+  const handleCompleteAssessmentAttempt = async (attemptRecord: QuizAttemptRecord) => {
+    if (!sessionUser?.uid || attemptRecord.userId !== sessionUser.uid) {
+      throw new Error('Assessment identity does not match the authenticated Firebase UID.');
+    }
     const existingComps = settings.profile.competencies || [];
     const targetCompId = attemptRecord.competencyId;
     const targetCompName = attemptRecord.competencyName || 'General Competency';
@@ -476,22 +565,35 @@ export default function App() {
       }
     };
 
+    if (!isDemoTrainee) {
+      const outcome = await persistAssessmentOutcome(attemptRecord, updatedComps);
+      if (outcome.trainingCompleted && attemptRecord.trainingProgramId) {
+        await issuePersistentCertificate(
+          sessionUser.uid,
+          updatedSettings.profile,
+          attemptRecord.trainingProgramId,
+          attemptRecord.id
+        );
+      }
+    }
     setSettings(updatedSettings);
 
-    // Sync Course Enrollment & Issue Certificate when assessment is PASSED
-    if (attemptRecord.passed !== false) {
-      const targetCourse = COURSES.find(c => 
+    // Demo completion uses the existing local fixture flow, but never invents module progress.
+    if (isDemoTrainee && attemptRecord.passed !== false) {
+      const targetCourse = COURSES.find(c =>
         (c.courseCode && c.courseCode === attemptRecord.subject) ||
         (c.competencyIds && c.competencyIds.includes(targetCompId)) ||
         (c.competencyNames && c.competencyNames.some(cn => cn.toLowerCase() === targetCompName.toLowerCase()))
       );
 
       if (targetCourse) {
+        const demoUserId = settings.profile.emailAddress || sessionUser.uid;
+        const existingEnrollment = getEnrollmentByCourse(demoUserId, targetCourse.id);
         updateEnrollmentProgress(
-          sessionUser?.uid || 'user-demo-1',
+          demoUserId,
           settings.profile,
           targetCourse,
-          100,
+          existingEnrollment?.completionRate || 0,
           true
         );
       }
@@ -525,63 +627,81 @@ export default function App() {
 
   // Callbacks: Settings & Upgrading Tiers
   const handleUpdateSettings = async (newSettings: UserSettings) => {
-    setSettings(newSettings);
-    try {
-      localStorage.setItem('kuma_user_settings', JSON.stringify(newSettings));
-    } catch (e) {
-      console.warn('[Settings] Failed to save settings to localStorage:', e);
-    }
-
-    if (newSettings.profile?.theme && newSettings.profile.theme !== theme) {
-      setTheme(newSettings.profile.theme as 'light' | 'dark');
-    }
-
     if (sessionUser) {
+      const currentUser = auth.currentUser;
+      if (!currentUser || currentUser.uid !== sessionUser.uid) {
+        throw new Error('Your authenticated profile is no longer available. Sign in again to save changes.');
+      }
       const fullDisplayName = `${newSettings.profile.firstName || ''} ${newSettings.profile.lastName || ''}`.trim() || newSettings.profile.fullName;
 
-      if (auth.currentUser) {
-        updateFirebaseProfile(auth.currentUser, {
-          displayName: fullDisplayName,
-          photoURL: newSettings.profile.avatarUrl || undefined
-        }).catch((err) => console.warn('[Settings] Firebase Auth profile sync warning:', err));
-      }
-
-      setSessionUser(prev => prev ? { ...prev, fullName: fullDisplayName } : null);
-
       const profileData = {
+        uid: currentUser.uid,
+        fullName: fullDisplayName,
         first_name: newSettings.profile.firstName || '',
         last_name: newSettings.profile.lastName || '',
-        school_or_university: newSettings.profile.institution || '',
         email: newSettings.profile.emailAddress || '',
-        country_code: newSettings.profile.countryCode || '',
+        phone: newSettings.profile.phoneNumber || '',
         phone_number: newSettings.profile.phoneNumber || '',
+        organization: newSettings.profile.organization || newSettings.profile.institution || '',
+        school_or_university: newSettings.profile.institution || newSettings.profile.organization || '',
+        department: newSettings.profile.department || '',
+        designation: newSettings.profile.designation || '',
+        experienceYears: Math.max(0, Number(newSettings.profile.yearsOfExperience) || 0),
+        yearsOfExperience: Math.max(0, Number(newSettings.profile.yearsOfExperience) || 0),
+        qualification: newSettings.profile.qualification || newSettings.profile.degree || '',
+        domain: newSettings.profile.domain || '',
+        bio: newSettings.profile.bio || '',
+        skills: newSettings.profile.skills || [],
+        competencies: newSettings.profile.competencies || [],
+        certifications: newSettings.profile.certifications || [],
+        country_code: newSettings.profile.countryCode || '',
         profile_image_url: newSettings.profile.avatarUrl || '',
-        student_uid: newSettings.profile.uid || '',
         theme: newSettings.profile.theme || theme,
         onboarding_completed: true,
         updated_at: serverTimestamp()
       };
-      
-      console.log("Save settings attempt:", {
-        currentUserUID: sessionUser.uid,
-        authenticatedState: !!sessionUser.uid,
-        firestoreDocumentPath: `users/${sessionUser.uid}`,
-        writeRequestPayload: profileData
-      });
-
-      try {
-        const userDocRef = doc(db, 'users', sessionUser.uid);
-        await setDoc(userDocRef, profileData, { merge: true });
-        console.log("Updated root user settings successfully in users/" + sessionUser.uid);
-      } catch (err: any) {
-        console.error("Save settings failed:", {
-          currentUserUID: sessionUser.uid,
-          authenticatedState: !!sessionUser.uid,
-          firestoreDocumentPath: `users/${sessionUser.uid}`,
-          writeRequestPayload: profileData,
-          exactFirestoreError: err
-        });
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'users', currentUser.uid), profileData, { merge: true });
+      if (userRole === 'student') {
+        batch.set(doc(db, 'traineeProfiles', currentUser.uid), {
+          uid: currentUser.uid,
+          fullName: fullDisplayName,
+          email: newSettings.profile.emailAddress || '',
+          phone: newSettings.profile.phoneNumber || '',
+          organization: newSettings.profile.organization || newSettings.profile.institution || '',
+          department: newSettings.profile.department || '',
+          designation: newSettings.profile.designation || '',
+          yearsOfExperience: Math.max(0, Number(newSettings.profile.yearsOfExperience) || 0),
+          qualification: newSettings.profile.qualification || newSettings.profile.degree || '',
+          domain: newSettings.profile.domain || '',
+          bio: newSettings.profile.bio || '',
+          skills: newSettings.profile.skills || [],
+          competencies: newSettings.profile.competencies || [],
+          updatedAt: serverTimestamp()
+        }, { merge: true });
       }
+      try {
+        await batch.commit();
+      } catch (error) {
+        console.error('[Settings] Firestore profile save failed:', error);
+        throw new Error('Unable to save your profile. Check your connection and try again.');
+      }
+
+      updateFirebaseProfile(currentUser, {
+        displayName: fullDisplayName,
+        photoURL: newSettings.profile.avatarUrl || undefined
+      }).catch((error) => console.warn('[Settings] Firebase Auth profile sync warning:', error));
+      setSessionUser((previous) => previous ? { ...previous, fullName: fullDisplayName } : null);
+    }
+
+    setSettings(newSettings);
+    try {
+      localStorage.setItem('kuma_user_settings', JSON.stringify(newSettings));
+    } catch (error) {
+      console.warn('[Settings] Failed to save settings to localStorage:', error);
+    }
+    if (newSettings.profile?.theme && newSettings.profile.theme !== theme) {
+      setTheme(newSettings.profile.theme as 'light' | 'dark');
     }
   };
 
@@ -600,13 +720,13 @@ export default function App() {
       price,
       billingCycle,
       nextBillDate: billingCycle === 'yearly' ? 'Dec 15, 2027' : 'Jan 15, 2027',
-      features: planName === 'BYOK' 
+      features: planName === 'BYOK'
         ? [
-            'Bring Your Own Key (BYOK)',
-            'Unlimited AI Synthesis & Chats',
-            '100 GB High-Speed Storage',
-            'Academic Library & Quiz Workspace'
-          ] 
+          'Bring Your Own Key (BYOK)',
+          'Unlimited AI Synthesis & Chats',
+          '100 GB High-Speed Storage',
+          'Academic Library & Quiz Workspace'
+        ]
         : upgradedFeatures
     };
 
@@ -664,12 +784,8 @@ export default function App() {
               localStorage.setItem('kuma_user_api_key', data.api_key);
               if (data.ai_provider) localStorage.setItem(`kuma_user_api_key_${data.ai_provider}`, data.api_key);
             }
-            const rawRole = (user.role || data.role || '').toLowerCase();
-            const detectedRole: 'student' | 'faculty' | 'admin' = (rawRole === 'admin')
-              ? 'admin'
-              : (rawRole === 'faculty' || rawRole === 'teacher' || rawRole === 'trainer')
-              ? 'faculty'
-              : 'student';
+            const rawRole = (data.role || user.role || '').toLowerCase();
+            const detectedRole = portalRoleFromProfile(rawRole) || 'student';
 
             setUserRole(detectedRole);
             if (detectedRole === 'admin') {
@@ -693,11 +809,7 @@ export default function App() {
     }
 
     const fallbackRole = (user.role || '').toLowerCase();
-    const detectedRole: 'student' | 'faculty' | 'admin' = (fallbackRole === 'admin')
-      ? 'admin'
-      : (fallbackRole === 'faculty' || fallbackRole === 'trainer')
-      ? 'faculty'
-      : 'student';
+    const detectedRole = portalRoleFromProfile(fallbackRole) || 'student';
 
     setUserRole(detectedRole);
     if (detectedRole === 'admin') {
@@ -717,20 +829,24 @@ export default function App() {
     switch (activePage) {
       case 'dashboard':
         return (
-          <DashboardView
-            setActivePage={setActivePage}
-            lectures={[]}
-            sources={sources}
-            onNewAnalysis={handleNewAnalysisShortcut}
-            onOpenLecture={(id) => {
-              setActivePage('skill-gap');
-            }}
-            theme={theme}
-            notes={notes}
-            quizzes={quizzes}
-            onOpenAssessment={(quizToTake) => setActiveAssessmentQuiz(quizToTake)}
-            settings={settings}
-          />
+          <>
+            {assessmentsLoading && <div role="status" className="mx-auto mb-4 max-w-6xl rounded-md border border-line bg-panel px-4 py-3 text-sm text-muted">Loading your assigned assessments…</div>}
+            {assessmentsError && <div role="alert" className="mx-auto mb-4 max-w-6xl rounded-md border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">{assessmentsError}</div>}
+            <DashboardView
+              setActivePage={setActivePage}
+              lectures={[]}
+              sources={sources}
+              onNewAnalysis={handleNewAnalysisShortcut}
+              onOpenLecture={(id) => {
+                setActivePage('skill-gap');
+              }}
+              theme={theme}
+              notes={notes}
+              quizzes={quizzes}
+              onOpenAssessment={(quizToTake) => setActiveAssessmentQuiz(quizToTake)}
+              settings={settings}
+            />
+          </>
         );
       case 'profile':
         return (
@@ -855,9 +971,8 @@ export default function App() {
             ⚠️ No network connection. Some features may be unavailable.
           </div>
         )}
-        <div className={`min-h-screen flex items-center justify-center ${
-          theme === 'dark' ? 'bg-[#0a0a0c]' : 'bg-[#FAF9F5]'
-        }`}>
+        <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-[#0a0a0c]' : 'bg-[#FAF9F5]'
+          }`}>
           <BruteLoader size="lg" message="Loading Kuma Capacity Connect..." />
         </div>
         <FeedbackWidget theme={theme} />
@@ -869,30 +984,30 @@ export default function App() {
     return (
       <ErrorBoundary theme={theme}>
         <LandingView
-          onEnterApp={() => { 
+          onEnterApp={() => {
             if (sessionUser) {
               setActivePage(userRole === 'faculty' ? 'faculty-dashboard' : 'dashboard');
             } else {
-              setAuthMode('login'); 
-              setActivePage('auth'); 
+              setAuthMode('login');
+              setActivePage('auth');
             }
           }}
           onLoginSuccess={handleLoginSuccess}
           onNavigateToPricing={() => setActivePage('pricing')}
-          onGetStarted={() => { 
+          onGetStarted={() => {
             if (sessionUser) {
               setActivePage(userRole === 'faculty' ? 'faculty-dashboard' : 'dashboard');
             } else {
-              setAuthMode('signup'); 
-              setActivePage('auth'); 
+              setAuthMode('signup');
+              setActivePage('auth');
             }
           }}
-          onSignIn={() => { 
+          onSignIn={() => {
             if (sessionUser) {
               setActivePage(userRole === 'faculty' ? 'faculty-dashboard' : 'dashboard');
             } else {
-              setAuthMode('login'); 
-              setActivePage('auth'); 
+              setAuthMode('login');
+              setActivePage('auth');
             }
           }}
         />
@@ -904,7 +1019,7 @@ export default function App() {
   if (activePage === 'auth') {
     return (
       <ErrorBoundary theme={theme}>
-        <AuthView 
+        <AuthView
           onLoginSuccess={handleLoginSuccess}
           initialMode={authMode}
           theme={theme}
@@ -925,7 +1040,7 @@ export default function App() {
                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActivePage('landing')}>
                   <AILogo size={38} showText={true} theme="light" />
                 </div>
-                <button 
+                <button
                   onClick={() => setActivePage('landing')}
                   className="text-xs font-bold text-gray-600 hover:text-black cursor-pointer uppercase tracking-widest focus:outline-none"
                 >
@@ -947,7 +1062,7 @@ export default function App() {
     }
     return (
       <ErrorBoundary theme={theme}>
-        <AuthView 
+        <AuthView
           onLoginSuccess={handleLoginSuccess}
           initialMode={authMode}
           theme={theme}
@@ -1016,7 +1131,7 @@ export default function App() {
     <ErrorBoundary theme={theme}>
       {!isLanding && sessionUser && <NotificationPermissionBanner />}
       <div className="flex h-screen w-screen overflow-hidden transition-all duration-300 bg-[var(--bg-paper)] text-[var(--text-primary)]">
-        
+
         {/* Sidebar - hides completely on landing page layout */}
         {!isLanding && (
           <Sidebar
@@ -1051,9 +1166,8 @@ export default function App() {
           )}
 
           {/* Dynamic page contents viewer */}
-          <main className={`flex-1 overflow-y-auto bg-[var(--bg-paper)] text-[var(--text-primary)] ${
-            isLanding ? 'p-0' : 'p-2 md:p-3'
-          }`}>
+          <main className={`flex-1 overflow-y-auto bg-[var(--bg-paper)] text-[var(--text-primary)] ${isLanding ? 'p-0' : 'p-2 md:p-3'
+            }`}>
             <Suspense fallback={<BruteLoader size="lg" message="Loading..." />}>
               {renderActiveView()}
             </Suspense>

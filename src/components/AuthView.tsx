@@ -40,6 +40,7 @@ import {
 import AILogo from './AILogo';
 import { Button, Card, Badge, Input } from './bauhaus';
 import { seedDemoEnvironment } from '../utils/demoDataSeeder';
+import { portalRoleFromProfile } from '../utils/userRoles';
 import TraineeRegistrationView from './TraineeRegistrationView';
 import TrainerRegistrationView from './TrainerRegistrationView';
 
@@ -94,6 +95,33 @@ export default function AuthView({
       onboarding_completed: existingData.onboarding_completed ?? false,
       updatedAt: serverTimestamp()
     }, { merge: true });
+  };
+
+  const resolveProviderRole = async (
+    user: { uid: string; displayName: string | null; email: string | null },
+    requestedRole: 'student' | 'faculty'
+  ) => {
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const storedRole = portalRoleFromProfile(userSnap.data().role);
+      if (!storedRole) throw new Error('Your KUMA profile has no valid role. Contact your administrator.');
+      return storedRole;
+    }
+
+    await setDoc(userRef, {
+      uid: user.uid,
+      role: requestedRole,
+      fullName: user.displayName || 'KUMA User',
+      email: user.email || '',
+      onboarding_completed: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    if (requestedRole === 'faculty') {
+      await saveFacultyProfile(user.uid, user.email || '', user.displayName || 'Faculty Member');
+    }
+    return requestedRole;
   };
 
   // Helper function to turn Firebase error codes into friendly, clear, user-facing error messages
@@ -219,69 +247,26 @@ export default function AuthView({
           return;
         }
 
-        let userCredential;
-        try {
-          userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
-        } catch (signInErr: any) {
-          if (cleanEmail === 'premium.student@kuma.ai' || cleanEmail.includes('premium')) {
-            try {
-              userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password.length >= 6 ? password : 'PremiumUser123!');
-            } catch (createErr) {
-              throw signInErr;
-            }
-          } else {
-            throw signInErr;
-          }
-        }
-
-        const detectedRole: 'student' | 'faculty' = isFacultyMode ? 'faculty' : 'student';
+        const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
         const userRef = doc(db, 'users', userCredential.user.uid);
-
-        const isTestPremium = cleanEmail.includes('premium') || cleanEmail === 'premium.student@kuma.ai';
-        const updatePayload: any = {
-          role: detectedRole,
-          email: cleanEmail,
-          updatedAt: serverTimestamp()
-        };
-
-        if (isTestPremium) {
-          updatePayload.subscription = {
-            planName: 'Premium',
-            price: '₹399',
-            billingCycle: 'monthly',
-            nextBillDate: 'Dec 15, 2027',
-            features: [
-              'Direct API access (We provide keys)',
-              'Unlimited managed AI runs',
-              '100 GB High-Speed Storage',
-              'Instant OCR & Math Formula Parsing',
-              'Weak Topic Tracker Radar',
-              'Priority Email & Chat Support'
-            ]
-          };
-          updatePayload.onboarding_completed = true;
-          updatePayload.fullName = 'Alex Morgan (Scholar Pro)';
-          updatePayload.first_name = 'Alex';
-          updatePayload.last_name = 'Morgan';
-          updatePayload.school_or_university = 'Stanford University';
+        const profileSnap = await getDoc(userRef);
+        if (!profileSnap.exists()) {
+          throw new Error('No KUMA profile is linked to this Firebase account. Register first or contact your administrator.');
         }
-
-        await setDoc(userRef, updatePayload, { merge: true });
-
-        if (isFacultyMode) {
-          await saveFacultyProfile(userCredential.user.uid, cleanEmail, userCredential.user.displayName || fullName);
-        }
+        const profileData = profileSnap.data();
+        const detectedRole = portalRoleFromProfile(profileData.role);
+        if (!detectedRole) throw new Error('Your KUMA profile has no valid role. Contact your administrator.');
 
         setSuccessMsg(
-          detectedRole === 'faculty'
-            ? 'Faculty credentials authenticated! Entering Faculty Academic Portal...'
-            : 'Token validated! Connecting to research workspace...'
+          detectedRole === 'faculty' ? 'Signed in. Opening the Trainer Portal...' :
+            detectedRole === 'admin' ? 'Signed in. Opening the Admin Portal...' :
+              'Signed in. Opening Capacity Connect...'
         );
 
         setTimeout(() => {
           onLoginSuccess({
-            fullName: isTestPremium ? 'Alex Morgan (Scholar Pro)' : (userCredential.user.displayName || fullName || cleanEmail.split('@')[0]),
-            emailAddress: cleanEmail,
+            fullName: profileData.fullName || userCredential.user.displayName || cleanEmail.split('@')[0],
+            emailAddress: profileData.email || userCredential.user.email || cleanEmail,
             role: detectedRole
           });
         }, 1000);
@@ -365,61 +350,19 @@ export default function AuthView({
     }
   };
 
-  const handleQuickPremiumLogin = async () => {
-    setIsFacultyMode(false);
+  const selectDemoAccount = (account: 'admin' | 'trainer' | 'trainee' | 'premium') => {
+    const demoEmails = {
+      admin: 'admin@acme.com',
+      trainer: 'trainer@acme.com',
+      trainee: 'aarav.sharma@capacityconnect.in',
+      premium: 'premium.student@kuma.ai'
+    };
+    setIsFacultyMode(account === 'trainer');
     setMode('login');
-    setEmail('premium.student@kuma.ai');
-    setPassword('PremiumUser123!');
+    setEmail(demoEmails[account]);
+    setPassword('');
     setError(null);
-    setLoading(true);
-
-    try {
-      let userCred;
-      try {
-        userCred = await signInWithEmailAndPassword(auth, 'premium.student@kuma.ai', 'PremiumUser123!');
-      } catch (err: any) {
-        userCred = await createUserWithEmailAndPassword(auth, 'premium.student@kuma.ai', 'PremiumUser123!');
-      }
-
-      const userRef = doc(db, 'users', userCred.user.uid);
-      await setDoc(userRef, {
-        role: 'student',
-        email: 'premium.student@kuma.ai',
-        fullName: 'Alex Morgan (Scholar Pro)',
-        first_name: 'Alex',
-        last_name: 'Morgan',
-        school_or_university: 'Stanford University',
-        onboarding_completed: true,
-        subscription: {
-          planName: 'Premium',
-          price: '₹399',
-          billingCycle: 'monthly',
-          nextBillDate: 'Dec 15, 2027',
-          features: [
-            'Direct API access (We provide keys)',
-            'Unlimited managed AI runs',
-            '100 GB High-Speed Storage',
-            'Instant OCR & Math Formula Parsing',
-            'Weak Topic Tracker Radar',
-            'Priority Email & Chat Support'
-          ]
-        },
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      setSuccessMsg('Authenticating Test Premium Student Credentials...');
-      setTimeout(() => {
-        onLoginSuccess({
-          fullName: 'Alex Morgan (Scholar Pro)',
-          emailAddress: 'premium.student@kuma.ai',
-          role: 'student'
-        });
-      }, 1000);
-    } catch (err: any) {
-      setError(getFriendlyAuthErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
+    setSuccessMsg('Demo account selected. Enter its provisioned password and submit to authenticate with Firebase.');
   };
 
   const handleGoogleSignIn = async () => {
@@ -438,22 +381,7 @@ export default function AuthView({
         userCredential = await signInWithPopup(auth, provider);
       }
 
-      const detectedRole: 'student' | 'faculty' = isFacultyMode ? 'faculty' : 'student';
-      const userRef = doc(db, 'users', userCredential.user.uid);
-      await setDoc(userRef, {
-        role: detectedRole,
-        fullName: userCredential.user.displayName || 'Google User',
-        email: userCredential.user.email || '',
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      if (isFacultyMode) {
-        await saveFacultyProfile(
-          userCredential.user.uid,
-          userCredential.user.email || '',
-          userCredential.user.displayName || 'Faculty Member'
-        );
-      }
+      const detectedRole = await resolveProviderRole(userCredential.user, isFacultyMode ? 'faculty' : 'student');
 
       onLoginSuccess({
         fullName: userCredential.user.displayName || 'Google User',
@@ -482,22 +410,7 @@ export default function AuthView({
         userCredential = await signInWithPopup(auth, provider);
       }
 
-      const detectedRole: 'student' | 'faculty' = isFacultyMode ? 'faculty' : 'student';
-      const userRef = doc(db, 'users', userCredential.user.uid);
-      await setDoc(userRef, {
-        role: detectedRole,
-        fullName: userCredential.user.displayName || 'GitHub User',
-        email: userCredential.user.email || '',
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      if (isFacultyMode) {
-        await saveFacultyProfile(
-          userCredential.user.uid,
-          userCredential.user.email || '',
-          userCredential.user.displayName || 'Faculty Member'
-        );
-      }
+      const detectedRole = await resolveProviderRole(userCredential.user, isFacultyMode ? 'faculty' : 'student');
 
       onLoginSuccess({
         fullName: userCredential.user.displayName || 'GitHub User',
@@ -671,9 +584,9 @@ export default function AuthView({
                   {!isFacultyMode && mode === 'login' && (
                     <button
                       type="button"
-                      onClick={handleQuickPremiumLogin}
+                      onClick={() => selectDemoAccount('premium')}
                       disabled={loading}
-                      title="Quick Premium Access"
+                      title="Select Demo Trainee Account"
                       className="text-[#FFC400] hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1 rounded hover:bg-[#FFC400]/10"
                       aria-label="Quick Access"
                     >
@@ -710,25 +623,25 @@ export default function AuthView({
               <div className="grid grid-cols-2 gap-1.5 pt-1">
                 <button
                   type="button"
-                  onClick={() => setError('Demo data is available after signing in with a Firebase account.')}
+                  onClick={() => selectDemoAccount('admin')}
                   className="text-xs font-mono font-bold px-2 py-1.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)] hover:bg-[#9C27B0]/10 text-[var(--text-primary)] text-left truncate cursor-pointer"
                 >
-                  👑 Admin Login
+                  👑 Select Admin Account
                 </button>
                 <button
                   type="button"
-                  onClick={() => setError('Demo data is available after signing in with a Firebase account.')}
+                  onClick={() => selectDemoAccount('trainer')}
                   className="text-xs font-mono font-bold px-2 py-1.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)] hover:bg-[#38BDF8]/10 text-[var(--text-primary)] text-left truncate cursor-pointer"
                 >
-                  👨‍🏫 Trainer Login
+                  👨‍🏫 Select Trainer Account
                 </button>
                 <button
                   type="button"
-                  onClick={() => setError('Demo data is available after signing in with a Firebase account.')}
+                  onClick={() => selectDemoAccount('trainee')}
                   className="text-xs font-mono font-bold px-2.5 py-1.5 rounded border-2 border-[#FFC400] bg-[#FFC400]/15 text-[var(--text-primary)] text-left truncate col-span-2 cursor-pointer hover:bg-[#FFC400]/25 transition-colors flex items-center justify-between"
                 >
-                  <span>🎓 Primary Judge Demo Trainee (Aarav)</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 bg-[#FFC400] text-[#111111] rounded font-bold">START DEMO</span>
+                  <span>🎓 Select Judge Trainee (Aarav)</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 bg-[#FFC400] text-[#111111] rounded font-bold">FIREBASE LOGIN</span>
                 </button>
               </div>
             </div>
@@ -745,7 +658,7 @@ export default function AuthView({
                   className="w-full py-2 px-3 rounded-[4px] bg-[#FFC400] text-[#111111] font-mono text-xs font-extrabold uppercase border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer transition-colors flex items-center justify-center gap-2"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span>Continue in Guest / Local Mode →</span>
+                  <span>Dismiss message</span>
                 </button>
               </div>
             )}

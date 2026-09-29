@@ -5,7 +5,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { verifyCertificate, VerificationResult } from '../utils/certificateUtils';
+import { VerificationResult } from '../utils/certificateUtils';
+import { verifyPersistentCertificate } from '../services/capacityConnectService';
 import { ShieldCheck, CheckCircle2, AlertCircle, Search, ArrowLeft, GraduationCap, Building, Calendar, Hash } from 'lucide-react';
 
 interface CertificateVerificationViewProps {
@@ -19,26 +20,59 @@ export default function CertificateVerificationView({
 }: CertificateVerificationViewProps) {
   const [searchId, setSearchId] = useState<string>(certIdParam || '');
   const [result, setResult] = useState<VerificationResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (certIdParam) {
-      setResult(verifyCertificate(certIdParam));
-    } else {
-      setResult(verifyCertificate('KUMA-2026-DA10199X'));
-      setSearchId('KUMA-2026-DA10199X');
+      setSearchId(certIdParam);
+      void lookupCertificate(certIdParam);
     }
   }, [certIdParam]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const lookupCertificate = async (certificateId: string) => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const record = await verifyPersistentCertificate(certificateId);
+      if (!record || record.verificationIdentifier !== certificateId.trim() || record.verificationStatus !== 'valid') {
+        setResult({ isValid: false, message: 'No valid certificate record was found for this verification ID.' });
+        return;
+      }
+      setResult({
+        isValid: true,
+        message: 'Certificate record found and its verification status is valid.',
+        certificate: {
+          id: record.certificateId,
+          userName: record.traineeName,
+          courseName: record.trainingProgramName,
+          courseCode: record.courseCode,
+          organization: record.organization,
+          issueDate: record.issueDate,
+          completionDate: record.completionDate,
+          status: 'Valid',
+          competenciesAddressed: record.competenciesAddressed
+        }
+      });
+    } catch (lookupError) {
+      console.error('[CertificateVerification] Lookup failed:', lookupError);
+      setError('Unable to verify this certificate right now. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (searchId.trim()) {
-      setResult(verifyCertificate(searchId.trim()));
+      await lookupCertificate(searchId.trim());
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto pb-16 space-y-6 p-4 md:p-8 select-none font-sans">
-      
+
       {/* Header Banner */}
       <div className="rounded-[11px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -68,27 +102,30 @@ export default function CertificateVerificationView({
               type="text"
               value={searchId}
               onChange={(e) => setSearchId(e.target.value)}
-              placeholder="Enter Certificate ID (e.g. KUMA-2026-DA10199X)"
+              placeholder="Enter certificate verification ID"
               className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d] dark:focus:border-purple-500 transition-colors"
             />
           </div>
-          <button 
-            type="submit" 
-            className="px-6 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          <button
+            type="submit"
+            disabled={loading || !searchId.trim()}
+            className="px-6 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-wait disabled:opacity-60"
           >
             <ShieldCheck className="h-4 w-4" />
-            <span>Verify Certificate</span>
+            <span>{loading ? 'Checking…' : 'Verify Certificate'}</span>
           </button>
         </form>
       </div>
 
+      {error && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">{error}</div>}
+
       {/* VERIFICATION RESULT DISPLAY */}
       {result && (
         <div className="p-6 md:p-8 rounded-[11px] bg-white dark:bg-[#0C1220] border border-slate-200 dark:border-slate-800 space-y-6 shadow-sm">
-          
+
           {result.isValid && result.certificate ? (
             <div className="space-y-6">
-              
+
               {/* Status Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-full border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/60 dark:bg-emerald-950/40">
                 <div className="flex items-center gap-3">
@@ -110,7 +147,7 @@ export default function CertificateVerificationView({
 
               {/* Certificate Details Card */}
               <div className="p-6 rounded-[11px] border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A] space-y-5">
-                
+
                 <div className="border-b border-slate-200/60 dark:border-slate-800 pb-4 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Recipient Name</div>

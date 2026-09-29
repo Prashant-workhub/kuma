@@ -10,6 +10,16 @@ import { TeacherAssignment } from '../teacher-portal/types';
 
 export const DEMO_ORGANIZATION = 'Capacity Connect Demo Organization';
 
+export function isDemoTraineeIdentity(uid?: string, email?: string): boolean {
+  const demoUids = new Set(['user-demo-1', 'trainee-demo-aarav', 'trainee-judge-demo']);
+  const demoEmails = new Set(['aarav.sharma@capacityconnect.in', 'guest.student@kuma.ai']);
+  return demoUids.has(uid || '') || demoEmails.has((email || '').trim().toLowerCase());
+}
+
+export function isDemoTrainerIdentity(uid?: string, email?: string): boolean {
+  return uid === 'faculty-1' || (email || '').trim().toLowerCase() === 'trainer@acme.com';
+}
+
 export const DEMO_DEPARTMENTS = [
   'Engineering',
   'Data & Analytics',
