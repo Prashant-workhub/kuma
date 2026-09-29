@@ -224,12 +224,13 @@ export default function App() {
             
             const isCompleted = !!data.onboarding_completed;
             const rawRole = (data.role || '').toLowerCase();
-            const userEmail = (loggedUser.emailAddress || '').toLowerCase();
             
             let detectedRole: 'student' | 'faculty' | 'admin' = 'student';
-            if (rawRole === 'admin' || userEmail === 'admin@acme.com' || userEmail.includes('admin')) {
+            // Roles must come from the persisted profile, never from an email
+            // address. Email-name heuristics let an attacker self-select a role.
+            if (rawRole === 'admin') {
               detectedRole = 'admin';
-            } else if (rawRole === 'faculty' || rawRole === 'teacher' || rawRole === 'trainer' || userEmail.includes('trainer')) {
+            } else if (rawRole === 'faculty' || rawRole === 'teacher' || rawRole === 'trainer') {
               detectedRole = 'faculty';
             }
             setUserRole(detectedRole);
@@ -252,7 +253,7 @@ export default function App() {
               }
             }
 
-            const isDemoUser = user.uid === 'user-demo-1' || userEmail === 'aarav.sharma@capacityconnect.in' || userEmail === 'guest.student@kuma.ai';
+            const isDemoUser = user.uid === 'user-demo-1' || loggedUser.emailAddress === 'aarav.sharma@capacityconnect.in' || loggedUser.emailAddress === 'guest.student@kuma.ai';
             const fullNameFromDb = `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.fullName || loggedUser.fullName;
 
             // Cleanly parse user skills, competencies, and certifications without polluting real accounts with demo data
@@ -664,10 +665,9 @@ export default function App() {
               if (data.ai_provider) localStorage.setItem(`kuma_user_api_key_${data.ai_provider}`, data.api_key);
             }
             const rawRole = (user.role || data.role || '').toLowerCase();
-            const userEmail = (data.email || user.emailAddress || currentUser.email || '').toLowerCase();
-            const detectedRole: 'student' | 'faculty' | 'admin' = (rawRole === 'admin' || userEmail === 'admin@acme.com' || userEmail.includes('admin'))
+            const detectedRole: 'student' | 'faculty' | 'admin' = (rawRole === 'admin')
               ? 'admin'
-              : (rawRole === 'faculty' || rawRole === 'teacher' || rawRole === 'trainer' || userEmail.includes('trainer'))
+              : (rawRole === 'faculty' || rawRole === 'teacher' || rawRole === 'trainer')
               ? 'faculty'
               : 'student';
 
@@ -692,11 +692,10 @@ export default function App() {
       }
     }
 
-    const fallbackEmail = (user.emailAddress || '').toLowerCase();
     const fallbackRole = (user.role || '').toLowerCase();
-    const detectedRole: 'student' | 'faculty' | 'admin' = (fallbackRole === 'admin' || fallbackEmail === 'admin@acme.com' || fallbackEmail.includes('admin'))
+    const detectedRole: 'student' | 'faculty' | 'admin' = (fallbackRole === 'admin')
       ? 'admin'
-      : (fallbackRole === 'faculty' || fallbackRole === 'trainer' || fallbackEmail.includes('trainer'))
+      : (fallbackRole === 'faculty' || fallbackRole === 'trainer')
       ? 'faculty'
       : 'student';
 

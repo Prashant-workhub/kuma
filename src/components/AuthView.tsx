@@ -79,21 +79,6 @@ export default function AuthView({
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleGuestLogin = () => {
-    const detectedRole: 'student' | 'faculty' = isFacultyMode ? 'faculty' : 'student';
-    const userEmail = email.trim().toLowerCase() || (isFacultyMode ? 'faculty.guest@kuma.ai' : 'guest.student@kuma.ai');
-    const userDisplayName = fullName.trim() || (isFacultyMode ? 'Dr. Scholar (Faculty)' : 'Guest Scholar');
-
-    setSuccessMsg(`Authenticated via Local Session! Entering ${isFacultyMode ? 'Faculty Portal' : 'Scholar Workspace'}...`);
-    setTimeout(() => {
-      onLoginSuccess({
-        fullName: userDisplayName,
-        emailAddress: userEmail,
-        role: detectedRole
-      });
-    }, 800);
-  };
-
   const saveFacultyProfile = async (uid: string, userEmail: string, userDisplayName?: string) => {
     const userDocRef = doc(db, 'users', uid);
     const docSnap = await getDoc(userDocRef);
@@ -158,7 +143,7 @@ export default function AuthView({
       case 'auth/invalid-api-key':
         return 'Firebase API key is invalid or restricted. Please check your project configuration.';
       case 'auth/configuration-not-found':
-        return 'Firebase Authentication is not enabled for this project in Firebase Console. Continuing in Local Session mode...';
+        return 'Firebase Authentication is not configured for this project. Please contact the administrator.';
       case 'auth/app-not-authorized':
         return 'App is not authorized to use Firebase Authentication with the provided API key.';
       case 'auth/internal-error':
@@ -371,10 +356,7 @@ export default function AuthView({
       const code = err?.code || err?.errorCode || '';
       const msg = String(err?.message || err || '');
       if (code === 'auth/configuration-not-found' || msg.includes('CONFIGURATION_NOT_FOUND')) {
-        setSuccessMsg('Firebase Auth is unconfigured on server. Entering Local Session mode...');
-        setTimeout(() => {
-          handleGuestLogin();
-        }, 1000);
+        setError('Firebase Authentication is not configured for this project. Please contact the administrator.');
         return;
       }
       setError(getFriendlyAuthErrorMessage(err));
@@ -728,21 +710,21 @@ export default function AuthView({
               <div className="grid grid-cols-2 gap-1.5 pt-1">
                 <button
                   type="button"
-                  onClick={() => onLoginSuccess({ fullName: 'Admin Governance User', emailAddress: 'admin@capacityconnect.in', role: 'admin' })}
+                  onClick={() => setError('Demo data is available after signing in with a Firebase account.')}
                   className="text-xs font-mono font-bold px-2 py-1.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)] hover:bg-[#9C27B0]/10 text-[var(--text-primary)] text-left truncate cursor-pointer"
                 >
                   👑 Admin Login
                 </button>
                 <button
                   type="button"
-                  onClick={() => onLoginSuccess({ fullName: 'Alex Rivera', emailAddress: 'alex.rivera@capacityconnect.in', role: 'faculty' })}
+                  onClick={() => setError('Demo data is available after signing in with a Firebase account.')}
                   className="text-xs font-mono font-bold px-2 py-1.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)] hover:bg-[#38BDF8]/10 text-[var(--text-primary)] text-left truncate cursor-pointer"
                 >
                   👨‍🏫 Trainer Login
                 </button>
                 <button
                   type="button"
-                  onClick={() => onLoginSuccess({ fullName: 'Aarav Sharma (Primary Demo Trainee)', emailAddress: 'aarav.sharma@capacityconnect.in', role: 'student' })}
+                  onClick={() => setError('Demo data is available after signing in with a Firebase account.')}
                   className="text-xs font-mono font-bold px-2.5 py-1.5 rounded border-2 border-[#FFC400] bg-[#FFC400]/15 text-[var(--text-primary)] text-left truncate col-span-2 cursor-pointer hover:bg-[#FFC400]/25 transition-colors flex items-center justify-between"
                 >
                   <span>🎓 Primary Judge Demo Trainee (Aarav)</span>
@@ -759,7 +741,7 @@ export default function AuthView({
                 </div>
                 <button
                   type="button"
-                  onClick={handleGuestLogin}
+                  onClick={() => setError(null)}
                   className="w-full py-2 px-3 rounded-[4px] bg-[#FFC400] text-[#111111] font-mono text-xs font-extrabold uppercase border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer transition-colors flex items-center justify-center gap-2"
                 >
                   <Sparkles className="h-3.5 w-3.5" />

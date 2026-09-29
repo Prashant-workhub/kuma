@@ -36,10 +36,7 @@ try {
     });
     console.log('[Kuma Backend] Firebase Admin initialized with service account.');
   } else {
-    firebaseAdminApp = admin.initializeApp({
-      projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'kuma-capacity-connect'
-    });
-    console.log('[Kuma Backend] Firebase Admin initialized in default mode.');
+    console.warn('[Kuma Backend] Firebase Admin is disabled: server credentials are not configured.');
   }
 } catch (err) {
   console.warn('[Kuma Backend] Firebase Admin initialization warning:', err.message);
@@ -97,19 +94,15 @@ const verifyAdminToken = async (req, res, next) => {
     const token = authHeader.split('Bearer ')[1];
     if (db && firebaseAdminApp) {
       const decoded = await admin.auth().verifyIdToken(token);
-      const userDoc = await db.collection('users').doc(decoded.uid).get();
-      const userData = userDoc.exists ? userDoc.data() : {};
-      const role = (userData.role || decoded.role || '').toLowerCase();
-      const email = (decoded.email || userData.email || '').toLowerCase();
-      if (role === 'admin' || email === 'admin@acme.com' || email.includes('admin')) {
-        req.user = { uid: decoded.uid, email, role: 'admin' };
+      // Administrative access is granted only by a Firebase custom claim.
+      // It cannot be derived from a mutable Firestore document or email text.
+      if (decoded.admin === true) {
+        req.user = { uid: decoded.uid, email: decoded.email || '', role: 'admin' };
         return next();
       }
       return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
     }
-    // Development fallback
-    req.user = { uid: 'admin-dev', role: 'admin' };
-    next();
+    return res.status(503).json({ success: false, error: 'Admin API unavailable: Firebase Admin credentials are not configured.' });
   } catch (err) {
     return res.status(401).json({ success: false, error: `Unauthorized: ${err.message}` });
   }

@@ -331,7 +331,7 @@ export default function TraineeRegistrationView({
         } else if (authErr.code === 'auth/weak-password') {
           throw new Error('Password is too weak. Please use at least 6 characters.');
         } else {
-          console.warn('[Registration] Firebase auth fallback to local session:', authErr);
+          throw new Error('Account creation could not be completed securely. Please check your connection and try again.');
         }
       }
 

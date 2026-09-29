@@ -1,90 +1,91 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
+    // users/{uid} stores private profile data (including PII and settings).
+    // trainer_assignments/{id} stores traineeId, trainerId and status.
+    // Administrative access requires the Firebase Auth custom claim admin: true.
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+
+    function isSelfServiceRole(role) {
+      return role == 'student' || role == 'trainee' || role == 'faculty' ||
+        role == 'teacher' || role == 'trainer';
     }
 
-    // Helper function to check if requesting user matches user ID
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    // The established private profile has a broad, evolving schema. These
+    // validators protect role/size invariants on both creates and updates.
+    function validUser() {
+      return request.resource.data.keys().size() <= 70 &&
+        request.resource.data.role is string &&
+        request.resource.data.role.size() <= 20 &&
+        (!('email' in request.resource.data) ||
+          (request.resource.data.email is string && request.resource.data.email.size() <= 254)) &&
+        (!('fullName' in request.resource.data) ||
+          (request.resource.data.fullName is string && request.resource.data.fullName.size() <= 120));
     }
 
-    // Helper function to check user role from database
-    function getRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    function validPrivateDocument() {
+      return request.resource.data.keys().size() <= 100;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && (
-        getRole() == 'admin' ||
-        request.auth.token.email == 'admin@acme.com' ||
-        request.auth.token.email.matches('.*admin.*')
-      );
+    function validAssignment() {
+      return request.resource.data.keys().size() <= 20 &&
+        request.resource.data.traineeId is string &&
+        request.resource.data.trainerId is string &&
+        request.resource.data.traineeId.size() > 0 && request.resource.data.traineeId.size() <= 128 &&
+        request.resource.data.trainerId.size() > 0 && request.resource.data.trainerId.size() <= 128 &&
+        request.resource.data.status in ['Active', 'Completed'];
     }
 
-    function isTrainer() {
-      return isAuthenticated() && (
-        getRole() == 'trainer' ||
-        getRole() == 'faculty' ||
-        getRole() == 'teacher'
-      );
-    }
+    match /users/{uid} {
+      // No public directory or email lookup: this document includes PII.
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(uid) && validUser() &&
+        isSelfServiceRole(request.resource.data.role);
+      allow update: if validUser() && (isAdmin() ||
+        (isOwner(uid) && request.resource.data.role == resource.data.role));
+      allow delete: if isAdmin();
 
-    // User profiles collection
-    match /users/{userId} {
-      allow read, create, update, delete: if true;
-
-      // User subcollections (lectures, notes, doubts, attempts)
-      match /{allSubcollections=**} {
-        allow read, write: if true;
+      match /{document=**} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if (isOwner(uid) || isAdmin()) && validPrivateDocument();
+        allow delete: if isOwner(uid) || isAdmin();
       }
     }
 
-    // Global Competency Catalog
-    match /competencyCatalog/{document} {
-      allow read, write: if true;
+    match /competencyCatalog/{id} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && request.resource.data.keys().size() <= 30;
+      allow delete: if isAdmin();
     }
 
-    // Assessment Attempt Records
-    match /assessmentAttempts/{attemptId} {
-      allow read, write: if true;
-    }
-
-    // Doubts / Inquiries
-    match /doubts/{doubtId} {
-      allow read, write: if true;
-    }
-
-    // Trainer Assignments & Mentorship
     match /trainer_assignments/{assignmentId} {
-      allow read, write: if true;
+      allow read: if signedIn() &&
+        (resource.data.traineeId == request.auth.uid || resource.data.trainerId == request.auth.uid || isAdmin());
+      allow create: if signedIn() && validAssignment() &&
+        request.resource.data.traineeId == request.auth.uid;
+      allow update: if validAssignment() && (isAdmin() ||
+        (request.auth.uid == resource.data.traineeId &&
+          request.resource.data.traineeId == resource.data.traineeId &&
+          request.resource.data.trainerId == resource.data.trainerId));
+      allow delete: if isAdmin() || (signedIn() && resource.data.traineeId == request.auth.uid);
     }
 
-    match /teacherAssignments/{assignmentId} {
-      allow read, write: if true;
-    }
-
-    // Pending Shares
-    match /pendingShares/{shareId} {
-      allow read, write: if true;
-    }
-
-    // Certificates collection
-    match /certificates/{certificateId} {
-      allow read, write: if true;
-    }
-
-    // Feedback / Telemetry collection
     match /feedback/{feedbackId} {
-      allow read, write: if true;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().size() <= 20;
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
-    // Fallback rule for any other collection
+    // Certificates, assessment attempts, organization data, announcements and
+    // doubts remain admin-only until their ownership fields are migrated and
+    // validated. This is safer than exposing them to every authenticated user.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
   }
 }
