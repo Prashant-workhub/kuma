@@ -1,4 +1,7 @@
-/** Tiny className joiner — filters falsy values. No dependency needed. */
-export function cn(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(' ')
-}
+﻿/**
+ * Re-export of the shared className joiner.
+ *
+ * `cn` now lives in `src/design-system/cn.ts`. This alias keeps the many
+ * existing `../lib/cn` imports working while leaving a single implementation.
+ */
+export { cn } from '../../design-system/cn'

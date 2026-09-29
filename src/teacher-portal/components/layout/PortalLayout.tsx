@@ -1,9 +1,9 @@
-import { useEffect, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { ViewId } from '../../types'
 import { Sidebar, SidebarNav } from './Sidebar'
 import { TopBar } from './TopBar'
 import { GreenParticlesBg } from '../ui/GreenParticlesBg'
+import { AppFrame, PortalMain } from '../../../design-system/PortalShell'
 
 export function PortalLayout({
   active,
@@ -18,70 +18,67 @@ export function PortalLayout({
   setDrawerOpen: (open: boolean) => void
   children: ReactNode
 }) {
-  // Close the mobile drawer on Escape.
-  useEffect(() => {
-    if (!drawerOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [drawerOpen, setDrawerOpen])
-
   const navigate = (id: ViewId) => {
     onNavigate(id)
     setDrawerOpen(false)
   }
 
+  /*
+   * The frame, the rail/drawer and the content gutter all come from the
+   * shared shell. This component is now only responsible for the Trainer's
+   * navigation data and the ambient particle effect.
+   */
   return (
-    <div className="relative flex min-h-screen bg-canvas text-ink overflow-x-hidden w-full max-w-full">
-      {/* Ambient background particles & glow */}
-      <div className="pointer-events-none fixed inset-0 bg-radial-glow z-0" aria-hidden="true" />
+    <AppFrame>
       <GreenParticlesBg />
 
       {/* Desktop rail */}
       <Sidebar active={active} onNavigate={navigate} />
 
-      {/* Mobile drawer */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 animate-fade-in bg-black/60 backdrop-blur-sm"
-            onClick={() => setDrawerOpen(false)}
-            aria-hidden="true"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation menu"
-            className="animate-drawer absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col border-r border-line bg-card shadow-2xl z-50"
-          >
-            <div className="flex items-center justify-between px-4 pt-4">
-              <span className="flex items-center gap-2 text-ink">
-                <span className="text-sm font-semibold">Kuma</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                aria-label="Close navigation menu"
-                className="rounded-lg p-2 text-muted transition-colors hover:bg-panel hover:text-ink cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1">
-              <SidebarNav active={active} onNavigate={navigate} />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Mobile drawer — shares the rail body with the desktop sidebar */}
+      {drawerOpen && <MobileDrawer active={active} onNavigate={navigate} onClose={() => setDrawerOpen(false)} />}
 
       {/* Main column */}
-      <div className="relative z-10 flex min-h-screen flex-1 flex-col min-w-0 w-full max-w-full">
+      <div className="relative z-10 flex min-h-screen min-w-0 w-full max-w-full flex-1 flex-col">
         <TopBar active={active} onOpenMenu={() => setDrawerOpen(true)} onNavigate={navigate} />
-        <main className="flex-1 overflow-x-hidden px-3 py-4 sm:px-6 lg:px-8 w-full min-w-0">
-          <div className="mx-auto w-full max-w-7xl min-w-0">{children}</div>
-        </main>
+        <PortalMain>{children}</PortalMain>
+      </div>
+    </AppFrame>
+  )
+}
+
+/** Mobile navigation drawer, reusing the exact rail body as the desktop rail. */
+function MobileDrawer({
+  active,
+  onNavigate,
+  onClose,
+}: {
+  active: ViewId
+  onNavigate: (id: ViewId) => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <div className="animate-fade-in absolute inset-0 bg-canvas/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
+        className="animate-drawer absolute left-0 top-0 z-50 flex h-full w-72 max-w-[85vw] flex-col border-r border-line bg-card shadow-scrim"
+      >
+        <div className="min-h-0 flex-1">
+          <SidebarNav active={active} onNavigate={onNavigate} />
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close navigation menu"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-line bg-panel text-muted transition-colors hover:text-ink"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
       </div>
     </div>
   )

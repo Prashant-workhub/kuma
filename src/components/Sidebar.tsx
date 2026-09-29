@@ -21,6 +21,7 @@ import {
 import { PageId, UserSettings } from '../types';
 import AILogo from './AILogo';
 import { TraineeAvatar, TraineeNavItem } from './trainee/TraineeUI';
+import { SIDEBAR_WIDTH, SIDEBAR_WIDTH_COLLAPSED, SidebarBrand } from '../design-system/PortalShell';
 
 interface SidebarProps {
   activePage: PageId;
@@ -65,51 +66,41 @@ export default function Sidebar({
     setIsOpenMobile(false);
   };
 
+  // The rail width comes from the shared shell so the Trainee, Trainer and
+  // Admin rails collapse and resize identically.
+  const railWidth = isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH;
+
   const sidebarContent = (
-    <div className={`flex h-full flex-col select-none overflow-hidden border-r border-line bg-card text-ink transition-all duration-300 ${
-      isCollapsed ? 'w-20' : 'w-[260px] lg:w-[275px]'
-    }`}>
+    <div className={`flex h-full flex-col select-none overflow-hidden border-r border-line bg-card text-ink transition-all duration-300 ${railWidth}`}>
 
       {/* Brand area */}
-      <div className={`flex h-16 min-w-0 items-center overflow-hidden border-b border-line/50 bg-panel/30 ${
-        isCollapsed ? 'justify-center px-1 gap-1' : 'justify-between px-5'
-      }`}>
-        <div
-          className="group flex min-w-0 cursor-pointer items-center gap-3 overflow-hidden truncate"
-          onClick={() => handleNavClick('dashboard')}
-        >
-          <div className="shrink-0 transition-transform group-hover:scale-105">
-            <AILogo size={28} showText={false} theme="dark" />
-          </div>
+      <SidebarBrand
+        mark={<AILogo size={28} showText={false} theme="dark" />}
+        title="Kuma AI"
+        subtitle="trainee portal"
+        collapsed={isCollapsed}
+        action={
+          <>
+            {/* Mobile close trigger */}
+            <button
+              onClick={() => setIsOpenMobile(false)}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-panel text-muted hover:text-ink md:hidden"
+              aria-label="Close menu"
+            >
+              <X className="h-4 w-4" />
+            </button>
 
-          {!isCollapsed && (
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden leading-tight">
-              <div className="truncate font-display text-[15px] font-bold text-ink">Kuma AI</div>
-              <div className="truncate font-mono text-[10px] font-semibold lowercase tracking-[0.15em] text-brand-cyan">
-                trainee portal
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile close trigger */}
-        <button 
-          onClick={() => setIsOpenMobile(false)}
-          className="md:hidden flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-panel text-muted hover:text-ink"
-          aria-label="Close menu"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        {/* Desktop Collapse Trigger */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-panel text-faint hover:text-ink focus:outline-none"
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
-        </button>
-      </div>
+            {/* Desktop Collapse Trigger */}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-panel text-faint hover:text-ink focus:outline-none md:flex"
+              title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+            </button>
+          </>
+        }
+      />
 
       {/* Navigation Groups */}
       <div className="flex-1 space-y-5 overflow-y-auto px-3 py-3">
@@ -201,23 +192,27 @@ export default function Sidebar({
   return (
     <>
       {/* Desktop & Tablet Sidebar Frame */}
-      <aside className={`hidden md:block h-screen sticky top-0 shrink-0 z-30 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-[260px] lg:w-[275px]'}`}>
+      <aside className={`sticky top-0 z-30 hidden h-screen shrink-0 transition-all duration-300 md:block ${railWidth}`}>
         {sidebarContent}
       </aside>
 
       {/* Mobile Drawer Navigation overlay */}
-      <div 
-        className={`fixed inset-0 z-50 md:hidden transition-opacity duration-200 ${
-          isOpenMobile ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      <div
+        className={`fixed inset-0 z-50 transition-opacity duration-200 md:hidden ${
+          isOpenMobile ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         }`}
+        aria-hidden={!isOpenMobile}
       >
-        <div 
+        <div
           onClick={() => setIsOpenMobile(false)}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+          className="absolute inset-0 bg-canvas/60 backdrop-blur-sm"
         />
-        
-        <div 
-          className={`absolute inset-y-0 left-0 w-[270px] max-w-xs transition-transform duration-200 ease-out transform ${
+
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+          className={`absolute inset-y-0 left-0 w-[270px] max-w-xs transition-transform duration-200 ease-out ${
             isOpenMobile ? 'translate-x-0' : '-translate-x-full'
           }`}
         >

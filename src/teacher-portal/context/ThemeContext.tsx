@@ -1,52 +1,15 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { ThemeMode } from '../types'
+/**
+ * @deprecated Re-export of the application-wide theme.
+ *
+ * The Trainer portal used to own a second, independent theme state that wrote
+ * the same `data-theme` attributes and `localStorage` keys as the root app.
+ * That meant the portal could silently reset or fight the user's choice.
+ *
+ * Theme now lives in `src/theme/theme.tsx` and is mounted once at the app
+ * root, so every portal shares one persisted value. This module is kept as a
+ * thin alias so the many existing `../../context/ThemeContext` imports
+ * (TopBar, and anything else added later) keep resolving.
+ */
+export { ThemeProvider, useTheme } from '../../theme/theme'
+export type { ThemeMode, ThemeContextValue } from '../../theme/theme'
 
-interface ThemeContextValue {
-  theme: ThemeMode
-  toggle: () => void
-  setTheme: (mode: ThemeMode) => void
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null)
-const STORAGE_KEY = 'kuma.theme'
-
-function readInitialTheme(): ThemeMode {
-  try {
-    const saved = localStorage.getItem('kuma_theme') || localStorage.getItem(STORAGE_KEY)
-    if (saved === 'light' || saved === 'dark') return saved
-  } catch {
-    /* storage unavailable — fall through */
-  }
-  return 'dark' // dark is default
-}
-
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>(readInitialTheme)
-
-  useEffect(() => {
-    const root = document.documentElement
-    root.classList.toggle('dark', theme === 'dark')
-    root.setAttribute('data-theme', theme)
-    document.body.setAttribute('data-theme', theme)
-    try {
-      localStorage.setItem('kuma_theme', theme)
-      localStorage.setItem(STORAGE_KEY, theme)
-    } catch {
-      /* ignore */
-    }
-  }, [theme])
-
-  const setTheme = useCallback((mode: ThemeMode) => setThemeState(mode), [])
-  const toggle = useCallback(() => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')), [])
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggle, setTheme }}>{children}</ThemeContext.Provider>
-  )
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useTheme(): ThemeContextValue {
-  const ctx = useContext(ThemeContext)
-  if (!ctx) throw new Error('useTheme must be used within a ThemeProvider')
-  return ctx
-}

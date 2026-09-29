@@ -16,6 +16,24 @@
     <script>
       // Polyfill for pptxgenjs strict mode bundling error
       window.gObjPptxShapes = window.gObjPptxShapes || {};
+
+      // Apply the persisted theme before first paint. Without this the app
+      // renders one frame in the default theme and then corrects itself,
+      // which is visible as a flash on every reload in light mode.
+      (function () {
+        var theme = 'dark';
+        try {
+          var stored =
+            window.localStorage.getItem('kuma.theme') ||
+            window.localStorage.getItem('kuma_theme');
+          if (stored === 'light' || stored === 'dark') theme = stored;
+        } catch (e) {
+          /* storage blocked — keep the default */
+        }
+        var root = document.documentElement;
+        root.classList.toggle('dark', theme === 'dark');
+        root.setAttribute('data-theme', theme);
+      })();
     </script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script type="module" src="/src/main.tsx"></script>

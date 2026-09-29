@@ -4,19 +4,11 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Menu, 
-  Search, 
-  Bell, 
-  Settings, 
-  ChevronRight,
-  User,
-  LogOut,
-  Sun,
-  Moon
-} from 'lucide-react';
+import { Search, Bell, Settings, User, LogOut } from 'lucide-react';
 import { PageId, UserSettings } from '../types';
 import { TraineeAvatar } from './trainee/TraineeUI';
+import { ThemeToggle } from '../design-system/ThemeToggle';
+import { PortalHeader } from '../design-system/PortalShell';
 
 interface NavbarProps {
   activePage: PageId;
@@ -86,34 +78,11 @@ export default function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full select-none items-center justify-between border-b border-line bg-card/85 px-4 backdrop-blur-md transition-colors md:px-6">
-      
-      {/* Left items: Mobile trigger & Branded Breadcrumbs */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => setIsOpenMobile(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-panel text-muted transition-colors hover:text-ink md:hidden"
-          aria-label="Open navigation drawer"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
-        
-        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted">
-          <span
-            className="hidden cursor-pointer rounded-lg border border-brand-cyan/25 bg-brand-cyan/10 px-3 py-1 font-mono text-[10px] font-semibold lowercase tracking-[0.15em] text-brand-cyan transition-colors hover:bg-brand-cyan/15 sm:inline-block"
-            onClick={() => setActivePage('dashboard')}
-          >
-            kuma ai
-          </span>
-          <ChevronRight className="hidden h-3.5 w-3.5 text-faint sm:inline-block" />
-          <span className="truncate rounded-lg border border-line bg-panel px-3 py-1 font-display text-ink">
-            {getPageTitle()}
-          </span>
-        </div>
-      </div>
-
-      {/* Center Search Input */}
-      <div className="relative mx-6 hidden max-w-sm flex-1 md:flex">
+    <PortalHeader
+      title={getPageTitle()}
+      eyebrow="Trainee workspace"
+      onOpenDrawer={() => setIsOpenMobile(true)}
+      center={
         <div className="relative w-full">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
           <input
@@ -121,16 +90,14 @@ export default function Navbar({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search competencies, courses, certificates..."
-            className="w-full rounded-xl border border-line bg-panel py-2 pl-10 pr-12 text-xs font-medium text-ink placeholder:text-faint transition-colors focus:border-brand-cyan/50 focus:outline-none"
+            className="w-full rounded-xl border border-line bg-panel py-2 pl-10 pr-12 text-xs font-medium text-ink placeholder:text-faint transition-colors focus:border-accent/50 focus:outline-none"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-card px-2 py-0.5 font-mono text-[10px] text-faint ring-1 ring-line">
             <span>⌘K</span>
           </div>
         </div>
-      </div>
-
-      {/* Right widgets: Quick triggers, actions, theme toggle, profiles */}
-      <div className="flex items-center gap-2.5 relative">
+      }
+    >
 
         {/* Network status indicator */}
         {isOnline !== undefined && (
@@ -147,19 +114,7 @@ export default function Navbar({
           </div>
         )}
 
-        {/* Theme Toggle Quick Button */}
-        <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-line bg-panel text-muted transition-colors hover:text-ink"
-          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Theme`}
-          aria-label="Toggle Theme"
-        >
-          {theme === 'dark' ? (
-            <Sun className="h-4 w-4 text-brand-gold" />
-          ) : (
-            <Moon className="h-4 w-4 text-muted" />
-          )}
-        </button>
+        <ThemeToggle />
 
         {/* Activity Center indicator */}
         <button
@@ -238,7 +193,6 @@ export default function Navbar({
             </div>
           )}
         </div>
-      </div>
-    </header>
+    </PortalHeader>
   );
 }

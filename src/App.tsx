@@ -12,6 +12,7 @@ import { doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, onSna
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { isNetworkAvailable } from './config';
+import { useTheme } from './theme/theme';
 import {
   GraduationCap, 
   Sparkles, 
@@ -113,30 +114,9 @@ export default function App() {
     stopCapture: () => void;
   } | null>(null);
   
-  // Theme state defaulting to dark for premium dark blue academic vibes
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('kuma_theme') as 'light' | 'dark';
-      if (saved) return saved;
-    }
-    return 'dark';
-  });
-
-  // Sync theme attribute on <html> element & persist in localStorage
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    document.body.setAttribute('data-theme', theme);
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('kuma_theme', theme);
-    localStorage.setItem('kuma.theme', theme);
-  }, [theme]);
-
-  // Persist theme preference in localStorage
-
+  // Theme is owned by the app-wide ThemeProvider (see `src/theme/theme.tsx`),
+  // which is mounted once in `main.tsx`. This component only reads it.
+  const { theme, setTheme } = useTheme()
   // Authenticated user session state & Role state
   const [sessionUser, setSessionUser] = useState<{ uid: string; fullName: string; emailAddress: string } | null>(null);
   const [userRole, setUserRole] = useState<'student' | 'faculty' | 'admin'>('student');

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import type { ViewId, FacultyProfile } from './types'
-import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { DataProvider } from './context/DataContext'
@@ -117,15 +116,16 @@ export default function TeacherPortalApp(props: TeacherPortalAppProps) {
   }
 
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider initialProfile={initialProfile} onSignOut={props.onSignOut} initialStage="ready">
-          <DataProvider>
-            <TeacherPortalInner {...props} />
-            <Toaster />
-          </DataProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    // The theme provider is mounted once at the app root (see `main.tsx`).
+    // Nesting a second one here would give the portal its own theme state,
+    // which is exactly the split this refactor removes.
+    <ToastProvider>
+      <AuthProvider initialProfile={initialProfile} onSignOut={props.onSignOut} initialStage="ready">
+        <DataProvider>
+          <TeacherPortalInner {...props} />
+          <Toaster />
+        </DataProvider>
+      </AuthProvider>
+    </ToastProvider>
   )
 }

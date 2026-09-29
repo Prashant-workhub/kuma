@@ -1,9 +1,52 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   KUMA DESIGN SYSTEM — THEME CONTRACT
+   --------------------------------------------------------------------------
+   One app, one token set, two themes. Every portal (Login, Admin, Trainer,
+   Trainee) reads from the tokens declared here.
+
+   1. `dark` is bound to the APPLICATION theme, not the OS. Without this,
+      every `dark:` utility in the codebase silently follows the operating
+      system while the header toggle does something else entirely.
+   2. The canonical scale is space-separated RGB so Tailwind can apply alpha
+      modifiers (`bg-card/60`, `text-ink/80`) to theme-driven colors.
+   3. Accents are theme-aware. A single static hex accent is unreadable on one
+      of the two backgrounds, so each hue carries a dark and a light value
+      that clears WCAG AA against its own canvas.
+   4. Legacy `--app-*` / `--bg-paper` / `--card-bg` names are kept as aliases
+      of the same scale, so no existing view regresses while the portals
+      converge on the canonical names.
+   ========================================================================== */
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 @layer base {
+  /* DARK — the default (see the pre-paint bootstrap in index.html) */
   :root,
   [data-theme="dark"],
   .dark {
+    color-scheme: dark;
+
+    /* Canonical surface + text scale */
+    --canvas: 5 8 20;
+    --card: 12 18 32;
+    --panel: 16 24 42;
+    --panel-strong: 22 32 54;
+    --line: 30 41 59;
+    --line-strong: 51 65 85;
+    --ink: 248 250 252;
+    --muted: 148 163 184;
+    --faint: 100 116 139;
+
+    /* Accent scale — luminous, tuned for a near-black canvas */
+    --brand-gold: 245 158 11;
+    --brand-cyan: 45 212 191;
+    --brand-emerald: 34 197 94;
+    --brand-rose: 244 63 94;
+    --brand-violet: 167 139 250;
+    --brand-accent: 45 212 191;
+
+    /* Legacy aliases → same scale */
     --bg-paper: #050814;
     --bg-main: #050814;
     --card-bg: #0C1220;
@@ -34,20 +77,42 @@
     --app-border: #1E293B;
     --app-text: #F8FAFC;
     --app-muted: #94A3B8;
-    --app-brand: #38BDF8;
-    --app-brand-strong: #0284C7;
+    --app-brand: #2DD4BF;
+    --app-brand-strong: #0F766E;
 
-    /* Teachers LMS Portal Dark Tokens */
-    --canvas: 5 8 20;
-    --card: 12 18 32;
-    --panel: 16 24 42;
-    --line: 30 41 59;
-    --ink: 248 250 252;
-    --muted: 148 163 184;
-    --faint: 100 116 139;
+    /* Depth + ambient */
+    --surface-shadow: 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+    --surface-shadow-hover: 0 20px 44px -22px rgba(0, 0, 0, 0.9);
+    --surface-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    --surface-highlight-hover: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+    --scrim: rgba(2, 4, 10, 0.72);
+    --ambient-glow:
+      radial-gradient(60rem 40rem at 50% -20%, rgba(45, 212, 191, 0.10) 0%, transparent 70%),
+      radial-gradient(40rem 30rem at 85% 60%, rgba(167, 139, 250, 0.07) 0%, transparent 70%);
   }
 
+  /* LIGHT */
   [data-theme="light"] {
+    color-scheme: light;
+
+    --canvas: 248 250 252;
+    --card: 255 255 255;
+    --panel: 241 245 249;
+    --panel-strong: 226 232 240;
+    --line: 226 232 240;
+    --line-strong: 203 213 225;
+    --ink: 15 23 42;
+    --muted: 71 85 105;
+    --faint: 100 116 139;
+
+    /* Accent scale — deepened so text/fill clears AA on white */
+    --brand-gold: 180 83 9;
+    --brand-cyan: 14 116 144;
+    --brand-emerald: 21 128 61;
+    --brand-rose: 190 18 60;
+    --brand-violet: 109 40 217;
+    --brand-accent: 14 116 144;
+
     --bg-paper: #F8FAFC;
     --bg-main: #F8FAFC;
     --card-bg: #FFFFFF;
@@ -76,46 +141,39 @@
     --app-surface-alt: #F1F5F9;
     --app-border: #E2E8F0;
     --app-text: #0F172A;
-    --app-muted: #64748B;
-    --app-brand: #0284C7;
-    --app-brand-strong: #0369A1;
+    --app-muted: #475569;
+    --app-brand: #0E7490;
+    --app-brand-strong: #0F766E;
 
-    --canvas: 248 250 252;
-    --card: 255 255 255;
-    --panel: 241 245 249;
-    --line: 226 232 240;
-    --ink: 15 23 42;
-    --muted: 71 85 105;
-    --faint: 100 116 139;
+    --surface-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04), 0 8px 24px -16px rgba(15, 23, 42, 0.18);
+    --surface-shadow-hover: 0 2px 4px 0 rgba(15, 23, 42, 0.06), 0 16px 40px -20px rgba(15, 23, 42, 0.24);
+    --surface-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+    --surface-highlight-hover: inset 0 1px 0 0 rgba(255, 255, 255, 1);
+    --scrim: rgba(15, 23, 42, 0.45);
+    --ambient-glow:
+      radial-gradient(60rem 40rem at 50% -20%, rgba(14, 116, 144, 0.08) 0%, transparent 70%),
+      radial-gradient(40rem 30rem at 85% 60%, rgba(109, 40, 217, 0.05) 0%, transparent 70%);
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /*
+   * The canvas is driven entirely by tokens so one rule covers both themes.
+   * The dark gradient previously lived in three near-identical blocks; it is
+   * now a single `--bg-image` value that each theme declares for itself.
+   */
   body {
-    background-color: #030610;
-    background-image:
-      radial-gradient(circle at 50% -10%, rgba(30, 58, 138, 0.25) 0%, rgba(15, 23, 42, 0.5) 40%, rgba(3, 7, 18, 0.95) 80%, #02040A 100%),
-      radial-gradient(circle at 80% 50%, rgba(29, 78, 216, 0.08) 0%, transparent 60%);
+    background-color: rgb(var(--canvas));
+    background-image: var(--bg-image);
     background-attachment: fixed;
-    color: #F8FAFC;
+    color: rgb(var(--ink));
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     margin: 0;
     padding: 0;
     -webkit-font-smoothing: antialiased;
     transition: background-color 200ms ease, color 200ms ease;
-  }
-
-  [data-theme="dark"] body,
-  .dark body {
-    background-color: #030610;
-    background-image:
-      radial-gradient(circle at 50% -10%, rgba(30, 58, 138, 0.25) 0%, rgba(15, 23, 42, 0.5) 40%, rgba(3, 7, 18, 0.95) 80%, #02040A 100%),
-      radial-gradient(circle at 80% 50%, rgba(29, 78, 216, 0.08) 0%, transparent 60%);
-    background-attachment: fixed;
-    color: #F8FAFC;
-  }
-
-  [data-theme="light"] body {
-    background-color: #F8FAFC;
-    color: #0F172A;
   }
 
   /* Global Dark Mode High-Contrast Auto-Remap for Text Visibility */
@@ -687,19 +745,116 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 
+  /*
+   * Surfaces + text. These resolve through the space-separated RGB tokens
+   * declared per theme above, which is what lets `bg-card/60` and
+   * `text-ink/80` keep working in both themes.
+   */
   --color-canvas: rgb(var(--canvas) / <alpha-value>);
   --color-card: rgb(var(--card) / <alpha-value>);
   --color-panel: rgb(var(--panel) / <alpha-value>);
+  --color-panel-strong: rgb(var(--panel-strong) / <alpha-value>);
   --color-line: rgb(var(--line) / <alpha-value>);
+  --color-line-strong: rgb(var(--line-strong) / <alpha-value>);
   --color-ink: rgb(var(--ink) / <alpha-value>);
   --color-muted: rgb(var(--muted) / <alpha-value>);
   --color-faint: rgb(var(--faint) / <alpha-value>);
 
-  --color-brand-gold: #F59E0B;
-  --color-brand-cyan: #2DD4BF;
-  --color-brand-emerald: #22C55E;
-  --color-brand-rose: #F43F5E;
-  --color-brand-violet: #A78BFA;
+  /*
+   * Accents. These were previously static hex, which is why the Trainer
+   * looked correct in dark mode and washed out in light mode. Pointing them
+   * at the per-theme RGB values fixes every existing `brand-*` call site at
+   * once — no view needs to change.
+   */
+  --color-brand-gold: rgb(var(--brand-gold) / <alpha-value>);
+  --color-brand-cyan: rgb(var(--brand-cyan) / <alpha-value>);
+  --color-brand-emerald: rgb(var(--brand-emerald) / <alpha-value>);
+  --color-brand-rose: rgb(var(--brand-rose) / <alpha-value>);
+  --color-brand-violet: rgb(var(--brand-violet) / <alpha-value>);
+
+  /*
+   * Product accent. Trainer, Trainee and Admin can keep their own role
+   * colours where a distinction is meaningful, but anything that should read
+   * as "the Kuma accent" uses this one.
+   */
+  --color-accent: rgb(var(--brand-accent) / <alpha-value>);
+  --color-accent-soft: rgb(var(--brand-accent) / 0.12);
+  --color-accent-line: rgb(var(--brand-accent) / 0.32);
+}
+
+/* --------------------------------------------------------------------------
+   Elevation + motion utilities.
+   These were referenced throughout the portals but only ever existed in
+   `src/teacher-portal/index.css`, which is not part of the build graph, so
+   `shadow-lift`, `shadow-glow-*`, `bg-radial-glow`, `animate-fade-in`,
+   `animate-scale-in` and `shimmer` were all silently rendering as no-ops.
+   -------------------------------------------------------------------------- */
+@utility shadow-lift {
+  box-shadow: var(--surface-shadow), var(--surface-highlight);
+}
+
+@utility shadow-lift-hover {
+  box-shadow: var(--surface-shadow-hover), var(--surface-highlight-hover);
+}
+
+@utility bg-radial-glow {
+  background-image: var(--ambient-glow);
+}
+
+@utility shadow-scrim {
+  box-shadow: 0 24px 70px -20px rgb(var(--canvas) / 0.7);
+}
+
+@keyframes kuma-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes kuma-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility animate-fade-in {
+  animation: kuma-fade-in 0.22s ease-out both;
+}
+
+@utility animate-scale-in {
+  animation: kuma-scale-in 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Skeleton shimmer. Light mode needs a darker sweep to stay visible. */
+@keyframes kuma-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@utility shimmer {
+  background-image: linear-gradient(
+    90deg,
+    rgb(var(--card)) 25%,
+    rgb(var(--panel-strong) / 0.7) 37%,
+    rgb(var(--card)) 63%
+  );
+  background-size: 200% 100%;
+  animation: kuma-shimmer 2.2s linear infinite;
 }
 
 .liquid-glass {
@@ -740,7 +895,7 @@
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04), 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+  box-shadow: var(--surface-shadow), var(--surface-highlight);
 }
 
 .glass-panel-hover {
@@ -748,8 +903,8 @@
 }
 
 .glass-panel-hover:hover {
-  border-color: rgba(56, 189, 248, 0.35);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 20px 44px -22px rgba(0, 0, 0, 0.9);
+  border-color: rgb(var(--brand-accent) / 0.4);
+  box-shadow: var(--surface-shadow-hover), var(--surface-highlight-hover);
   transform: translateY(-2px);
 }
 
@@ -757,25 +912,6 @@
   font-family: 'IBM Plex Mono', monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.025em;
-}
-
-@keyframes shimmerAnim {
-  0% {
-    background-position: -200% 0;
-  }
-
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.shimmer {
-  background: linear-gradient(90deg,
-      rgba(255, 255, 255, 0.02) 25%,
-      rgba(255, 255, 255, 0.06) 37%,
-      rgba(255, 255, 255, 0.02) 63%);
-  background-size: 200% 100%;
-  animation: shimmerAnim 2.2s linear infinite;
 }
 
 @keyframes drawerIn {
@@ -809,4 +945,82 @@
 .nav-item[data-active='true'] {
   color: rgb(var(--ink));
   background-color: rgb(var(--panel));
+}
+
+/* --------------------------------------------------------------------------
+   Accent glows. Referenced by `accents.ts` but never defined, so the
+   "glow" treatment on KPI cards and primary actions was a silent no-op.
+   Driven by the per-theme accent values so they read on either canvas.
+   -------------------------------------------------------------------------- */
+@utility shadow-glow-gold {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-gold) / 0.5);
+}
+
+@utility shadow-glow-cyan {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-cyan) / 0.5);
+}
+
+@utility shadow-glow-emerald {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-emerald) / 0.5);
+}
+
+@utility shadow-glow-violet {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-violet) / 0.5);
+}
+
+@utility shadow-glow-rose {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-rose) / 0.5);
+}
+
+/* --------------------------------------------------------------------------
+   Global a11y + scrollbars. The previous Bauhaus scrollbar track used
+   `--bg-paper`, which made it invisible against the Trainer canvas in light
+   mode. These use the canonical surface tokens instead.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line-strong)) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--line-strong));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--faint));
+  background-clip: content-box;
+}
+
+::selection {
+  background: rgb(var(--brand-accent) / 0.28);
+  color: rgb(var(--ink));
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--brand-accent));
+  outline-offset: 2px;
 }
