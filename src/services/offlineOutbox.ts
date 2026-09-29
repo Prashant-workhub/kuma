@@ -21,9 +21,12 @@
 export type OfflineOperationType =
   | 'profile_update'
   | 'enrollment_update'
+  | 'training_enrollment'
   | 'assessment_submit'
   | 'competency_update'
+  | 'module_progress'
   | 'trainer_select'
+  | 'trainer_selection'
   | 'file_upload'
   | 'certificate_create'
   | 'generic';

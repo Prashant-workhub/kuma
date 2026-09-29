@@ -140,11 +140,43 @@ async function processOperation(op: PendingOperation): Promise<void> {
       break;
     }
 
+    case 'training_enrollment': {
+      const { userId, courseId, profile } = op.payload;
+      const uid = userId || currentUser.uid;
+      if (courseId && profile) {
+        const { enrollInTrainingProgram } = await import('./capacityConnectService');
+        await enrollInTrainingProgram(uid, profile, courseId);
+      }
+      break;
+    }
+
+    case 'module_progress': {
+      const { userId, course, topicId, completed, profile } = op.payload;
+      const uid = userId || currentUser.uid;
+      if (course && topicId !== undefined && profile) {
+        const { setPersistentModuleProgress } = await import('./capacityConnectService');
+        await setPersistentModuleProgress(uid, course, topicId, completed, profile);
+      }
+      break;
+    }
+
+    case 'assessment_submit': {
+      const { attempt, competencies } = op.payload;
+      if (attempt && competencies) {
+        const { persistAssessmentOutcome } = await import('./capacityConnectService');
+        await persistAssessmentOutcome(attempt, competencies);
+      }
+      break;
+    }
+
+    case 'trainer_selection':
     case 'trainer_select': {
-      // Trainer selection is already transactional in trainerDiscoveryService.
-      // If it was queued offline, replay the full payload.
-      const { assignmentId, data } = op.payload;
-      if (assignmentId && data) {
+      const { traineeId, trainer, traineeProfile, assignmentId, data } = op.payload;
+      const tid = traineeId || currentUser.uid;
+      if (trainer && traineeProfile) {
+        const { selectTrainerForTrainee } = await import('./trainerDiscoveryService');
+        await selectTrainerForTrainee(tid, traineeProfile, trainer, false);
+      } else if (assignmentId && data) {
         await setDoc(doc(db, 'trainer_assignments', assignmentId), {
           ...data,
           updatedAt: serverTimestamp(),
@@ -174,7 +206,7 @@ async function processOperation(op: PendingOperation): Promise<void> {
 
 /**
  * Drains all pending operations from the IndexedDB outbox.
- * Processes them sequentially to avoid overwhelming the network.
+ * Processes them sequentially in dependency order to avoid overwhelming network.
  */
 async function drainOutbox(userId?: string): Promise<void> {
   if (isSyncing) return;
@@ -191,7 +223,30 @@ async function drainOutbox(userId?: string): Promise<void> {
       op => op.status === 'pending' || op.status === 'retrying' || op.status === 'failed'
     ).filter(op => op.retryCount < (op.maxRetries || MAX_RETRIES));
 
-    for (const op of retryable) {
+    // Sort operations safely by dependency order:
+    // trainer_select (1) -> training_enrollment (2) -> module_progress (3) -> assessment_submit (4) -> others
+    const typePriority: Record<string, number> = {
+      'trainer_select': 1,
+      'trainer_selection': 1,
+      'training_enrollment': 2,
+      'enrollment_update': 2,
+      'module_progress': 3,
+      'assessment_submit': 4,
+      'profile_update': 5,
+      'competency_update': 5,
+      'file_upload': 6,
+      'certificate_create': 7,
+      'generic': 8
+    };
+
+    const orderedOperations = [...retryable].sort((a, b) => {
+      const pA = typePriority[a.operationType] || 99;
+      const pB = typePriority[b.operationType] || 99;
+      if (pA !== pB) return pA - pB;
+      return a.createdAt - b.createdAt;
+    });
+
+    for (const op of orderedOperations) {
       if (!navigator.onLine) break; // Stop if we go offline mid-sync
 
       try {

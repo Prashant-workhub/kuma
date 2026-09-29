@@ -159,6 +159,31 @@ export async function enrollInTrainingProgram(
   const enrollmentId = `enr_${traineeId}_${programId}`;
   const enrollmentRef = doc(db, 'trainingEnrollments', enrollmentId);
 
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const { queueOperation } = await import('./offlineOutbox');
+    await queueOperation(traineeId, 'training_enrollment', {
+      userId: traineeId,
+      courseId: programId,
+      profile
+    });
+    const fallbackEnrollment: TrainingEnrollment = {
+      id: enrollmentId,
+      userId: traineeId,
+      trainerId: 'pending_trainer',
+      userName: profile.fullName,
+      courseId: programId,
+      courseCode: programId.toUpperCase(),
+      courseName: 'Training Program',
+      subject: 'Capacity Building',
+      organizationId: profile.organization || '',
+      completionRate: 0,
+      status: 'enrolled',
+      quizPassed: false,
+      enrolledAt: new Date().toISOString()
+    };
+    return fallbackEnrollment;
+  }
+
   return runTransaction(db, async (transaction) => {
     const [programSnapshot, existingSnapshot] = await Promise.all([
       transaction.get(programRef),
@@ -208,6 +233,39 @@ export async function setPersistentModuleProgress(
 ): Promise<{ enrollment: TrainingEnrollment; certificate?: TrainingCertificate }> {
   const enrollmentId = `enr_${traineeId}_${program.id}`;
   const enrollmentRef = doc(db, 'trainingEnrollments', enrollmentId);
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const { queueOperation } = await import('./offlineOutbox');
+    await queueOperation(traineeId, 'module_progress', {
+      userId: traineeId,
+      course: program,
+      topicId: moduleId,
+      completed: isComplete,
+      profile
+    });
+    const localSyllabus = program.syllabus || [];
+    const moduleProgress: Record<string, boolean> = { [moduleId]: isComplete };
+    const completedCount = isComplete ? 1 : 0;
+    const progressPercentage = localSyllabus.length > 0 ? Math.round((completedCount / localSyllabus.length) * 100) : 0;
+    const fallbackEnrollment: TrainingEnrollment = {
+      id: enrollmentId,
+      userId: traineeId,
+      trainerId: 'pending_trainer',
+      userName: profile.fullName,
+      courseId: program.id,
+      courseCode: (program as any).courseCode || program.id.toUpperCase(),
+      courseName: (program as any).courseName || 'Training Program',
+      subject: (program as any).subject || 'Capacity Building',
+      organizationId: profile.organization || '',
+      completionRate: progressPercentage,
+      status: 'in_progress',
+      moduleProgress,
+      quizPassed: false,
+      enrolledAt: new Date().toISOString()
+    };
+    return { enrollment: fallbackEnrollment };
+  }
+
   const enrollment = await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(enrollmentRef);
     if (!snapshot.exists()) throw new Error('Enroll in this program before updating progress.');
@@ -386,7 +444,18 @@ export async function persistAssessmentOutcome(
 ): Promise<{ trainingCompleted: boolean }> {
   const currentUser = auth.currentUser;
   if (!currentUser || currentUser.uid !== attempt.userId) throw new Error('Assessment user does not match the authenticated Firebase UID.');
-  if (!attempt.assignmentId || !attempt.trainerId) throw new Error('This assessment has no persisted trainer assignment.');
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const { queueOperation } = await import('./offlineOutbox');
+    await queueOperation(currentUser.uid, 'assessment_submit', {
+      attempt,
+      programId: attempt.trainingProgramId || 'program_1',
+      trainerId: attempt.trainerId || 'trainer_1',
+      competencies,
+      assignmentId: attempt.assignmentId
+    });
+    return { trainingCompleted: attempt.passed === true };
+  }
 
   const assignmentRef = doc(db, 'assessmentAssignments', attempt.assignmentId);
   const assignmentSnapshot = await getDoc(assignmentRef);

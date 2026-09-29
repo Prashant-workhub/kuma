@@ -344,6 +344,26 @@ export async function selectTrainerForTrainee(
     createdAt: now
   };
 
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const { queueOperation } = await import('./offlineOutbox');
+    await queueOperation(traineeId, 'trainer_selection', {
+      traineeId,
+      trainer,
+      traineeProfile
+    });
+    if (includeDemoTrainers && typeof localStorage !== 'undefined') {
+      const existingAssignments = getAllTrainerAssignments();
+      const updatedAssignments = existingAssignments
+        .map(a => a.traineeId === traineeId ? { ...a, status: 'Completed' as const } : a)
+        .filter(a => a.id !== assignmentId);
+      updatedAssignments.unshift(record);
+      try {
+        localStorage.setItem(TRAINER_ASSIGNMENTS_STORAGE_KEY, JSON.stringify(updatedAssignments));
+      } catch (err) {}
+    }
+    return record;
+  }
+
   const existingQuery = query(
     collection(db, 'trainer_assignments'),
     where('traineeId', '==', traineeId),
