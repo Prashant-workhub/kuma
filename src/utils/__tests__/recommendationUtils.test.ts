@@ -16,8 +16,8 @@ test('getTrainingRecommendations ranks Critical priority gaps higher than Medium
     departmentName: 'Engineering',
     isActive: true,
     requiredCompetencies: [
-      { competencyId: 'comp-react', competencyName: 'React Development', requiredLevel: 'Expert', requiredNumericLevel: 4, priority: 'Critical' },
-      { competencyId: 'comp-python', competencyName: 'Python Data Science', requiredLevel: 'Advanced', requiredNumericLevel: 3, priority: 'Medium' }
+      { competencyId: 'comp-react', competencyName: 'React Development', requiredLevel: 'Expert', requiredNumericLevel: 4, priority: 'high' },
+      { competencyId: 'comp-python', competencyName: 'Python Data Science', requiredLevel: 'Advanced', requiredNumericLevel: 3, priority: 'medium' }
     ]
   };
 

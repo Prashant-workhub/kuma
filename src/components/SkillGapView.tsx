@@ -197,6 +197,9 @@ export default function SkillGapView({
   }, [competencies, traineeDesignation]);
 
   const totalCompetencies = designationGaps.length;
+  const meetingTargetCount = designationGaps.filter((g) => g.gap === 0).length;
+  const devNeededCount = designationGaps.filter((g) => g.gap === 1).length;
+  const sigDevCount = designationGaps.filter((g) => g.gap === 2).length;
   const highDevCount = designationGaps.filter((g) => g.gap >= 3).length;
 
   // Domain Category Heatmap Breakdown
