@@ -741,10 +741,10 @@
   color: #92400E !important;
 }
 
-[data-theme="dark"] .a4-page [class*="bg-[#FFD54F]"],
-.dark .a4-page .bg-[#FFD54F],
-[data-theme="dark"] .a4-page [class*="bg-[#FEF08A]"],
-.dark .a4-page .bg-[#FEF08A] {
+[data-theme="dark"] .a4-page [class*="FFD54F"],
+.dark .a4-page [class*="FFD54F"],
+[data-theme="dark"] .a4-page [class*="FEF08A"],
+.dark .a4-page [class*="FEF08A"] {
   background-color: #FFD54F !important;
   color: #0F294A !important;
 }

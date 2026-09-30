@@ -29,7 +29,8 @@ import {
   Check,
   XCircle,
   MessageSquare,
-  Bug
+  Bug,
+  Download
 } from 'lucide-react';
 import { PageId, CatalogCompetency, TrainingCertificate, TrainingEnrollment, OrgDepartment, OrgDesignation, DesignationCompetencyRequirement, SkillProficiencyLevel } from '../types';
 import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, DEMO_TRAINEES, DEMO_ORG_DEPARTMENTS_FULL, DEMO_ORG_DESIGNATIONS_FULL, seedDemoEnvironment, resetDemoEnvironment } from '../utils/demoDataSeeder';
@@ -386,6 +387,28 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
     setStatusNotice(`Competency '${newComp.name}' created successfully.`);
   };
 
+  const handleExportGovernanceReport = () => {
+    const headers = ['Department', 'Trainee Name', 'Designation', 'Competencies Tracked', 'Status'];
+    const rows = traineeList.map(t => [
+      `"${t.department}"`,
+      `"${t.fullName}"`,
+      `"${t.designation}"`,
+      t.competencies.length,
+      `"Active Cohort"`
+    ]);
+
+    const csvText = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Kuma_Workforce_Governance_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setStatusNotice('Workforce Capacity & Governance Report (.CSV) generated and downloaded.');
+  };
+
   const handleSeedData = () => {
     const res = seedDemoEnvironment();
     setStatusNotice(res.message);
@@ -487,6 +510,14 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportGovernanceReport}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-slate-800 text-cyan-400 font-bold text-xs border border-cyan-500/40 shadow-paper-sm hover:bg-slate-700 cursor-pointer"
+            >
+              <Download size={13} />
+              <span>EXPORT GOVERNANCE REPORT (.CSV)</span>
+            </button>
+
             <button
               onClick={handleSeedData}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold text-xs border border-amber-300 shadow-paper-yellow hover:brightness-110 cursor-pointer"

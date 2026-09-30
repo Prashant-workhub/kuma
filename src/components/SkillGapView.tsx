@@ -31,6 +31,7 @@ import {
   TraineeChip,
   TraineeKpi,
   TraineeEmptyState,
+  CategoryPill,
   type Accent,
 } from './trainee/TraineeUI';
 
@@ -196,10 +197,25 @@ export default function SkillGapView({
   }, [competencies, traineeDesignation]);
 
   const totalCompetencies = designationGaps.length;
-  const meetingTargetCount = designationGaps.filter((g) => g.gap === 0).length;
-  const devNeededCount = designationGaps.filter((g) => g.gap === 1).length;
-  const sigDevCount = designationGaps.filter((g) => g.gap === 2).length;
   const highDevCount = designationGaps.filter((g) => g.gap >= 3).length;
+
+  // Domain Category Heatmap Breakdown
+  const categoryBreakdown = useMemo(() => {
+    const groups: Record<string, { total: number; met: number; currentSum: number; targetSum: number }> = {};
+    designationGaps.forEach((g) => {
+      const cat = g.category || 'Technical';
+      if (!groups[cat]) groups[cat] = { total: 0, met: 0, currentSum: 0, targetSum: 0 };
+      groups[cat].total += 1;
+      if (g.gap === 0) groups[cat].met += 1;
+      groups[cat].currentSum += g.currentNumericLevel;
+      groups[cat].targetSum += g.requiredNumericLevel;
+    });
+    return Object.entries(groups).map(([category, stats]) => ({
+      category,
+      ...stats,
+      pct: stats.targetSum > 0 ? Math.round((stats.currentSum / stats.targetSum) * 100) : 0,
+    }));
+  }, [designationGaps]);
 
 
   // Recommendation Engine execution against Trainee Designation Skill Gaps
@@ -311,6 +327,44 @@ export default function SkillGapView({
             Required competencies specified by organization
           </span>
         </div>
+
+        {/* Category Proficiency Heatmap */}
+        {categoryBreakdown.length > 0 && (
+          <TraineeCard className="space-y-4 border-t-2 border-t-brand-cyan">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-2">
+                <Layers size={16} className="text-brand-cyan" />
+                Domain Proficiency Heatmap
+              </div>
+              <span className="text-xs text-muted font-mono">{categoryBreakdown.length} Skill Domains Tracked</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categoryBreakdown.map((cat, idx) => (
+                <div key={idx} className="p-3.5 rounded-xl border border-line bg-panel/60 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <CategoryPill category={cat.category} />
+                    <span className="font-mono text-xs font-extrabold text-ink">{cat.pct}% Target Match</span>
+                  </div>
+
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-panel">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        cat.pct >= 100 ? 'bg-emerald-400' : cat.pct >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                      }`}
+                      style={{ width: `${Math.min(100, cat.pct)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-faint font-mono">
+                    <span>{cat.met} of {cat.total} targets met</span>
+                    <span>Score: {cat.currentSum}/{cat.targetSum} pts</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TraineeCard>
+        )}
 
         {designationGaps.length === 0 ? (
           <TraineeEmptyState

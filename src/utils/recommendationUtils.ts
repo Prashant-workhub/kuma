@@ -20,6 +20,8 @@ export interface TrainingRecommendation {
   matchedGaps: MatchedGapDetail[];
   maxGap: number;
   totalGapSum: number;
+  weightedScore: number;
+  highestPriority: 'Critical' | 'High' | 'Medium' | 'Low';
   enrollmentStatus: 'not_started' | 'in_progress' | 'completed';
   progressPercentage: number;
   reason: string;
@@ -40,8 +42,9 @@ export interface ResourceRecommendation {
  * 2. Find active courses (course.isActive !== false) associated with those competencies.
  * 3. Filter out completed training (completionRate >= 100).
  * 4. Support multi-competency courses (aggregates all matched gaps per course).
- * 5. Rank by addressed Gap Priority (Critical > High > Medium > Low) and maxGap.
- * 6. Detect unmatched gaps where no training exists ("Training Coverage Gap").
+ * 5. Calculate Priority Weighted Score (Critical=4x, High=3x, Medium=2x, Low=1x).
+ * 6. Rank by Highest Priority (Critical > High > Medium > Low), then Weighted Score, then Max Gap.
+ * 7. Detect unmatched gaps where no training exists ("Training Coverage Gap").
  */
 export function getTrainingRecommendations(
   traineeCompetencies: TraineeCompetency[],
@@ -73,6 +76,13 @@ export function getTrainingRecommendations(
 
   // 3. Match and rank Courses
   const recommendedCourses: TrainingRecommendation[] = [];
+  const priorityRank: Record<string, number> = { Critical: 4, High: 3, Medium: 2, Low: 1 };
+  const orderToPriority: Record<number, 'Critical' | 'High' | 'Medium' | 'Low'> = {
+    4: 'Critical',
+    3: 'High',
+    2: 'Medium',
+    1: 'Low'
+  };
 
   courses.forEach((course) => {
     if (course.isActive === false) return; // Ignore inactive courses
@@ -83,9 +93,8 @@ export function getTrainingRecommendations(
     const matchedGaps: MatchedGapDetail[] = [];
     let maxGap = 0;
     let totalGapSum = 0;
+    let weightedScore = 0;
     let highestPriorityOrder = 0; // 4=Critical, 3=High, 2=Medium, 1=Low
-
-    const priorityRank: Record<string, number> = { Critical: 4, High: 3, Medium: 2, Low: 1 };
 
     // Check by ID first
     courseCompIds.forEach((cId) => {
@@ -101,7 +110,10 @@ export function getTrainingRecommendations(
         matchedCompetencyIds.add(match.competencyId);
         maxGap = Math.max(maxGap, match.gap);
         totalGapSum += match.gap;
-        highestPriorityOrder = Math.max(highestPriorityOrder, priorityRank[match.priority] || 1);
+        
+        const pWeight = priorityRank[match.priority] || 1;
+        highestPriorityOrder = Math.max(highestPriorityOrder, pWeight);
+        weightedScore += (match.gap * pWeight);
       }
     });
 
@@ -119,7 +131,10 @@ export function getTrainingRecommendations(
         matchedCompetencyIds.add(match.competencyId);
         maxGap = Math.max(maxGap, match.gap);
         totalGapSum += match.gap;
-        highestPriorityOrder = Math.max(highestPriorityOrder, priorityRank[match.priority] || 1);
+
+        const pWeight = priorityRank[match.priority] || 1;
+        highestPriorityOrder = Math.max(highestPriorityOrder, pWeight);
+        weightedScore += (match.gap * pWeight);
       }
     });
 
@@ -145,14 +160,16 @@ export function getTrainingRecommendations(
         return;
       }
 
+      const highestPriority = orderToPriority[highestPriorityOrder] || 'Medium';
+
       // Generate deterministic, transparent reason based on actual data
       let reason = '';
       if (matchedGaps.length === 1) {
         const mg = matchedGaps[0];
-        reason = `Recommended because it addresses your ${mg.competencyName} competency gap (Current: ${mg.currentLevel} ➔ Required: ${mg.targetLevel}).`;
+        reason = `Priority recommendation (${highestPriority}): Addresses your ${mg.competencyName} gap (Current: ${mg.currentLevel} ➔ Target: ${mg.targetLevel}).`;
       } else {
-        const gapListStr = matchedGaps.map((mg) => `${mg.competencyName} (Current: ${mg.currentLevel} ➔ Required: ${mg.targetLevel})`).join(', ');
-        reason = `Recommended because it addresses ${matchedGaps.length} of your competency gaps: ${gapListStr}.`;
+        const gapListStr = matchedGaps.map((mg) => `${mg.competencyName} (${mg.currentLevel} ➔ ${mg.targetLevel})`).join(', ');
+        reason = `High impact program (${highestPriority}): Bridges ${matchedGaps.length} designation skill gaps: ${gapListStr}.`;
       }
 
       recommendedCourses.push({
@@ -161,6 +178,8 @@ export function getTrainingRecommendations(
         matchedGaps,
         maxGap,
         totalGapSum,
+        weightedScore,
+        highestPriority,
         enrollmentStatus: status,
         progressPercentage: completionRate,
         reason,
@@ -172,12 +191,16 @@ export function getTrainingRecommendations(
   const unmatchedGaps = activeGaps.filter(g => !matchedCompetencyIds.has(g.competencyId));
 
   // Sort course recommendations:
-  // Primary: maxGap descending
-  // Secondary: totalGapSum descending
-  // Tertiary: courseName ascending
+  // 1. Highest Priority order descending (Critical=4 > High=3 > Medium=2 > Low=1)
+  // 2. Weighted Score descending
+  // 3. maxGap descending
+  // 4. courseName ascending
   recommendedCourses.sort((a, b) => {
+    const aPriorityOrder = priorityRank[a.highestPriority] || 1;
+    const bPriorityOrder = priorityRank[b.highestPriority] || 1;
+    if (bPriorityOrder !== aPriorityOrder) return bPriorityOrder - aPriorityOrder;
+    if (b.weightedScore !== a.weightedScore) return b.weightedScore - a.weightedScore;
     if (b.maxGap !== a.maxGap) return b.maxGap - a.maxGap;
-    if (b.totalGapSum !== a.totalGapSum) return b.totalGapSum - a.totalGapSum;
     return (a.course.courseName || '').localeCompare(b.course.courseName || '');
   });
 

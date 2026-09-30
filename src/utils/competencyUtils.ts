@@ -193,6 +193,7 @@ export function calculateDesignationSkillGaps(
     // Search trainee records for matching competency (by ID or exact name)
     const match = (traineeCompetencies || []).find(
       (c) => c && ((c.competencyId && c.competencyId === req.competencyId) ||
+             (c.id && c.id === req.competencyId) ||
              (c.name && req.competencyName && c.name.toLowerCase() === req.competencyName.toLowerCase()))
     );
 
@@ -222,17 +223,18 @@ export function calculateDesignationSkillGaps(
 
     // Priority derivation using organizational requirement signal + gap
     let priority: RoleSkillGapRecord['priority'] = 'Low';
-    if (req.priority) {
-      if (req.priority === 'high' && gap >= 2) priority = 'Critical';
-      else if (req.priority === 'high' || (req.priority === 'medium' && gap >= 1)) priority = 'High';
-      else if (req.priority === 'low' && gap === 1) priority = 'Medium';
-      else if (gap === 0) priority = 'Low';
-      else priority = 'Medium';
+    const rawPriority = (req.priority || '').toLowerCase();
+
+    if (rawPriority === 'critical' || (rawPriority === 'high' && gap >= 2)) {
+      priority = 'Critical';
+    } else if (rawPriority === 'high' || (rawPriority === 'medium' && gap >= 2)) {
+      priority = 'High';
+    } else if (rawPriority === 'medium' || (rawPriority === 'low' && gap >= 1)) {
+      priority = 'Medium';
+    } else if (gap === 0) {
+      priority = 'Low';
     } else {
-      if (gap === 0) priority = 'Low';
-      else if (gap === 1) priority = 'Medium';
-      else if (gap === 2) priority = 'High';
-      else if (gap >= 3) priority = 'Critical';
+      priority = gap >= 3 ? 'Critical' : gap === 2 ? 'High' : gap === 1 ? 'Medium' : 'Low';
     }
 
     const catalogComp = catalog.find(c => c.id === req.competencyId);
