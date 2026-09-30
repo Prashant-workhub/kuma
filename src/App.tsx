@@ -79,12 +79,21 @@ import NotificationsView from './components/NotificationsView';
 import SettingsView from './components/SettingsView';
 import SupportView from './components/SupportView';
 import PricingView from './components/PricingView';
+import { AppShell, FocusLayout } from './components/layout';
 
 // Code Splitting for heavy portals
 const TeacherPortalApp = lazy(() => import('./teacher-portal/TeacherPortalApp'));
 const AdminPortalApp = lazy(() => import('./admin/AdminPortalApp'));
+const DevUIRefPage = lazy(() => import('./components/dev/DevUIRefPage'));
 
 export default function App() {
+  if (typeof window !== 'undefined' && window.location.pathname === '/dev/ui') {
+    return (
+      <Suspense fallback={<BruteLoader size="lg" message="Loading UI Reference..." />}>
+        <DevUIRefPage />
+      </Suspense>
+    );
+  }
   // Network connectivity state (critical for mobile users)
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     if (typeof navigator === 'undefined') return true;
@@ -1196,74 +1205,42 @@ export default function App() {
     );
   }
 
+  if (isLanding) {
+    return (
+      <ErrorBoundary theme={theme}>
+        <Suspense fallback={<BruteLoader size="lg" message="Loading..." />}>
+          {renderActiveView()}
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary theme={theme}>
-      {!isLanding && sessionUser && <NotificationPermissionBanner />}
-      <div className="flex h-screen w-screen overflow-hidden transition-all duration-300 bg-[var(--bg-paper)] text-[var(--text-primary)]">
-
-        {/* Sidebar - hides completely on landing page layout */}
-        {!isLanding && (
-          <Sidebar
-            activePage={activePage}
-            setActivePage={setActivePage}
-            isOpenMobile={isOpenMobile}
-            setIsOpenMobile={setIsOpenMobile}
-            settings={settings}
-            onNewAnalysis={handleNewAnalysisShortcut}
-            theme={theme}
-            onLogOut={handleLogOut}
-          />
-        )}
-
-        {/* Main core layout frame container */}
-        <div className="flex flex-1 flex-col overflow-hidden h-full bg-[var(--bg-paper)]">
-          {/* Demo Mode Banner for Evaluators */}
-          {sessionUser && ['admin@acme.com', 'trainer@acme.com', 'trainee@acme.com', 'admin@capacityconnect.in', 'alex.rivera@capacityconnect.in', 'aarav.sharma@capacityconnect.in', 'guest.student@kuma.ai'].includes((sessionUser.emailAddress || settings.profile.emailAddress || '').toLowerCase()) && (
-            <div className="bg-[#FFC400]/20 border-b-2 border-[#FFC400] px-4 py-1.5 flex items-center justify-between text-xs font-mono font-bold text-[var(--text-primary)] z-50 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-[#FFC400] text-[#111111] font-extrabold text-[10px] tracking-wider uppercase shadow-paper-sm">
-                  🧪 DEMO MODE ACTIVE
-                </span>
-                <span>
-                  Logged in as Seeded <strong className="uppercase">{userRole}</strong> ({sessionUser.emailAddress})
-                </span>
-                <span className="hidden md:inline-block text-[11px] text-[var(--text-secondary)] border-l-2 border-[var(--border-main)] pl-2">
-                  Organization: Acme Digital Services
-                </span>
-              </div>
-              <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)] hidden sm:inline-block">
-                Seeded Firestore Data
-              </span>
-            </div>
-          )}
-
-          {/* Navbar - hides on landing page layout */}
-          {!isLanding && (
-            <Navbar
-              activePage={activePage}
-              setActivePage={setActivePage}
-              setIsOpenMobile={setIsOpenMobile}
-              settings={settings}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              onNewAnalysis={handleNewAnalysisShortcut}
-              theme={theme}
-              setTheme={setTheme}
-              onLogOut={handleLogOut}
-              isOnline={isOnline}
-            />
-          )}
-
-          {/* Dynamic page contents viewer */}
-          <main className={`flex-1 overflow-y-auto bg-[var(--bg-paper)] text-[var(--text-primary)] ${isLanding ? 'p-0' : 'p-2 md:p-3'
-            }`}>
-            <Suspense fallback={<BruteLoader size="lg" message="Loading..." />}>
-              {renderActiveView()}
-            </Suspense>
-          </main>
-        </div>
-
-      </div>
+      {sessionUser && <NotificationPermissionBanner />}
+      <AppShell
+        role="student"
+        user={{
+          uid: sessionUser?.uid || 'trainee-1',
+          fullName: settings.profile.fullName || sessionUser?.fullName || 'Trainee Learner',
+          emailAddress: sessionUser?.emailAddress || settings.profile.emailAddress || 'trainee@acme.com',
+        }}
+        activePage={activePage}
+        onNavigate={(p) => setActivePage(p as PageId)}
+        onSignOut={handleLogOut}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        notifications={notifications.map((n) => ({
+          id: n.id,
+          title: n.title,
+          message: n.description || n.title,
+          read: n.read,
+        }))}
+      >
+        <Suspense fallback={<BruteLoader size="lg" message="Loading..." />}>
+          {renderActiveView()}
+        </Suspense>
+      </AppShell>
 
       {/* Interactive Step-by-Step Guiding Tour Popup System */}
       <GuidedTour

@@ -5,9 +5,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Quiz, QuizAttemptRecord, CatalogCompetency } from '../types';
-import { Modal, Button } from './bauhaus';
+import { Button } from './bauhaus';
 import { CheckCircle2, XCircle, Award, ArrowRight, RotateCcw, Clock, AlertTriangle } from 'lucide-react';
 import { startAssessment, submitAssessment, SubmitAssessmentResponse } from '../services/assessmentService';
+import { FocusLayout } from './layout';
 
 interface AssessmentTakingModalProps {
   isOpen: boolean;
@@ -214,12 +215,14 @@ export default function AssessmentTakingModal({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const progressPct = isSubmitted ? 100 : Math.round(((currentQuestionIndex + 1) / Math.max(totalQuestions, 1)) * 100);
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`ASSESSMENT: ${quiz.title.toUpperCase()}`}
-      size="lg"
+    <FocusLayout
+      title={quiz.title}
+      subtitle={`Competency: ${competencyName}`}
+      progress={progressPct}
+      onExit={onClose}
     >
       <div className="space-y-6 select-none p-1">
 
@@ -561,6 +564,6 @@ export default function AssessmentTakingModal({
           </div>
         )}
       </div>
-    </Modal>
+    </FocusLayout>
   );
 }

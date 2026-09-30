@@ -1,0 +1,194 @@
+/* ==========================================================================
+   KUMA DESIGN SYSTEM — ENTERPRISE DESIGN TOKENS
+   ========================================================================== */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surface & Canvas Scale */
+  --page: #F6F7F9;
+  --surface: #FFFFFF;
+  --surface-muted: #EEF0F4;
+  --border: #DDE1E7;
+  --border-strong: #B0B8C5;
+
+  /* Text Scale */
+  --text-primary: #151A22;
+  --text-secondary: #4A5462;
+  --text-tertiary: #5F6B7C;
+
+  /* Brand Primary */
+  --primary: #1F4FD8;
+  --primary-hover: #173EB0;
+  --primary-subtle: #EFF3FE;
+  --text-primary-subtle: #1338A0;
+
+  /* Status Tokens — Success */
+  --success: #1E7A4C;
+  --success-subtle: #EBF7F0;
+  --text-success-subtle: #145333;
+
+  /* Status Tokens — Warning */
+  --warning: #A15C07;
+  --warning-subtle: #FEF7EC;
+  --text-warning-subtle: #734103;
+
+  /* Status Tokens — Danger */
+  --danger: #B4232C;
+  --danger-subtle: #FDF2F2;
+  --text-danger-subtle: #82151B;
+
+  /* Status Tokens — Info */
+  --info: #0F6C8C;
+  --info-subtle: #F0F9FC;
+  --text-info-subtle: #0A485E;
+
+  /* Legacy & Bridge Mappings (ensures zero breaking changes on existing code) */
+  --canvas: 246 247 249;
+  --card: 255 255 255;
+  --panel: 238 240 244;
+  --panel-strong: 221 225 231;
+  --line: 221 225 231;
+  --line-strong: 176 184 197;
+  --ink: 21 26 34;
+  --muted: 74 84 98;
+  --faint: 95 107 124;
+
+  --bg-paper: #F6F7F9;
+  --bg-main: #F6F7F9;
+  --card-bg: #FFFFFF;
+  --panel-bg: #EEF0F4;
+  --hover-bg: #EEF0F4;
+  --shadow-color: rgba(21, 26, 34, 0.06);
+
+  --app-bg: #F6F7F9;
+  --app-surface: #FFFFFF;
+  --app-surface-alt: #EEF0F4;
+  --app-border: #DDE1E7;
+  --app-text: #151A22;
+  --app-muted: #4A5462;
+  --app-brand: #1F4FD8;
+  --app-brand-strong: #173EB0;
+}
+
+[data-theme="dark"],
+.dark {
+  color-scheme: dark;
+
+  /* Surface & Canvas Scale */
+  --page: #0F1319;
+  --surface: #171C24;
+  --surface-muted: #1E2430;
+  --border: #2A3140;
+  --border-strong: #404A5E;
+
+  /* Text Scale */
+  --text-primary: #E7EAF0;
+  --text-secondary: #AAB3C2;
+  --text-tertiary: #8892A3;
+
+  /* Brand Primary */
+  --primary: #6D93F5;
+  --primary-hover: #8BAAFF;
+  --primary-subtle: #192542;
+  --text-primary-subtle: #9DB8FF;
+
+  /* Status Tokens — Success */
+  --success: #42BD79;
+  --success-subtle: #132E20;
+  --text-success-subtle: #5FD695;
+
+  /* Status Tokens — Warning */
+  --warning: #F59E0B;
+  --warning-subtle: #332308;
+  --text-warning-subtle: #FBBF24;
+
+  /* Status Tokens — Danger */
+  --danger: #F87171;
+  --danger-subtle: #38161A;
+  --text-danger-subtle: #FCA5A5;
+
+  /* Status Tokens — Info */
+  --info: #38BDF8;
+  --info-subtle: #102A36;
+  --text-info-subtle: #7DD3FC;
+
+  /* Legacy & Bridge Mappings */
+  --canvas: 15 19 25;
+  --card: 23 28 36;
+  --panel: 30 36 48;
+  --panel-strong: 42 49 64;
+  --line: 42 49 64;
+  --line-strong: 64 74 94;
+  --ink: 231 234 240;
+  --muted: 170 179 194;
+  --faint: 136 146 163;
+
+  --bg-paper: #0F1319;
+  --bg-main: #0F1319;
+  --card-bg: #171C24;
+  --panel-bg: #1E2430;
+  --hover-bg: #1E2430;
+  --shadow-color: rgba(0, 0, 0, 0.4);
+
+  --app-bg: #0F1319;
+  --app-surface: #171C24;
+  --app-surface-alt: #1E2430;
+  --app-border: #2A3140;
+  --app-text: #E7EAF0;
+  --app-muted: #AAB3C2;
+  --app-brand: #6D93F5;
+  --app-brand-strong: #8BAAFF;
+}
+
+:root {
+  /* Spacing Scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Radii Scale */
+  --radius-control: 4px;
+  --radius-container: 8px;
+  --radius-full: 9999px;
+
+  /* Shadow Scale — Single Enterprise Overlay Shadow */
+  --shadow-overlay: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  /* Typography Scale & Line Heights */
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --font-size-xs: 12px;
+  --line-height-xs: 16px;
+
+  --font-size-sm: 13px;
+  --line-height-sm: 18px;
+
+  --font-size-base: 14px;
+  --line-height-base: 20px;
+
+  --font-size-md: 16px;
+  --line-height-md: 24px;
+
+  --font-size-lg: 18px;
+  --line-height-lg: 26px;
+
+  --font-size-xl: 20px;
+  --line-height-xl: 28px;
+
+  --font-size-2xl: 24px;
+  --line-height-2xl: 32px;
+
+  /* Z-Index Scale */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 500;
+  --z-toast: 1000;
+}

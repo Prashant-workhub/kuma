@@ -1,22 +1,81 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
+
+@theme {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-text-primary-subtle: var(--text-primary-subtle);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-text-success-subtle: var(--text-success-subtle);
+
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-text-warning-subtle: var(--text-warning-subtle);
+
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-text-danger-subtle: var(--text-danger-subtle);
+
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-text-info-subtle: var(--text-info-subtle);
+
+  --radius-control: var(--radius-control);
+  --radius-container: var(--radius-container);
+  --shadow-overlay: var(--shadow-overlay);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--primary-subtle);
+    color: var(--text-primary);
+  }
+
+  table,
+  .tabular-nums,
+  [data-tabular] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
 
 /* ==========================================================================
    KUMA DESIGN SYSTEM — THEME CONTRACT
-   --------------------------------------------------------------------------
-   One app, one token set, two themes. Every portal (Login, Admin, Trainer,
-   Trainee) reads from the tokens declared here.
-
-   1. `dark` is bound to the APPLICATION theme, not the OS. Without this,
-      every `dark:` utility in the codebase silently follows the operating
-      system while the header toggle does something else entirely.
-   2. The canonical scale is space-separated RGB so Tailwind can apply alpha
-      modifiers (`bg-card/60`, `text-ink/80`) to theme-driven colors.
-   3. Accents are theme-aware. A single static hex accent is unreadable on one
-      of the two backgrounds, so each hue carries a dark and a light value
-      that clears WCAG AA against its own canvas.
-   4. Legacy `--app-*` / `--bg-paper` / `--card-bg` names are kept as aliases
-      of the same scale, so no existing view regresses while the portals
-      converge on the canonical names.
    ========================================================================== */
 @custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
 
@@ -175,11 +234,11 @@
    * now a single `--bg-image` value that each theme declares for itself.
    */
   body {
-    background-color: rgb(var(--canvas));
-    background-image: var(--bg-image);
-    background-attachment: fixed;
-    color: rgb(var(--ink));
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--page);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
     margin: 0;
     padding: 0;
     -webkit-font-smoothing: antialiased;

@@ -55,6 +55,7 @@ import {
 } from '../services/adminDataService';
 import { parseAndValidateCsv, MAX_BULK_IMPORT_ROWS, CsvUserRow, CsvParseResult } from '../utils/csvImportUtils';
 import { bulkImportUsers, BulkUserImportResponse } from '../services/adminUserService';
+import { AppShell } from '../components/layout';
 
 
 
@@ -517,128 +518,25 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead,EMP-103`
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-paper)] text-[var(--text-primary)] font-sans select-none">
+    <AppShell
+      role="admin"
+      user={user}
+      activePage={activePage}
+      onNavigate={(pageId) => setActivePage(pageId as PageId)}
+      onSignOut={onSignOut}
+    >
       
-      {/* SIDEBAR NAVIGATION */}
-      <aside className="w-64 border-r-2 border-[var(--border-main)] bg-[var(--sidebar-bg)] flex flex-col justify-between p-4 shrink-0">
-        <div>
-          {/* Brand Header */}
-          <div className="flex items-center gap-3 p-2 mb-6">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500 to-rose-600 border-2 border-[var(--border-main)] shadow-paper-sm text-white">
-              <ShieldCheck size={22} className="stroke-[2.5]" />
-            </div>
-            <div>
-              <div className="font-heading font-extrabold text-sm text-[var(--text-primary)] tracking-tight uppercase flex items-center gap-1.5">
-                KUMA ADMIN <span className="text-[9px] px-1.5 py-0.5 rounded role-badge-admin font-mono font-bold">GOV</span>
-              </div>
-              <div className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest">ORGANIZATION GOVERNANCE</div>
-            </div>
+      {statusNotice && (
+        <div className="bg-emerald-500/15 border border-emerald-500/30 p-3 rounded-container text-xs font-medium text-text-primary flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle size={14} className="text-emerald-500" />
+            <span>{statusNotice}</span>
           </div>
-
-          {/* Nav Items */}
-          <nav className="space-y-1 font-mono text-xs font-bold">
-            {[
-              { id: 'admin-dashboard', label: 'DASHBOARD', icon: BarChart3, activeColor: 'bg-amber-400 text-slate-950 border-amber-300 shadow-paper-yellow', iconColor: 'text-amber-400' },
-              { id: 'admin-users', label: 'USER APPROVALS & ROLES', icon: ShieldCheck, activeColor: 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-paper-sm', iconColor: 'text-emerald-400' },
-              { id: 'admin-organization', label: 'ORGANIZATION', icon: Building, activeColor: 'bg-indigo-500 text-white border-indigo-400 shadow-paper-blue', iconColor: 'text-indigo-400' },
-              { id: 'admin-trainees', label: 'TRAINEES', icon: Users, activeColor: 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-paper-sm', iconColor: 'text-emerald-400' },
-              { id: 'admin-trainers', label: 'TRAINERS', icon: Briefcase, activeColor: 'bg-purple-500 text-white border-purple-400 shadow-paper-sm', iconColor: 'text-purple-400' },
-              { id: 'admin-competencies', label: 'COMPETENCIES', icon: Target, activeColor: 'bg-rose-500 text-white border-rose-400 shadow-paper-red', iconColor: 'text-rose-400' },
-              { id: 'admin-training-programs', label: 'TRAINING PROGRAMS', icon: BookOpen, activeColor: 'bg-sky-500 text-slate-950 border-sky-400 shadow-paper-sm', iconColor: 'text-sky-400' },
-              { id: 'admin-assessments', label: 'ASSESSMENTS', icon: Award, activeColor: 'bg-amber-500 text-slate-950 border-amber-400 shadow-paper-yellow', iconColor: 'text-amber-400' },
-              { id: 'admin-analytics', label: 'ANALYTICS', icon: TrendingUp, activeColor: 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-paper-sm', iconColor: 'text-cyan-400' },
-              { id: 'admin-certificates', label: 'CERTIFICATES', icon: ShieldCheck, activeColor: 'bg-teal-500 text-slate-950 border-teal-400 shadow-paper-sm', iconColor: 'text-teal-400' },
-              { id: 'admin-feedback', label: 'TELEMETRY & BUGS', icon: MessageSquare, activeColor: 'bg-pink-500 text-white border-pink-400 shadow-paper-sm', iconColor: 'text-pink-400' },
-              { id: 'admin-settings', label: 'SETTINGS', icon: Settings, activeColor: 'bg-slate-700 text-white border-slate-600 shadow-paper-sm', iconColor: 'text-slate-400' }
-            ].map((item) => {
-              const Icon = item.icon;
-              const isActive = activePage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActivePage(item.id as PageId)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border-2 transition-all cursor-pointer ${
-                    isActive
-                      ? `${item.activeColor} font-extrabold`
-                      : `border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)]`
-                  }`}
-                >
-                  <Icon size={16} className={isActive ? 'text-current' : item.iconColor} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+          <button onClick={() => setStatusNotice(null)} className="text-text-secondary hover:text-text-primary">✕</button>
         </div>
-
-        {/* User Info & Sign Out */}
-        <div className="border-t-2 border-[var(--border-main)] pt-4 space-y-3 font-mono">
-          <div className="flex items-center gap-2.5 px-2">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 border-2 border-[var(--border-main)] flex items-center justify-center font-extrabold text-xs text-slate-950 shadow-sm">
-              AD
-            </div>
-            <div className="overflow-hidden">
-              <div className="text-xs font-extrabold text-[var(--text-primary)] truncate">{user.fullName}</div>
-              <div className="text-[10px] text-[var(--text-secondary)] truncate">{user.emailAddress}</div>
-            </div>
-          </div>
-
-          <button
-            onClick={onSignOut}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-[6px] border-2 border-rose-500/40 bg-rose-500/10 text-xs font-bold text-rose-400 hover:bg-rose-500/20 cursor-pointer shadow-paper-sm transition-colors"
-          >
-            <LogOut size={14} />
-            <span>SIGN OUT</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-paper)]">
-        
-        {/* Top Navbar */}
-        <header className="h-16 border-b-2 border-[var(--border-main)] bg-[var(--card-bg)] px-6 flex items-center justify-between shrink-0 font-mono">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-extrabold uppercase text-[var(--text-secondary)] tracking-wider">
-              GOVERNANCE PORTAL • {DEMO_ORGANIZATION}
-            </span>
-            <span className="text-xs font-bold role-badge-admin px-2.5 py-0.5 rounded-full border">
-              {currentTab.toUpperCase()}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleExportGovernanceReport}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-slate-800 text-cyan-400 font-bold text-xs border border-cyan-500/40 shadow-paper-sm hover:bg-slate-700 cursor-pointer"
-            >
-              <Download size={13} />
-              <span>EXPORT GOVERNANCE REPORT (.CSV)</span>
-            </button>
-
-            <button
-              onClick={handleSeedData}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold text-xs border border-amber-300 shadow-paper-yellow hover:brightness-110 cursor-pointer"
-            >
-              <RefreshCw size={13} />
-              <span>SEED DEMO DATA</span>
-            </button>
-          </div>
-        </header>
-
-        {/* Status notice banner */}
-        {statusNotice && (
-          <div className="bg-emerald-500/15 border-b-2 border-emerald-500 px-6 py-2 text-xs font-mono font-bold text-[var(--text-primary)] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CheckCircle size={14} className="text-emerald-400" />
-              <span>{statusNotice}</span>
-            </div>
-            <button onClick={() => setStatusNotice(null)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">✕</button>
-          </div>
-        )}
+      )}
 
         {/* Dynamic View Switcher */}
-        <main className="flex-1 overflow-y-auto p-6">
           
           {/* USER APPROVALS & ROLES TAB */}
           {currentTab === 'users' && <UserApprovalsManager />}
@@ -1287,9 +1185,6 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead,EMP-103`
               </div>
             </div>
           )}
-
-        </main>
-      </div>
 
       {/* BULK CSV TRAINEE IMPORT MODAL */}
       {showCsvModal && (
@@ -2068,7 +1963,7 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead,EMP-103`
         </div>
       )}
 
-    </div>
+    </AppShell>
   );
 }
 

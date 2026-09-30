@@ -168,7 +168,7 @@ function TeacherPortalInner({ user, onSignOut }: TeacherPortalAppProps) {
   }
 
   return (
-    <PortalLayout active={active} onNavigate={setActive} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}>
+    <PortalLayout active={active} onNavigate={setActive} user={user} onSignOut={onSignOut}>
       <div key={active} className="animate-fade-in">
         <ViewRouter active={active} onNavigate={setActive} />
       </div>
