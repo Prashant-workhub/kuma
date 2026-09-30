@@ -77,11 +77,28 @@ export function TraineeChip({
   )
 }
 
-/** Four-segment proficiency meter for competency levels. */
+/** Category Tag Pill mapping for skill domains */
+export function CategoryPill({ category }: { category?: string }) {
+  const cat = (category || 'Technical').toLowerCase()
+  let tagClass = 'cat-tag-technical'
+  if (cat.includes('comm')) tagClass = 'cat-tag-communication'
+  else if (cat.includes('lead')) tagClass = 'cat-tag-leadership'
+  else if (cat.includes('manag')) tagClass = 'cat-tag-management'
+  else if (cat.includes('digit')) tagClass = 'cat-tag-digital'
+  else if (cat.includes('domain')) tagClass = 'cat-tag-domain'
+
+  return (
+    <span className={cn('inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider', tagClass)}>
+      {category || 'Technical'}
+    </span>
+  )
+}
+
+/** Multi-tier 4-segment proficiency meter for competency levels. */
 export function LevelBlocks({
   level,
   max = 4,
-  accent = 'cyan',
+  accent,
   className,
 }: {
   level: number
@@ -89,18 +106,24 @@ export function LevelBlocks({
   accent?: Accent
   className?: string
 }) {
+  // Level tier colors: L1=Sky, L2=Purple, L3=Emerald, L4=Amber Gold
+  const tierColors = ['bg-sky-400', 'bg-purple-400', 'bg-emerald-400', 'bg-amber-400']
+
   return (
     <span className={cn('inline-flex items-center gap-1', className)}>
-      {Array.from({ length: max }, (_, i) => (
-        <span
-          key={i}
-          className={cn(
-            'h-2.5 w-4 rounded-[3px] border border-line transition-colors',
-            i < level ? accentBar[accent] : 'bg-panel',
-          )}
-        />
-      ))}
-      <span className="ml-1 font-mono text-[10px] font-semibold text-faint">
+      {Array.from({ length: max }, (_, i) => {
+        const activeColor = accent ? accentBar[accent] : (tierColors[i] || 'bg-cyan-400')
+        return (
+          <span
+            key={i}
+            className={cn(
+              'h-2.5 w-4 rounded-[3px] border border-line transition-all duration-200',
+              i < level ? activeColor : 'bg-panel/60 opacity-40',
+            )}
+          />
+        )
+      })}
+      <span className="ml-1.5 font-mono text-[11px] font-bold text-ink">
         {level}/{max}
       </span>
     </span>

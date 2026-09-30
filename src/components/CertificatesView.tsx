@@ -1,7 +1,7 @@
 /**
  * Project Kuma - Trainee Certificates Workspace View
  * Displays all earned certificates with preview, print, download, and verification links.
- * Clean Tutedude Dashboard style architecture.
+ * Enterprise Skills Intelligence Architecture.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +10,26 @@ import { getUserCertificates } from '../utils/certificateUtils';
 import { isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import { subscribeUserCertificates } from '../services/capacityConnectService';
 import CertificateModal from './CertificateModal';
-import { Award, CheckCircle2, ArrowLeft, ExternalLink, Printer, ShieldCheck, GraduationCap, Building, Calendar } from 'lucide-react';
+import {
+  Award,
+  CheckCircle2,
+  ArrowLeft,
+  ExternalLink,
+  ShieldCheck,
+  GraduationCap,
+  Building,
+  Calendar,
+  Layers,
+  ArrowRight
+} from 'lucide-react';
+import {
+  SectionHeading,
+  TraineeBadge,
+  TraineeButton,
+  TraineeCard,
+  TraineeEmptyState,
+  TraineeKpi
+} from './trainee/TraineeUI';
 
 interface CertificatesViewProps {
   settings: UserSettings;
@@ -54,115 +73,117 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
       }
     );
   }, [userId, settings.profile.emailAddress, isDemoTrainee]);
+
   const verifiedCount = userCerts.filter((certificate) => certificate.verified).length;
 
   return (
-    <div className="max-w-7xl mx-auto pb-16 space-y-6 p-4 md:p-8 select-none font-sans">
+    <div className="max-w-6xl mx-auto pb-16 space-y-8 p-4 md:p-8 select-none font-sans animate-fade-in">
 
       {/* Header Banner */}
-      <div className="rounded-[11px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <button
-            onClick={() => setActivePage('dashboard')}
-            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#992e9d] dark:text-slate-400 dark:hover:text-purple-300 transition-colors mb-2 cursor-pointer"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Back to Dashboard</span>
-          </button>
-          <h1 className="font-semibold text-2xl md:text-3xl text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Award className="h-7 w-7 text-[#992e9d] dark:text-purple-400" />
-            My Digital Certificates
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Official Capacity Building training completion records and verified digital credentials.
-          </p>
-        </div>
+      <div className="space-y-4">
+        <button
+          onClick={() => setActivePage('dashboard')}
+          className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-faint hover:text-brand-cyan transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Back to Dashboard</span>
+        </button>
 
-        <div className="p-4 rounded-full border border-purple-100 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/30 text-xs flex items-center gap-4 shrink-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Earned Certificates</div>
-            <div className="text-xl font-bold text-[#992e9d] dark:text-purple-300">{userCerts.length}</div>
+            <h1 className="font-bold text-2xl md:text-3xl text-ink tracking-tight flex items-center gap-2.5">
+              <Award className="h-7 w-7 text-brand-violet" />
+              Verified Career Credentials
+            </h1>
+            <p className="text-xs md:text-sm text-muted mt-1 leading-relaxed">
+              Authenticated capacity building completion records and cryptographic skills verification.
+            </p>
           </div>
-          <div className="w-px h-7 bg-purple-200 dark:bg-purple-800/60" />
-          <div>
-            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Verification Status</div>
-            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" /> {userCerts.length ? `${verifiedCount}/${userCerts.length} Verified` : 'No certificates'}
-            </div>
+
+          <div className="flex items-center gap-3">
+            <TraineeKpi
+              label="Earned Credentials"
+              value={userCerts.length}
+              icon={<Award size={18} />}
+              accent="violet"
+            />
+            <TraineeKpi
+              label="Verification Status"
+              value={userCerts.length ? `${verifiedCount}/${userCerts.length}` : '0/0'}
+              icon={<ShieldCheck size={18} />}
+              accent="emerald"
+            />
           </div>
         </div>
       </div>
 
       {/* CERTIFICATES LIST */}
-      <div className="p-6 rounded-[11px] bg-white dark:bg-[#0C1220] border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-          <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[#992e9d] dark:text-purple-400" />
-            Issued Training Credentials
-          </h3>
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Publicly Verifiable
-          </span>
-        </div>
+      <section className="space-y-4">
+        <SectionHeading
+          title="Issued Training Certificates"
+          subtitle="Publicly verifiable skills certificates backed by capacity connect governance"
+          icon={<ShieldCheck className="h-5 w-5 text-brand-violet" />}
+        />
 
         {loading ? (
-          <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">Loading certificates…</div>
+          <div className="p-12 text-center text-sm text-muted">Loading verified credentials…</div>
         ) : loadError ? (
-          <div role="alert" className="p-5 rounded-lg border border-rose-300 bg-rose-50 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">{loadError}</div>
-        ) : userCerts.length === 0 ? (
-          <div className="p-10 text-center rounded-[11px] border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
-            <GraduationCap className="h-10 w-10 text-slate-400 mx-auto opacity-50" />
-            <h4 className="font-semibold text-sm text-slate-900 dark:text-white">
-              No Certificates Earned Yet
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-              Complete your recommended training programs and pass required assessments to automatically earn official digital certificates!
-            </p>
-            <button
-              onClick={() => setActivePage('skill-gap')}
-              className="mt-2 px-5 py-2.5 rounded-full bg-[#992e9d] hover:bg-[#832687] text-white text-xs font-medium shadow-sm transition-all inline-flex items-center gap-2"
-            >
-              Explore Skill Gap & Recommended Training
-            </button>
+          <div role="alert" className="p-5 rounded-xl border border-brand-rose/40 bg-brand-rose/10 text-sm text-brand-rose">
+            {loadError}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {userCerts.map((cert) => (
-              <div
-                key={cert.id}
-                className="p-5 rounded-[11px] border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-[#080D1A] flex flex-col justify-between space-y-4 hover:border-[#992e9d] dark:hover:border-purple-600 transition-all relative overflow-hidden group"
+        ) : userCerts.length === 0 ? (
+          <TraineeEmptyState
+            icon={<GraduationCap size={24} />}
+            title="No Certificates Earned Yet"
+            description="Complete your assigned training programs and pass required assessments to earn official digital certificates."
+            action={
+              <TraineeButton
+                size="sm"
+                variant="accent"
+                iconRight={<ArrowRight size={14} />}
+                onClick={() => setActivePage('skill-gap')}
               >
-                <div className="space-y-3">
-
-                  {/* Top Line */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-semibold uppercase px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
-                      {cert.courseCode}
+                Explore Skill Gap & Training
+              </TraineeButton>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {userCerts.map((cert) => (
+              <TraineeCard
+                key={cert.id}
+                className="flex flex-col justify-between space-y-5 border-t-2 border-t-brand-violet relative overflow-hidden group hover:scale-[1.01] transition-all duration-300"
+              >
+                <div className="space-y-3.5">
+                  {/* Top Badge Line */}
+                  <div className="flex items-center justify-between gap-2 font-mono text-xs">
+                    <span className="font-bold uppercase px-2.5 py-1 rounded bg-brand-violet/15 text-brand-violet border border-brand-violet/30">
+                      {cert.courseCode || 'KUMA-CERT'}
                     </span>
-                    <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" /> VERIFIED
+                    <span className="font-bold text-brand-emerald flex items-center gap-1 text-[11px]">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> CRYPTOGRAPHICALLY VERIFIED
                     </span>
                   </div>
 
                   {/* Title & Organization */}
-                  <div>
-                    <h4 className="font-semibold text-base text-slate-900 dark:text-white group-hover:text-[#992e9d] dark:group-hover:text-purple-300 transition-colors">
+                  <div className="space-y-1">
+                    <h3 className="font-semibold text-lg text-ink group-hover:text-brand-violet transition-colors leading-snug">
                       {cert.courseName}
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
-                      <Building className="h-3.5 w-3.5 text-slate-400" />
-                      <span>{cert.organization || 'Ministry of Skill Development'}</span>
+                    </h3>
+                    <p className="text-xs text-muted flex items-center gap-1.5">
+                      <Building className="h-3.5 w-3.5 text-faint" />
+                      <span>{cert.organization || 'National Digital Capacity Building Framework'}</span>
                     </p>
                   </div>
 
-                  {/* Competency Badge & Date */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                      <ShieldCheck className="h-3.5 w-3.5 text-[#992e9d]" />
-                      <span className="font-medium">{cert.competenciesAddressed?.join(', ') || 'Competency Mastery'}</span>
+                  {/* Competencies & Issue Date */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-line">
+                    <div className="flex items-center gap-1.5 text-muted">
+                      <Layers className="h-3.5 w-3.5 text-brand-cyan" />
+                      <span className="font-medium text-ink">{cert.competenciesAddressed?.join(', ') || 'Competency Mastery'}</span>
                     </div>
 
-                    <div className="flex items-center gap-1 text-[11px] text-slate-400 font-mono">
+                    <div className="flex items-center gap-1 text-[11px] text-faint font-mono">
                       <Calendar className="h-3 w-3" />
                       <span>{cert.issueDate}</span>
                     </div>
@@ -170,36 +191,37 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
                 </div>
 
                 {/* Bottom Actions */}
-                <div className="pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2">
-                  <div className="text-[10px] font-mono text-slate-400 truncate max-w-[150px]">
+                <div className="pt-3 border-t border-line flex items-center justify-between gap-2">
+                  <div className="text-[10px] font-mono text-faint truncate max-w-[140px]">
                     ID: {cert.id}
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button
+                    <TraineeButton
+                      size="sm"
+                      variant="secondary"
                       onClick={() => setActivePage('verify-certificate')}
-                      className="px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1"
-                      title="Public Verification"
+                      iconLeft={<ExternalLink className="h-3.5 w-3.5" />}
                     >
-                      <ExternalLink className="h-3 w-3 text-slate-500" />
-                      <span>Verify</span>
-                    </button>
+                      Verify
+                    </TraineeButton>
 
-                    <button
+                    <TraineeButton
+                      size="sm"
+                      variant="accent"
                       onClick={() => setSelectedCert(cert)}
-                      className="px-4 py-1.5 rounded-full bg-[#992e9d] hover:bg-[#832687] text-white text-xs font-medium shadow-sm transition-all flex items-center gap-1.5"
+                      iconLeft={<Award className="h-3.5 w-3.5" />}
                     >
-                      <Award className="h-3.5 w-3.5" />
-                      <span>View Credential</span>
-                    </button>
+                      Credential
+                    </TraineeButton>
                   </div>
                 </div>
 
-              </div>
+              </TraineeCard>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {/* CERTIFICATE PREVIEW MODAL */}
       {selectedCert && (
