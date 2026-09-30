@@ -93,6 +93,7 @@ export interface TeacherAssignment {
   students: number
   /** 0–100 */
   completionRate: number
+  progressPct?: number
   accent: 'gold' | 'cyan' | 'emerald' | 'violet' | 'rose'
   syllabus: SyllabusItem[]
   // Phase 3E: Competency & Training Mapping

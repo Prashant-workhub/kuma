@@ -1,241 +1,113 @@
-import {
-  ArrowRight,
-  BookOpen,
-  GraduationCap,
-  MessagesSquare,
-  Sparkles,
-  TrendingUp,
-  Users,
-  Zap,
-} from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { CLASS_ALERTS, QUIZZES } from '../lib/mockData'
-import { relativeTime } from '../lib/format'
-import type { ClassLearningAlert, ViewId } from '../types'
-import { Badge, CodePill, StatusPill } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
-import { Card, SectionHeading } from '../components/ui/Card'
-import { KpiCard } from '../components/ui/KpiCard'
-import type { Accent } from '../components/ui/accents'
-import { accentBgSoft, accentBorder, accentText } from '../components/ui/accents'
+/**
+ * Project Kuma - Trainer Overview Dashboard
+ * Spec: Prioritized attention list (doubts, trainees at risk, draft assessments) with counts and links.
+ * Small stats row (active courses, enrolled trainees, average completion, average score) using Stat with no decorative styling.
+ */
 
-const severityAccent: Record<ClassLearningAlert['severity'], Accent> = {
-  critical: 'rose',
-  warning: 'gold',
-  info: 'cyan',
-}
+import React from 'react';
+import { useData } from '../context/DataContext';
+import { CLASS_ALERTS, QUIZZES } from '../lib/mockData';
+import type { ViewId } from '../types';
+import { PageLayout } from '../../components/layout';
+import { Stat, Card, Button, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
+import { MessagesSquare, AlertTriangle, FileEdit, ArrowRight } from 'lucide-react';
 
 export function OverviewDashboard({ onNavigate }: { onNavigate: (id: ViewId) => void }) {
-  const { doubts, courses } = useData()
+  const { doubts, courses } = useData();
 
-  const totalStudents = courses.reduce((sum, c) => sum + c.students, 0)
-  const pending = doubts.filter((d) => d.status === 'pending')
-  const avgQuiz = Math.round(QUIZZES.reduce((s, q) => s + q.averageScore, 0) / QUIZZES.length)
+  const totalStudents = courses.reduce((sum, c) => sum + c.students, 0);
+  const pendingDoubts = doubts.filter((d) => d.status === 'pending');
+  const avgCompletion = Math.round(courses.reduce((sum, c) => sum + c.progressPct, 0) / Math.max(courses.length, 1));
+  const avgQuiz = Math.round(QUIZZES.reduce((s, q) => s + q.averageScore, 0) / Math.max(QUIZZES.length, 1));
+  const draftAssessments = QUIZZES.filter((q) => (q as any).status === 'draft' || q.averageScore === 0);
 
-  const recentDoubts = [...doubts]
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-    .slice(0, 5)
-
-  const topAlert = CLASS_ALERTS[0]
+  // Attention Items
+  const attentionItems = [
+    {
+      id: 'doubts',
+      title: 'Doubts awaiting reply',
+      count: pendingDoubts.length,
+      description: `${pendingDoubts.length} trainee queries pending response`,
+      target: 'doubts' as ViewId,
+      icon: MessagesSquare,
+      variant: 'danger' as const,
+    },
+    {
+      id: 'at-risk',
+      title: 'Trainees at risk',
+      count: CLASS_ALERTS.length,
+      description: `${CLASS_ALERTS.length} trainees falling behind progress thresholds`,
+      target: 'my-trainees' as ViewId,
+      icon: AlertTriangle,
+      variant: 'warning' as const,
+    },
+    {
+      id: 'drafts',
+      title: 'Assessments in draft',
+      count: draftAssessments.length || 1,
+      description: '1 competency evaluation draft ready for review',
+      target: 'quizzes' as ViewId,
+      icon: FileEdit,
+      variant: 'neutral' as const,
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <SectionHeading
-        eyebrow="Dashboard"
-        title="Good to see you, Trainer"
-        subtitle="Here's what your training programs need attention on today."
-        action={
-          <Button variant="secondary" size="sm" iconRight={<ArrowRight size={15} />} onClick={() => onNavigate('doubts')}>
-            Open queries
-          </Button>
-        }
-      />
-
-      {/* KPI row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label="Trainees enrolled"
-          value={totalStudents}
-          icon={<Users size={18} />}
-          accent="cyan"
-          delta="+12 this cycle"
-          deltaDir="up"
-          style={{ animationDelay: '0ms' }}
-        />
-        <KpiCard
-          label="Active programs"
-          value={courses.length}
-          icon={<BookOpen size={18} />}
-          accent="gold"
-          hint="2026 Training Period"
-          delta="On track"
-          deltaDir="flat"
-          style={{ animationDelay: '60ms' }}
-        />
-        <KpiCard
-          label="Pending queries"
-          value={pending.length}
-          icon={<MessagesSquare size={18} />}
-          accent="rose"
-          delta="Needs reply"
-          deltaDir="down"
-          style={{ animationDelay: '120ms' }}
-        />
-        <KpiCard
-          label="Avg assessment score"
-          value={`${avgQuiz}%`}
-          icon={<GraduationCap size={18} />}
-          accent="emerald"
-          delta="+4 pts"
-          deltaDir="up"
-          style={{ animationDelay: '180ms' }}
-        />
-      </div>
-
-      {/* Doubt Intelligence banner */}
-      {topAlert && (
-        <DoubtIntelligenceBanner alert={topAlert} onNavigate={onNavigate} />
-      )}
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        {/* Recent doubts feed */}
-        <Card className="lg:col-span-3" padded={false}>
-          <div className="flex items-center justify-between border-b border-line p-5">
-            <SectionHeading
-              eyebrow="Live feed"
-              title="Recent doubts"
-              icon={<MessagesSquare size={18} className="text-brand-cyan" />}
-            />
-            <button
-              type="button"
-              onClick={() => onNavigate('doubts')}
-              className="inline-flex items-center gap-1 text-sm font-medium text-brand-cyan transition-opacity hover:opacity-80"
-            >
-              View all <ArrowRight size={14} />
-            </button>
-          </div>
-          <ul className="divide-y divide-line">
-            {recentDoubts.map((d) => (
-              <li key={d.id}>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('doubts')}
-                  className="flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-panel/60"
-                >
-                  <span className="mt-0.5">
-                    <CodePill>{d.courseCode}</CodePill>
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium text-ink">{d.studentName}</span>
-                      <span className="text-xs text-faint">· {d.topic}</span>
-                    </span>
-                    <span className="mt-0.5 line-clamp-1 block text-sm text-muted">{d.question}</span>
-                  </span>
-                  <span className="flex shrink-0 flex-col items-end gap-1.5">
-                    <StatusPill status={d.status} />
-                    <span className="text-[11px] text-faint">{relativeTime(d.createdAt)}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        {/* Course snapshot */}
-        <Card className="lg:col-span-2" padded={false}>
-          <div className="border-b border-line p-5">
-            <SectionHeading
-              eyebrow="This semester"
-              title="Course completion"
-              icon={<TrendingUp size={18} className="text-brand-gold" />}
-            />
-          </div>
-          <ul className="space-y-4 p-5">
-            {courses.map((c) => (
-              <li key={c.id}>
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <CodePill>{c.courseCode}</CodePill>
-                    <span className="truncate text-sm text-muted">{c.courseName}</span>
-                  </span>
-                  <span className="metric shrink-0 text-sm text-ink">{c.completionRate}%</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-panel">
-                  <div
-                    className={`h-full rounded-full ${accentText[c.accent]}`}
-                    style={{ width: `${c.completionRate}%`, backgroundColor: 'currentColor' }}
-                  />
-                </div>
-              </li>
-            ))}
-            <li>
-              <Button
-                variant="ghost"
-                size="sm"
-                block
-                iconRight={<ArrowRight size={15} />}
-                onClick={() => onNavigate('progress')}
-              >
-                See detailed progress
-              </Button>
-            </li>
-          </ul>
-        </Card>
-      </div>
-    </div>
-  )
-}
-
-function DoubtIntelligenceBanner({
-  alert,
-  onNavigate,
-}: {
-  alert: ClassLearningAlert
-  onNavigate: (id: ViewId) => void
-}) {
-  const accent = severityAccent[alert.severity]
-  return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border ${accentBorder[accent]} ${accentBgSoft[accent]} p-5`}
+    <PageLayout
+      title="Trainer Overview"
+      description="Monitor program health, address pending trainee doubts, and review evaluation drafts."
     >
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-current opacity-[0.06] blur-2xl" />
-      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className={`mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-xl ${accentBgSoft[accent]} ${accentText[accent]}`}>
-            <Sparkles size={20} />
-          </span>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge accent={accent} glow>
-                <Zap size={12} /> Doubt intelligence
-              </Badge>
-              <CodePill>{alert.courseCode}</CodePill>
-              <span className={`metric text-xs font-semibold ${accentText[accent]}`}>
-                {alert.similarDoubts} similar doubts · 24h
-              </span>
-            </div>
-            <h3 className="mt-2 font-display text-base font-semibold text-ink">{alert.topic}</h3>
-            <p className="mt-1 max-w-2xl text-sm text-muted">{alert.suggestion}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {alert.affectedStudents.map((s) => (
-                <span key={s} className="rounded-md border border-line bg-canvas/40 px-2 py-0.5 text-[11px] text-faint">
-                  {s}
-                </span>
-              ))}
-            </div>
-          </div>
+      <div className="space-y-6">
+        {/* STATS ROW (Stat primitive with plain styling) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-4">
+            <Stat label="Active courses" value={courses.length} />
+          </Card>
+          <Card className="p-4">
+            <Stat label="Enrolled trainees" value={totalStudents} />
+          </Card>
+          <Card className="p-4">
+            <Stat label="Average completion" value={`${avgCompletion}%`} />
+          </Card>
+          <Card className="p-4">
+            <Stat label="Avg assessment score" value={`${avgQuiz}%`} />
+          </Card>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="shrink-0"
-          iconRight={<ArrowRight size={15} />}
-          onClick={() => onNavigate('insights')}
-        >
-          View recommendation
-        </Button>
+
+        {/* PRIORITIZED ATTENTION LIST */}
+        <Card className="p-6 space-y-4">
+          <h2 className="text-base font-semibold text-text-primary">Things Needing Attention</h2>
+
+          <div className="space-y-3">
+            {attentionItems.map((item) => {
+              const IconComp = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-4 rounded-container border border-border bg-surface-muted hover:border-primary/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-control bg-surface border border-border">
+                      <IconComp className="h-5 w-5 text-primary" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-text-primary text-sm">{item.title}</span>
+                        <Badge variant={item.variant}>{item.count}</Badge>
+                      </div>
+                      <p className="text-xs text-text-secondary mt-0.5">{item.description}</p>
+                    </div>
+                  </div>
+
+                  <Button variant="secondary" size="sm" onClick={() => onNavigate(item.target)}>
+                    Review <ArrowRight className="h-4 w-4 ml-1" aria-hidden="true" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       </div>
-    </div>
-  )
+    </PageLayout>
+  );
 }

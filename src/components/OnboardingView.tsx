@@ -899,103 +899,103 @@ export default function OnboardingView({
                         <span className="px-2.5 py-1 bg-[#2563EB] text-white text-xs font-mono font-black rounded-md border border-black shadow-sm">
                           STEP 1
                         </span>
-                        <h4 className="text-xs font-black uppercase text-black dark:text-white tracking-wide">
+                        <h4 className="text-xs font-black uppercase text-text-primary tracking-wide">
                           Click "Get API Key" on Left Card
                         </h4>
                       </div>
-                      <span className="text-xs font-mono font-bold text-slate-500 group-hover:text-[#2563EB]">Expand Fullscreen 🔍</span>
+                      <span className="text-xs font-mono font-bold text-text-secondary group-hover:text-primary">Expand Fullscreen</span>
                     </div>
 
-                    <div className="rounded-xl border-2 border-black dark:border-slate-800 overflow-hidden bg-slate-950 h-64 sm:h-72 w-full flex items-center justify-center p-2">
+                    <div className="rounded-xl border border-border overflow-hidden bg-surface-muted h-64 sm:h-72 w-full flex items-center justify-center p-2">
                       <img src="/guides/api-key/step1.jpg" alt="Step 1" className="w-full h-full object-contain group-hover:scale-102 transition-transform" />
                     </div>
 
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed bg-[#F8FAFC] dark:bg-[#0D1117] p-3 rounded-xl border border-slate-300 dark:border-slate-800">
-                      Look at <strong className="text-[#2563EB]">Card 1 on the left side</strong> under Provider Details and click the blue <strong className="text-[#2563EB]">"Get API Key"</strong> link. This will open Google AI Studio in a new tab.
+                    <p className="text-xs font-bold text-text-primary leading-relaxed bg-surface-muted p-3 rounded-xl border border-border">
+                      Look at <strong className="text-primary">Card 1 on the left side</strong> under Provider Details and click the blue <strong className="text-primary">"Get API Key"</strong> link. This will open Google AI Studio in a new tab.
                     </p>
                   </div>
 
                   {/* SEPARATE STEP CARD 2 */}
                   <div 
                     onClick={() => setSelectedGuideImage('/guides/api-key/step2.png')}
-                    className="p-4 sm:p-5 rounded-2xl border-2 border-black dark:border-slate-700 bg-white dark:bg-[#1E293B] space-y-3 shadow-paper-xs hover:border-[#2563EB] transition-all cursor-pointer group"
+                    className="p-4 sm:p-5 rounded-2xl border border-border bg-surface space-y-3 shadow-xs hover:border-primary transition-all cursor-pointer group"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 bg-[#2563EB] text-white text-xs font-mono font-black rounded-md border border-black shadow-sm">
+                        <span className="px-2.5 py-1 bg-primary text-white text-xs font-mono font-black rounded-md border border-border shadow-xs">
                           STEP 2
                         </span>
-                        <h4 className="text-xs font-black uppercase text-black dark:text-white tracking-wide">
+                        <h4 className="text-xs font-black uppercase text-text-primary tracking-wide">
                           Click "Create API key" in Google AI Studio
                         </h4>
                       </div>
-                      <span className="text-xs font-mono font-bold text-slate-500 group-hover:text-[#2563EB]">Expand Fullscreen 🔍</span>
+                      <span className="text-xs font-mono font-bold text-text-secondary group-hover:text-primary">Expand Fullscreen</span>
                     </div>
 
-                    <div className="rounded-xl border-2 border-black dark:border-slate-800 overflow-hidden bg-slate-950 h-64 sm:h-72 w-full flex items-center justify-center p-2">
+                    <div className="rounded-xl border border-border overflow-hidden bg-surface-muted h-64 sm:h-72 w-full flex items-center justify-center p-2">
                       <img src="/guides/api-key/step2.png" alt="Step 2" className="w-full h-full object-contain group-hover:scale-102 transition-transform" />
                     </div>
 
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed bg-[#F8FAFC] dark:bg-[#0D1117] p-3 rounded-xl border border-slate-300 dark:border-slate-800">
-                      In your Google AI Studio dashboard, look for the blue <strong className="text-[#2563EB]">"Create API key"</strong> button in the top header and click it.
+                    <p className="text-xs font-bold text-text-primary leading-relaxed bg-surface-muted p-3 rounded-xl border border-border">
+                      In your Google AI Studio dashboard, look for the blue <strong className="text-primary">"Create API key"</strong> button in the top header and click it.
                     </p>
                   </div>
 
                   {/* SEPARATE STEP CARD 3 */}
                   <div 
                     onClick={() => setSelectedGuideImage('/guides/api-key/step3.png')}
-                    className="p-4 sm:p-5 rounded-2xl border-2 border-black dark:border-slate-700 bg-white dark:bg-[#1E293B] space-y-3 shadow-paper-xs hover:border-[#2563EB] transition-all cursor-pointer group"
+                    className="p-4 sm:p-5 rounded-2xl border border-border bg-surface space-y-3 shadow-xs hover:border-primary transition-all cursor-pointer group"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 bg-[#2563EB] text-white text-xs font-mono font-black rounded-md border border-black shadow-sm">
+                        <span className="px-2.5 py-1 bg-primary text-white text-xs font-mono font-black rounded-md border border-border shadow-xs">
                           STEP 3
                         </span>
-                        <h4 className="text-xs font-black uppercase text-black dark:text-white tracking-wide">
+                        <h4 className="text-xs font-black uppercase text-text-primary tracking-wide">
                           Confirm Project & Click "Create key"
                         </h4>
                       </div>
-                      <span className="text-xs font-mono font-bold text-slate-500 group-hover:text-[#2563EB]">Expand Fullscreen 🔍</span>
+                      <span className="text-xs font-mono font-bold text-text-secondary group-hover:text-primary">Expand Fullscreen</span>
                     </div>
 
-                    <div className="rounded-xl border-2 border-black dark:border-slate-800 overflow-hidden bg-slate-950 h-64 sm:h-72 w-full flex items-center justify-center p-2">
+                    <div className="rounded-xl border border-border overflow-hidden bg-surface-muted h-64 sm:h-72 w-full flex items-center justify-center p-2">
                       <img src="/guides/api-key/step3.png" alt="Step 3" className="w-full h-full object-contain group-hover:scale-102 transition-transform" />
                     </div>
 
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed bg-[#F8FAFC] dark:bg-[#0D1117] p-3 rounded-xl border border-slate-300 dark:border-slate-800">
-                      In the key creation popup, type a key name (e.g. Kuma Key), select your project, and click the blue <strong className="text-[#2563EB]">"Create key"</strong> button.
+                    <p className="text-xs font-bold text-text-primary leading-relaxed bg-surface-muted p-3 rounded-xl border border-border">
+                      In the key creation popup, type a key name (e.g. Kuma Key), select your project, and click the blue <strong className="text-primary">"Create key"</strong> button.
                     </p>
                   </div>
 
                   {/* SEPARATE STEP CARD 4 */}
                   <div 
                     onClick={() => setSelectedGuideImage('/guides/api-key/step4.png')}
-                    className="p-4 sm:p-5 rounded-2xl border-2 border-black dark:border-slate-700 bg-white dark:bg-[#1E293B] space-y-3 shadow-paper-xs hover:border-[#2563EB] transition-all cursor-pointer group"
+                    className="p-4 sm:p-5 rounded-2xl border border-border bg-surface space-y-3 shadow-xs hover:border-primary transition-all cursor-pointer group"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 bg-[#2563EB] text-white text-xs font-mono font-black rounded-md border border-black shadow-sm">
+                        <span className="px-2.5 py-1 bg-primary text-white text-xs font-mono font-black rounded-md border border-border shadow-xs">
                           STEP 4
                         </span>
-                        <h4 className="text-xs font-black uppercase text-black dark:text-white tracking-wide">
+                        <h4 className="text-xs font-black uppercase text-text-primary tracking-wide">
                           Click "Copy key" & Paste on Left
                         </h4>
                       </div>
-                      <span className="text-xs font-mono font-bold text-slate-500 group-hover:text-[#2563EB]">Expand Fullscreen 🔍</span>
+                      <span className="text-xs font-mono font-bold text-text-secondary group-hover:text-primary">Expand Fullscreen</span>
                     </div>
 
-                    <div className="rounded-xl border-2 border-black dark:border-slate-800 overflow-hidden bg-slate-950 h-64 sm:h-72 w-full flex items-center justify-center p-2">
+                    <div className="rounded-xl border border-border overflow-hidden bg-surface-muted h-64 sm:h-72 w-full flex items-center justify-center p-2">
                       <img src="/guides/api-key/step4.png" alt="Step 4" className="w-full h-full object-contain group-hover:scale-102 transition-transform" />
                     </div>
 
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed bg-[#F8FAFC] dark:bg-[#0D1117] p-3 rounded-xl border border-slate-300 dark:border-slate-800">
-                      Click the blue <strong className="text-[#2563EB]">"Copy key"</strong> button to copy your secret key to clipboard, return to Kuma, paste it into <strong className="text-[#2563EB]">Card 2 on the left</strong>, and click <strong className="text-[#2563EB]">"Complete Setup"</strong>!
+                    <p className="text-xs font-bold text-text-primary leading-relaxed bg-surface-muted p-3 rounded-xl border border-border">
+                      Click the blue <strong className="text-primary">"Copy key"</strong> button to copy your secret key to clipboard, return to Kuma, paste it into <strong className="text-primary">Card 2 on the left</strong>, and click <strong className="text-primary">"Complete Setup"</strong>.
                     </p>
                   </div>
 
-                  <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-400/50 flex items-center gap-2 text-xs font-mono font-bold text-amber-900 dark:text-amber-300">
-                    <Lightbulb className="h-4 w-4 text-amber-500 shrink-0" />
-                    <span>Click any image above to open high-res full screen lightbox view!</span>
+                  <div className="p-3 bg-warning-subtle rounded-xl border border-warning/40 flex items-center gap-2 text-xs font-mono font-bold text-text-warning-subtle">
+                    <Lightbulb className="h-4 w-4 text-warning shrink-0" />
+                    <span>Click any image above to open high-res full screen lightbox view.</span>
                   </div>
                   </div>
 
@@ -1004,12 +1004,12 @@ export default function OnboardingView({
             )}
 
             {/* Buttons Navigation bar */}
-            <div className={`flex gap-3 pt-3 border-t border-[#111111]/15 shrink-0 ${step === 4 ? 'mt-auto' : 'mt-2'}`}>
+            <div className={`flex gap-3 pt-3 border-t border-border shrink-0 ${step === 4 ? 'mt-auto' : 'mt-2'}`}>
               {step > 1 && (
                 <button
                   type="button"
                   onClick={handlePrevStep}
-                  className="flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all focus:outline-none cursor-pointer border-2 border-[#111111] bg-white text-[#111111] hover:bg-[#F6F2EA] shadow-paper-xs"
+                  className="flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all focus:outline-none cursor-pointer border border-border bg-surface text-text-primary hover:bg-surface-muted shadow-xs"
                 >
                   Back
                 </button>
@@ -1020,7 +1020,7 @@ export default function OnboardingView({
                   type="button"
                   onClick={handleNextStep}
                   disabled={loading}
-                  className="flex-1 py-3 px-4 rounded-xl text-xs font-extrabold transition-all focus:outline-none cursor-pointer flex items-center justify-center gap-1.5 bg-[#111111] text-white hover:bg-[#222222] border-2 border-[#111111] shadow-paper-xs"
+                  className="flex-1 py-3 px-4 rounded-xl text-xs font-extrabold transition-all focus:outline-none cursor-pointer flex items-center justify-center gap-1.5 bg-primary text-white hover:bg-primary-hover border border-primary shadow-xs"
                 >
                   {loading ? (
                     <>
@@ -1038,10 +1038,10 @@ export default function OnboardingView({
                   type="button"
                   onClick={handleValidateAndComplete}
                   disabled={isValidatingKey || validationSuccess}
-                  className={`flex-1 py-3 px-4 rounded-xl font-sans text-xs font-extrabold transition-all active:scale-98 relative flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer border-2 border-[#111111] shadow-paper-xs ${
+                  className={`flex-1 py-3 px-4 rounded-xl font-sans text-xs font-extrabold transition-all active:scale-98 relative flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer border border-primary shadow-xs ${
                     validationSuccess
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      : 'bg-[#111111] text-white hover:bg-[#222222] disabled:bg-gray-300 disabled:text-gray-600 disabled:border-gray-400'
+                      ? 'bg-success text-white hover:bg-success/90'
+                      : 'bg-primary text-white hover:bg-primary-hover disabled:bg-surface-muted disabled:text-text-tertiary disabled:border-border'
                   }`}
                 >
                   {isValidatingKey ? (
@@ -1051,12 +1051,12 @@ export default function OnboardingView({
                     </span>
                   ) : validationSuccess ? (
                     <span className="flex items-center gap-2">
-                      <span>✓ Connected!</span>
+                      <span>Connected</span>
                     </span>
                   ) : (
                     <>
                       <span>Complete Setup</span>
-                      <ArrowRight className="h-3.5 w-3.5 text-[#FFC400]" />
+                      <ArrowRight className="h-3.5 w-3.5 text-white" />
                     </>
                   )}
                 </button>
@@ -1069,12 +1069,12 @@ export default function OnboardingView({
     {selectedGuideImage && (
       <div 
         onClick={() => setSelectedGuideImage(null)}
-        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        className="fixed inset-0 z-50 bg-scrim backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
       >
-        <div className="relative max-w-4xl w-full bg-white dark:bg-[#161B22] p-2 rounded-xl border-2 border-black shadow-2xl">
+        <div className="relative max-w-4xl w-full bg-surface p-2 rounded-xl border border-border shadow-overlay">
           <button 
             onClick={() => setSelectedGuideImage(null)}
-            className="absolute -top-3 -right-3 p-1.5 bg-black text-white rounded-full border-2 border-white font-black hover:bg-red-500 cursor-pointer"
+            className="absolute -top-3 -right-3 p-1.5 bg-surface text-text-primary rounded-full border border-border font-black hover:bg-danger hover:text-white cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

@@ -1,167 +1,179 @@
-import { useState } from 'react'
-import { Megaphone, Pin, Radio, Send, Users } from 'lucide-react'
-import { useData } from '../context/DataContext'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
-import { relativeTime } from '../lib/format'
-import { cn } from '../lib/cn'
-import { CodePill } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
-import { Card, SectionHeading } from '../components/ui/Card'
-import { EmptyState } from '../components/ui/EmptyState'
+/**
+ * Project Kuma - Trainer Announcements View
+ * Spec: Announcement composer in a Dialog. List of posted broadcasts.
+ */
+
+import React, { useState } from 'react';
+import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { PageLayout } from '../../components/layout';
+import {
+  Button,
+  Card,
+  Dialog,
+  DialogContent,
+  FormField,
+  Input,
+  Textarea,
+  Badge,
+  EmptyState,
+  InlineAlert,
+} from '../../components/ui';
+import { Megaphone, Plus, Radio, Pin, Send } from 'lucide-react';
 
 export function Announcements() {
-  const { announcements, courses, addAnnouncement } = useData()
-  const { profile } = useAuth()
-  const { push } = useToast()
+  const { announcements, courses, addAnnouncement } = useData();
+  const { profile } = useAuth();
+  const { push } = useToast();
 
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [audience, setAudience] = useState<string[]>([])
+  const [showComposer, setShowComposer] = useState(false);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [audience, setAudience] = useState<string[]>([]);
 
-  const author = profile ? `${profile.title} ${profile.firstName} ${profile.surname}` : 'Faculty'
-  const reach = courses.filter((c) => audience.includes(c.courseCode)).reduce((s, c) => s + c.students, 0)
+  const author = profile ? `${profile.firstName} ${profile.surname}` : 'Faculty Trainer';
+  const reach = courses.filter((c) => audience.includes(c.courseCode)).reduce((s, c) => s + c.students, 0);
 
-  const toggle = (code: string) =>
-    setAudience((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]))
+  const toggleAudience = (code: string) => {
+    setAudience((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+  };
 
-  const canSend = title.trim() && body.trim() && audience.length > 0
-
-  const broadcast = () => {
-    if (!canSend) {
-      push({ variant: 'warning', title: 'Incomplete announcement', description: 'Add a title, message, and at least one class.' })
-      return
+  const handleBroadcast = () => {
+    if (!title.trim() || !body.trim() || audience.length === 0) {
+      push({ variant: 'warning', title: 'Incomplete announcement', description: 'Fill out title, message, and audience.' });
+      return;
     }
-    addAnnouncement({ title: title.trim(), body: body.trim(), audience, author })
-    push({ variant: 'success', title: 'Announcement broadcast', description: `Reached ${reach} students.` })
-    setTitle('')
-    setBody('')
-    setAudience([])
-  }
 
-  const sorted = [...announcements].sort((a, b) => {
-    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
-    return Date.parse(b.postedAt) - Date.parse(a.postedAt)
-  })
+    addAnnouncement({ title: title.trim(), body: body.trim(), audience, author });
+    push({ variant: 'success', title: 'Announcement broadcasted', description: `Reached ${reach} trainees.` });
+    setTitle('');
+    setBody('');
+    setAudience([]);
+    setShowComposer(false);
+  };
+
+  const sortedAnnouncements = [...announcements].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return Date.parse(b.postedAt) - Date.parse(a.postedAt);
+  });
 
   return (
-    <div className="space-y-6">
-      <SectionHeading
-        eyebrow="Broadcast"
-        title="Announcements"
-        subtitle="Post updates to your classes — students see them instantly in Note It AI."
-      />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        {/* Composer */}
-        <Card className="lg:col-span-2" padded>
-          <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-            <Radio size={16} className="text-brand-gold" />
-            New broadcast
-          </div>
-
-          <div className="mt-4 space-y-4">
-            <div>
-              <label htmlFor="an-title" className="mb-1.5 block text-xs font-medium text-muted">
-                Title
-              </label>
-              <input
-                id="an-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Mid-term rescheduled"
-                className="w-full rounded-xl border border-line bg-panel px-3.5 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-cyan/50 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="an-body" className="mb-1.5 block text-xs font-medium text-muted">
-                Message
-              </label>
-              <textarea
-                id="an-body"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={4}
-                placeholder="Write the details students need to know…"
-                className="w-full resize-y rounded-xl border border-line bg-panel px-3.5 py-3 text-sm text-ink placeholder:text-faint focus:border-brand-cyan/50 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <div className="mb-1.5 text-xs font-medium text-muted">Audience</div>
-              <div className="flex flex-wrap gap-2">
-                {courses.map((c) => {
-                  const on = audience.includes(c.courseCode)
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => toggle(c.courseCode)}
-                      aria-pressed={on}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-xs font-medium transition-colors',
-                        on
-                          ? 'border-brand-cyan/50 bg-brand-cyan/15 text-brand-cyan'
-                          : 'border-line bg-panel text-muted hover:text-ink',
-                      )}
-                    >
-                      {c.courseCode}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between rounded-xl border border-line bg-panel/50 px-3.5 py-2.5">
-              <span className="flex items-center gap-2 text-sm text-muted">
-                <Users size={15} className="text-faint" />
-                Estimated reach
-              </span>
-              <span className="metric text-sm font-semibold text-ink">{reach} students</span>
-            </div>
-
-            <Button variant="accent" block iconLeft={<Send size={16} />} onClick={broadcast} disabled={!canSend}>
-              Broadcast announcement
-            </Button>
-          </div>
-        </Card>
-
-        {/* Feed */}
-        <div className="space-y-4 lg:col-span-3">
-          {sorted.length === 0 ? (
-            <Card>
-              <EmptyState icon={<Megaphone size={22} />} title="No announcements yet" description="Your broadcasts will appear here." />
-            </Card>
-          ) : (
-            sorted.map((a) => (
-              <Card key={a.id} hover padded>
-                <div className="flex items-start justify-between gap-3">
+    <PageLayout
+      title="Announcements & Broadcasts"
+      description="Post updates to your classes and send push notifications to enrolled trainees."
+      primaryAction={
+        <Button variant="primary" size="sm" onClick={() => setShowComposer(true)}>
+          <Plus className="h-4 w-4 mr-1.5" /> New broadcast
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* LIST OF ANNOUNCEMENTS */}
+        {sortedAnnouncements.length > 0 ? (
+          <div className="space-y-4">
+            {sortedAnnouncements.map((a) => (
+              <Card key={a.id} className="p-5 space-y-3">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {a.pinned && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-brand-gold/15 px-2 py-0.5 text-[11px] font-semibold text-brand-gold">
-                        <Pin size={11} /> Pinned
-                      </span>
-                    )}
-                    {a.audience.map((code) => (
-                      <CodePill key={code}>{code}</CodePill>
-                    ))}
+                    {a.pinned && <Pin className="h-4 w-4 text-warning" aria-label="Pinned broadcast" />}
+                    <h3 className="font-semibold text-text-primary text-base">{a.title}</h3>
                   </div>
-                  <span className="shrink-0 text-xs text-faint">{relativeTime(a.postedAt)}</span>
-                </div>
-                <h3 className="mt-2.5 font-display text-base font-semibold text-ink">{a.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted">{a.body}</p>
-                <div className="mt-3 flex items-center gap-3 border-t border-line pt-3 text-xs text-faint">
-                  <span>{a.author}</span>
-                  <span className="flex items-center gap-1">
-                    <Users size={12} /> {a.reach} reached
+                  <span className="text-xs font-mono text-text-tertiary">
+                    {new Date(a.postedAt).toLocaleDateString()}
                   </span>
                 </div>
+
+                <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">{a.body}</p>
+
+                <div className="pt-2 border-t border-border flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-text-tertiary">Audience:</span>
+                    {a.audience.map((code) => (
+                      <Badge key={code} variant="info">{code}</Badge>
+                    ))}
+                  </div>
+                  <span className="text-text-tertiary">Author: {a.author}</span>
+                </div>
               </Card>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <Card className="p-8">
+            <EmptyState
+              icon={<Megaphone className="h-8 w-8" />}
+              title="No broadcasts yet"
+              description="Post announcements to update trainees across your courses."
+              action={
+                <Button variant="primary" onClick={() => setShowComposer(true)}>
+                  Create announcement
+                </Button>
+              }
+            />
+          </Card>
+        )}
+
+        {/* ANNOUNCEMENT COMPOSER DIALOG */}
+        <Dialog open={showComposer} onOpenChange={setShowComposer}>
+          <DialogContent className="max-w-xl p-6 space-y-5">
+            <div>
+              <h3 className="text-lg font-semibold text-text-primary">New Broadcast Announcement</h3>
+              <p className="text-xs text-text-secondary">Compose a message for your enrolled course cohorts.</p>
+            </div>
+
+            <div className="space-y-4">
+              <FormField label="Title" required>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Schedule update for Module 3"
+                />
+              </FormField>
+
+              <FormField label="Message Details" required>
+                <Textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={4}
+                  placeholder="Write the announcement details..."
+                />
+              </FormField>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-text-secondary block">Audience Courses</label>
+                <div className="flex flex-wrap gap-2">
+                  {courses.map((c) => {
+                    const selected = audience.includes(c.courseCode);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleAudience(c.courseCode)}
+                        className={`px-3 py-1 rounded-control text-xs font-medium border transition-colors ${
+                          selected
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-surface-muted text-text-secondary border-border'
+                        }`}
+                      >
+                        {c.courseCode}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+                <Button variant="secondary" onClick={() => setShowComposer(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={handleBroadcast}>
+                  <Send className="h-4 w-4 mr-1.5" /> Broadcast now
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-    </div>
-  )
+    </PageLayout>
+  );
 }

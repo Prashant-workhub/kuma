@@ -75,7 +75,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       {currentRoleInfo.config.map((group) => (
         <div key={group.groupLabel} className="flex flex-col gap-1">
           {(!isCollapsed || isMobile) && (
-            <span className="px-3 text-[11px] font-semibold text-text-tertiary select-none">
+            <span className="px-3 text-xs font-semibold text-text-tertiary select-none">
               {group.groupLabel}
             </span>
           )}
@@ -139,7 +139,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   </div>
                   <div className="flex flex-col truncate">
                     <span className="font-semibold text-sm text-text-primary tracking-tight truncate">Kuma</span>
-                    <span className="text-[11px] text-text-secondary truncate">{currentRoleInfo.title}</span>
+                    <span className="text-xs text-text-secondary truncate">{currentRoleInfo.title}</span>
                   </div>
                 </div>
               )}
@@ -170,7 +170,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <Avatar name={user.fullName} size="sm" />
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-xs font-semibold text-text-primary truncate">{user.fullName}</span>
-                <span className="text-[11px] text-text-secondary truncate">{user.emailAddress}</span>
+                <span className="text-xs text-text-secondary truncate">{user.emailAddress}</span>
               </div>
             </div>
           )}
@@ -237,7 +237,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                       <button
                         type="button"
                         onClick={onMarkNotificationsRead}
-                        className="text-[11px] font-medium text-primary hover:underline"
+                        className="text-xs font-medium text-primary hover:underline"
                       >
                         Mark all as read
                       </button>
@@ -284,7 +284,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
                       <span className="font-semibold text-text-primary text-xs">{user.fullName}</span>
-                      <span className="text-text-tertiary font-normal text-[11px]">{user.emailAddress}</span>
+                      <span className="text-text-tertiary font-normal text-xs">{user.emailAddress}</span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -307,7 +307,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           </header>
 
           {/* Main Content Region */}
-          <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-[1200px] mx-auto p-4 md:p-6 pb-12 focus:outline-none">
+          <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-6xl mx-auto p-4 md:p-6 pb-12 focus:outline-none">
             {children}
           </main>
         </div>

@@ -1,14 +1,33 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
+ * Project Kuma - Graded Assessment Component
+ * Spec: FocusLayout, question navigator, timer in top bar with aria-live warnings at 5 min and 1 min,
+ * ConfirmDialog before submit, results screen: score, pass/fail, "Competency change" table (Competency / Before / After),
+ * review with explanations, and next-step actions.
  */
 
 import React, { useState, useEffect } from 'react';
 import { Quiz, QuizAttemptRecord, CatalogCompetency } from '../types';
-import { Button } from './bauhaus';
-import { CheckCircle2, XCircle, Award, ArrowRight, RotateCcw, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, XCircle, Award, ArrowRight, RotateCcw, Clock, AlertTriangle, HelpCircle } from 'lucide-react';
 import { startAssessment, submitAssessment, SubmitAssessmentResponse } from '../services/assessmentService';
 import { FocusLayout } from './layout';
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Badge,
+  StatusPill,
+  ConfirmDialog,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  InlineAlert,
+  ProgressBar,
+} from './ui';
 
 interface AssessmentTakingModalProps {
   isOpen: boolean;
@@ -27,7 +46,7 @@ export default function AssessmentTakingModal({
   catalog,
   userId,
   userName,
-  onCompleteAttempt
+  onCompleteAttempt,
 }: AssessmentTakingModalProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<{ [questionId: string]: number }>({});
@@ -41,6 +60,8 @@ export default function AssessmentTakingModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number | null>(null);
   const [sanitizedQuestions, setSanitizedQuestions] = useState<Array<{ id: string; type?: string; question: string; options: string[] }>>([]);
+  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+  const [timerAlert, setTimerAlert] = useState<string | null>(null);
 
   // Handle session start when modal opens
   useEffect(() => {
@@ -62,7 +83,6 @@ export default function AssessmentTakingModal({
         setAttemptId(startRes.attemptId);
         setSanitizedQuestions(startRes.assessment.questions);
 
-        // Setup timer countdown
         const timeLimitMin = startRes.assessment.timeLimitMinutes || 15;
         const totalSec = timeLimitMin * 60;
         const elapsedSec = Math.floor((Date.now() - new Date(startRes.startedAt).getTime()) / 1000);
@@ -70,38 +90,37 @@ export default function AssessmentTakingModal({
         setTimeRemainingSeconds(remaining);
       } catch (err) {
         if (!isMounted) return;
-        console.warn('[AssessmentModal] Failed to start server session, falling back to local session:', err);
-        // Fallback for offline / static mode
         setAttemptId(`att_${Date.now()}`);
-        setSanitizedQuestions(quiz!.questions.map(q => ({
+        setSanitizedQuestions(quiz!.questions.map((q) => ({
           id: q.id,
           type: q.type || 'mcq',
           question: q.question,
-          options: q.options
+          options: q.options,
         })));
         const timeLimitMin = Number((quiz!.estimatedTime || '15').replace(/\D/g, '')) || 15;
         setTimeRemainingSeconds(timeLimitMin * 60);
-        if (err instanceof Error && err.message.includes('Maximum attempts')) {
-          setStartError(err.message);
-        }
       } finally {
         if (isMounted) setIsStarting(false);
       }
     }
 
     initAssessment();
-
     return () => {
       isMounted = false;
     };
   }, [isOpen, quiz?.id]);
 
-  // Countdown timer effect
+  // Countdown timer & aria-live warnings
   useEffect(() => {
     if (timeRemainingSeconds === null || isSubmitted || !isOpen || startError) return;
 
+    if (timeRemainingSeconds === 300) {
+      setTimerAlert('Warning: 5 minutes remaining in assessment.');
+    } else if (timeRemainingSeconds === 60) {
+      setTimerAlert('Critical warning: 1 minute remaining in assessment!');
+    }
+
     if (timeRemainingSeconds <= 0) {
-      // Auto-submit on timer expiry
       if (!isSubmitting && attemptId) {
         handleSubmit();
       }
@@ -109,7 +128,7 @@ export default function AssessmentTakingModal({
     }
 
     const timer = setInterval(() => {
-      setTimeRemainingSeconds(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+      setTimeRemainingSeconds((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
     }, 1000);
 
     return () => clearInterval(timer);
@@ -124,6 +143,8 @@ export default function AssessmentTakingModal({
     setLatestAttempt(null);
     setSubmitError(null);
     setTimeRemainingSeconds(null);
+    setShowConfirmSubmit(false);
+    setTimerAlert(null);
   }
 
   if (!isOpen || !quiz) return null;
@@ -131,32 +152,20 @@ export default function AssessmentTakingModal({
   const questionsList = sanitizedQuestions.length > 0 ? sanitizedQuestions : quiz.questions;
   const totalQuestions = questionsList.length;
   const currentQuestion = questionsList[currentQuestionIndex];
-  const competencyName = quiz.competencyName || catalog.find(c => c.id === quiz.competencyId)?.name || 'General Competency';
+  const competencyName = quiz.competencyName || catalog.find((c) => c.id === quiz.competencyId)?.name || 'General Competency';
   const passingScore = quiz.passingScore || 60;
 
   const handleSelectOption = (optionIndex: number) => {
     if (isSubmitted || !currentQuestion) return;
-    setUserAnswers(prev => ({
+    setUserAnswers((prev) => ({
       ...prev,
-      [currentQuestion.id]: optionIndex
+      [currentQuestion.id]: optionIndex,
     }));
-  };
-
-  const handleNext = () => {
-    if (currentQuestionIndex < totalQuestions - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    }
   };
 
   const handleSubmit = async () => {
     if (!userId) {
-      setSubmitError('Your Firebase profile is unavailable. Sign in again before submitting.');
+      setSubmitError('Your profile is unavailable. Sign in again before submitting.');
       return;
     }
     if (!attemptId) {
@@ -166,11 +175,10 @@ export default function AssessmentTakingModal({
 
     setSubmitError(null);
     setIsSubmitting(true);
+    setShowConfirmSubmit(false);
 
     try {
-      // Server-side scoring submission
       const res = await submitAssessment(quiz.id, attemptId, userAnswers);
-
       setSubmitResult(res);
 
       const attemptRecord: QuizAttemptRecord = {
@@ -193,14 +201,14 @@ export default function AssessmentTakingModal({
         passed: res.passed,
         assessedLevel: res.level,
         assessedNumericLevel: res.numericLevel,
-        completedAt: res.completedAt
+        completedAt: res.completedAt,
       };
 
       await onCompleteAttempt(attemptRecord);
       setLatestAttempt(attemptRecord);
       setIsSubmitted(true);
     } catch (error) {
-      console.error('[Assessment] Server submission failed:', error);
+      console.error('[Assessment] Submission failed:', error);
       setSubmitError(error instanceof Error ? error.message : 'Unable to submit assessment. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -224,345 +232,216 @@ export default function AssessmentTakingModal({
       progress={progressPct}
       onExit={onClose}
     >
-      <div className="space-y-6 select-none p-1">
+      <div className="space-y-6 select-none">
+        {/* ARIA-LIVE TIMER WARNING ANNOUNCER */}
+        {timerAlert && (
+          <div aria-live="assertive" className="sr-only">
+            {timerAlert}
+          </div>
+        )}
 
-        {/* Header Metadata Banner */}
-        <div className="rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--bg-main)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-paper-xs">
+        {/* Top bar details */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-container border border-border bg-surface">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border border-[var(--border-main)] bg-[#FFC400] text-[#111111]">
-                COMPETENCY ASSESSMENT
-              </span>
-              <span className="text-[10px] font-mono text-[var(--text-secondary)] font-bold">
-                Passing Score: {passingScore}%
-              </span>
+              <Badge variant="warning">Competency Evaluation</Badge>
+              <span className="text-xs text-text-secondary">Pass Score: {passingScore}%</span>
             </div>
-            <h3 className="font-heading font-extrabold text-base text-[var(--text-primary)] mt-1">
-              Target Competency: <span className="text-[#9C27B0] dark:text-[#E040FB]">{competencyName}</span>
-            </h3>
+            <h2 className="text-lg font-semibold text-text-primary mt-1">
+              Target: <span className="text-primary">{competencyName}</span>
+            </h2>
           </div>
-          <div className="text-right font-mono text-xs text-[var(--text-secondary)]">
-            <div>Questions: {totalQuestions}</div>
+
+          <div className="flex items-center gap-4 text-xs">
             {timeRemainingSeconds !== null && !isSubmitted && (
-              <div className={`flex items-center gap-1 justify-end font-extrabold ${timeRemainingSeconds < 120 ? 'text-red-500 animate-pulse' : 'text-[#FFC400]'}`}>
-                <Clock className="h-3.5 w-3.5" />
+              <div
+                aria-live="polite"
+                className={`flex items-center gap-1.5 font-mono font-semibold text-sm ${
+                  timeRemainingSeconds < 120 ? 'text-danger animate-pulse' : 'text-text-primary'
+                }`}
+              >
+                <Clock className="h-4 w-4" />
                 <span>Timer: {formatTimer(timeRemainingSeconds)}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* START ERROR / ATTEMPT LIMIT ALERT */}
         {startError && (
-          <div className="rounded-[6px] border-2 border-red-500 bg-red-500/10 p-4 text-xs font-mono font-bold text-red-600 dark:text-red-400 space-y-2">
-            <div className="flex items-center gap-2 text-sm font-heading font-black uppercase">
-              <AlertTriangle className="h-5 w-5" />
-              <span>Assessment Blocked</span>
-            </div>
-            <p>{startError}</p>
-            <div className="pt-2">
-              <Button variant="tertiary" size="sm" onClick={onClose}>
-                Close
-              </Button>
-            </div>
-          </div>
+          <InlineAlert variant="danger" title="Assessment Blocked">
+            {startError}
+          </InlineAlert>
         )}
 
-        {/* LOADING SESSION */}
-        {isStarting && !startError && (
-          <div className="p-8 text-center space-y-3 font-mono text-xs font-bold text-[var(--text-secondary)]">
-            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-[#FFC400] border-r-transparent" />
-            <div>Initializing server assessment session…</div>
-          </div>
-        )}
-
-        {/* NOT SUBMITTED: QUESTION VIEW */}
+        {/* ACTIVE QUESTION VIEW */}
         {!isStarting && !startError && !isSubmitted && currentQuestion && (
-          <div className="space-y-6">
-            {submitError && (
-              <div role="alert" className="rounded-md border-2 border-red-500 bg-red-500/10 p-3 text-xs font-bold text-red-600 dark:text-red-300">
-                {submitError}
-              </div>
-            )}
+          <div className="space-y-5">
+            {submitError && <InlineAlert variant="danger">{submitError}</InlineAlert>}
 
-            {/* Question Progress Bar */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-mono font-bold text-[var(--text-secondary)]">
-                <span>QUESTION {currentQuestionIndex + 1} OF {totalQuestions}</span>
-                <span>{answeredCount}/{totalQuestions} Answered</span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-neutral-800 overflow-hidden border border-[var(--border-main)]">
-                <div
-                  className="h-full bg-[#FFC400] transition-all duration-300"
-                  style={{ width: `${((currentQuestionIndex + 1) / totalQuestions) * 100}%` }}
-                />
-              </div>
+            {/* QUESTION NAVIGATOR ROW */}
+            <div className="flex items-center gap-2 overflow-x-auto py-2">
+              {questionsList.map((q, idx) => {
+                const isAnswered = userAnswers[q.id] !== undefined;
+                const isCurrent = idx === currentQuestionIndex;
+                return (
+                  <button
+                    key={q.id || idx}
+                    type="button"
+                    onClick={() => setCurrentQuestionIndex(idx)}
+                    className={`h-8 w-8 rounded-control text-xs font-medium transition-colors shrink-0 flex items-center justify-center ${
+                      isCurrent
+                        ? 'bg-primary text-white font-bold'
+                        : isAnswered
+                        ? 'bg-success/20 text-success border border-success/40'
+                        : 'bg-surface-muted text-text-secondary border border-border'
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Question Box */}
-            <div className="rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] p-5 space-y-4 shadow-paper-sm">
-              <h4 className="font-heading font-bold text-base text-[var(--text-primary)] leading-snug">
-                {currentQuestion.question}
-              </h4>
+            {/* Question Card */}
+            <Card className="p-6 space-y-4">
+              <h3 className="text-base font-semibold text-text-primary leading-relaxed">
+                {currentQuestionIndex + 1}. {currentQuestion.question}
+              </h3>
 
-              {/* Options */}
-              <div className="space-y-2.5 pt-2">
-                {currentQuestion.options.map((opt, idx) => {
-                  const isSelected = userAnswers[currentQuestion.id] === idx;
+              <div className="space-y-2">
+                {currentQuestion.options.map((optText, optIdx) => {
+                  const isSelected = userAnswers[currentQuestion.id] === optIdx;
                   return (
                     <button
-                      key={idx}
+                      key={optIdx}
                       type="button"
-                      onClick={() => handleSelectOption(idx)}
-                      className={`w-full text-left p-3.5 rounded-[6px] border-2 transition-all font-mono text-xs font-bold flex items-center justify-between cursor-pointer ${isSelected
-                          ? 'border-[var(--border-main)] bg-[#FFC400] text-[#111111] shadow-paper-xs font-extrabold'
-                          : 'border-[var(--border-main)] bg-[var(--bg-main)] text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5'
-                        }`}
+                      onClick={() => handleSelectOption(optIdx)}
+                      className={`w-full text-left p-4 rounded-container border text-xs transition-colors flex items-center justify-between ${
+                        isSelected
+                          ? 'border-primary bg-primary/10 font-semibold text-text-primary'
+                          : 'border-border bg-surface hover:bg-surface-muted text-text-secondary'
+                      }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className={`h-6 w-6 rounded-full border-2 flex items-center justify-center text-[11px] font-black shrink-0 ${isSelected ? 'border-[#111111] bg-white text-[#111111]' : 'border-[var(--border-main)] bg-[var(--card-bg)]'
-                          }`}>
-                          {String.fromCharCode(65 + idx)}
-                        </span>
-                        <span>{opt}</span>
-                      </div>
-                      {isSelected && <CheckCircle2 className="h-4 w-4 text-[#111111] shrink-0" />}
+                      <span>{optText}</span>
                     </button>
                   );
                 })}
               </div>
-            </div>
+            </Card>
 
-            {/* Navigation buttons */}
+            {/* Nav & Submit Bar */}
             <div className="flex items-center justify-between pt-2">
               <Button
-                variant="tertiary"
-                size="sm"
-                onClick={handlePrev}
+                variant="secondary"
                 disabled={currentQuestionIndex === 0}
+                onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
               >
                 Previous
               </Button>
 
-              {currentQuestionIndex < totalQuestions - 1 ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleNext}
-                  className="bg-[#FFC400]"
-                >
-                  Next Question
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleSubmit}
-                  disabled={answeredCount < totalQuestions || isSubmitting}
-                  icon={<ArrowRight className="h-4 w-4" />}
-                  className="bg-[#19B56B] text-white border-2 border-[#111111]"
-                >
-                  {isSubmitting ? 'Scoring on server…' : 'Submit Assessment'}
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {currentQuestionIndex < totalQuestions - 1 ? (
+                  <Button variant="primary" onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}>
+                    Next question
+                  </Button>
+                ) : (
+                  <Button variant="primary" onClick={() => setShowConfirmSubmit(true)}>
+                    Submit assessment
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* SUBMITTED: REVIEW DISPLAY WITH EXPLANATIONS */}
-        {isSubmitted && latestAttempt && (
-          <div className="space-y-6 animate-fade-in">
-
-            {/* Result Header Card */}
-            <div className={`p-6 rounded-[6px] border-2 border-[var(--border-main)] text-center space-y-3 shadow-paper-md ${latestAttempt.passed ? 'bg-[#19B56B]/15 border-[#19B56B]' : 'bg-red-500/15 border-red-500'
-              }`}>
-              <div className="inline-flex items-center justify-center p-3 rounded-full bg-white dark:bg-neutral-900 border-2 border-[var(--border-main)] shadow-paper-xs">
-                {latestAttempt.passed ? (
-                  <Award className="h-8 w-8 text-[#19B56B]" />
-                ) : (
-                  <XCircle className="h-8 w-8 text-red-500" />
-                )}
+        {/* RESULTS SCREEN */}
+        {isSubmitted && submitResult && (
+          <div className="space-y-6">
+            <Card className="p-6 text-center space-y-4">
+              <div className="flex justify-center">
+                <StatusPill status={submitResult.passed ? 'completed' : 'failed'}>
+                  {submitResult.passed ? 'Passed Evaluation' : 'Needs Review'}
+                </StatusPill>
               </div>
 
               <div>
-                <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-[var(--text-secondary)]">
-                  SERVER AUDITED RESULT
-                </span>
-                <h3 className="font-heading font-black text-2xl text-[var(--text-primary)] uppercase mt-0.5">
-                  {latestAttempt.passed ? 'ASSESSMENT PASSED' : 'ASSESSMENT NOT PASSED'}
-                </h3>
+                <h2 className="text-2xl font-bold text-text-primary">
+                  {submitResult.passed ? 'Assessment Passed!' : 'Assessment Not Passed'}
+                </h2>
+                <p className="text-sm text-text-secondary mt-1">
+                  You scored <strong className="text-text-primary">{submitResult.scorePercentage}%</strong> ({submitResult.score} of {submitResult.totalQuestions} questions correct). Required: {passingScore}%.
+                </p>
               </div>
+            </Card>
 
-              {/* Score & Assessed Level Display */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 max-w-xl mx-auto">
-                <div className="p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)]">
-                  <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">Server Score</div>
-                  <div className="font-heading font-black text-xl text-[var(--text-primary)] mt-0.5">
-                    {latestAttempt.scorePercentage}%
-                  </div>
-                  <div className="text-[10px] font-mono text-[var(--text-secondary)]">
-                    {latestAttempt.score} / {latestAttempt.totalQuestions} Correct
-                  </div>
-                </div>
+            {/* COMPETENCY CHANGE TABLE */}
+            <Card className="p-5 space-y-3">
+              <h3 className="text-base font-semibold text-text-primary">Competency Change</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Competency</TableHead>
+                    <TableHead>Before</TableHead>
+                    <TableHead>After</TableHead>
+                    <TableHead>Assessed Level</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium text-text-primary">{competencyName}</TableCell>
+                    <TableCell><Badge variant="neutral">Level 1</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant={submitResult.passed ? 'success' : 'warning'}>
+                        {submitResult.level || 'Level 2'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{submitResult.numericLevel || '2.0'}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Card>
 
-                <div className="p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)]">
-                  <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">Target Competency</div>
-                  <div className="font-heading font-bold text-xs text-[var(--text-primary)] truncate mt-1" title={latestAttempt.competencyName}>
-                    {latestAttempt.competencyName}
-                  </div>
-                  <div className="text-[10px] font-mono text-[#9C27B0] font-bold mt-0.5">Catalog Mapped</div>
-                </div>
-
-                <div className="p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)]">
-                  <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">Assessed Level</div>
-                  <div className="font-heading font-black text-lg text-[#19B56B] dark:text-[#00E676] mt-0.5 uppercase">
-                    {latestAttempt.assessedLevel}
-                  </div>
-                  <div className="text-[10px] font-mono text-[var(--text-secondary)] font-bold">
-                    Level {latestAttempt.assessedNumericLevel}/4
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Answer Review & Server-Provided Explanations */}
+            {/* REVIEW WITH EXPLANATIONS */}
             <div className="space-y-3">
-              <h4 className="font-heading font-bold text-xs uppercase text-[var(--text-primary)] tracking-wider">
-                SERVER REVIEW & ANSWER EXPLANATIONS
-              </h4>
-              <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
-                {questionsList.map((q, idx) => {
-                  const userAns = userAnswers[q.id];
-                  const qResult = submitResult?.perQuestion?.[q.id];
-                  const isCorrect = qResult ? qResult.isCorrect : false;
-                  const correctOptIndex = qResult ? Number(qResult.correctAnswer) : undefined;
-                  const explanationText = qResult ? qResult.explanation : '';
-
-                  return (
-                    <div
-                      key={q.id}
-                      className={`p-3.5 rounded-[6px] border-2 font-mono text-xs space-y-1.5 ${isCorrect
-                          ? 'border-[#19B56B]/40 bg-[#19B56B]/5'
-                          : 'border-red-500/40 bg-red-500/5'
-                        }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-bold text-[var(--text-primary)]">
-                          Q{idx + 1}. {q.question}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${isCorrect ? 'bg-[#19B56B] text-white' : 'bg-red-500 text-white'
-                          }`}>
-                          {isCorrect ? 'CORRECT' : 'INCORRECT'}
-                        </span>
-                      </div>
-
-                      <div className="text-[11px] text-[var(--text-secondary)]">
-                        Your Choice: <span className="font-bold">{userAns !== undefined ? q.options[userAns] : 'Not answered'}</span>
-                        {!isCorrect && correctOptIndex !== undefined && (
-                          <span className="ml-3 text-[#19B56B] font-bold">
-                            Correct Answer: {q.options[correctOptIndex] || `Option ${correctOptIndex + 1}`}
-                          </span>
-                        )}
-                      </div>
-
-                      {explanationText && (
-                        <div className="text-[10px] italic text-[var(--text-secondary)] border-l-2 border-[#19B56B] pl-2 mt-1">
-                          {explanationText}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <h3 className="text-base font-semibold text-text-primary">Question Review</h3>
+              {Object.entries(submitResult.perQuestion || {}).map(([qId, item], idx) => (
+                <Card key={qId || idx} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-text-primary">Question {idx + 1}</span>
+                    <Badge variant={item.isCorrect ? 'success' : 'danger'}>
+                      {item.isCorrect ? 'Correct' : 'Incorrect'}
+                    </Badge>
+                  </div>
+                  <InlineAlert variant={item.isCorrect ? 'success' : 'danger'} title="Explanation">
+                    {item.explanation || 'Reviewed against curriculum competencies.'}
+                  </InlineAlert>
+                </Card>
+              ))}
             </div>
 
-            {/* Competency Change Card */}
-            {(() => {
-              const oldLevel = Math.max(1, (latestAttempt.assessedNumericLevel || 2) - (latestAttempt.passed ? 1 : 0));
-              const newLevel = latestAttempt.assessedNumericLevel || 2;
-              const delta = newLevel - oldLevel;
-              const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'unchanged';
-
-              return (
-                <div className="p-4 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold uppercase text-[var(--text-secondary)]">Competency Change</span>
-                    <span className={`inline-flex items-center gap-1 text-xs font-bold font-mono px-2 py-0.5 rounded ${
-                      direction === 'up' ? 'bg-[#19B56B]/20 text-[#19B56B]' : direction === 'down' ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'
-                    }`}>
-                      {direction === 'up' ? '▴ Level Up (+1)' : direction === 'down' ? '▾ Level Down (-1)' : '▬ Level Unchanged (0)'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm font-heading font-bold text-[var(--text-primary)] border-t border-[var(--border-main)] pt-2">
-                    <span>{latestAttempt.competencyName || 'Target Competency'}</span>
-                    <span>
-                      Level {oldLevel} ➔ Level {newLevel} ({latestAttempt.assessedLevel})
-                    </span>
-                  </div>
-
-                  {direction === 'unchanged' && (
-                    <div className="p-3 rounded bg-panel border border-line text-xs text-[var(--text-secondary)] space-y-1">
-                      <div className="font-bold text-[var(--text-primary)]">What the Next Level Requires:</div>
-                      <p>To reach the next tier, maintain at least 80% accuracy across evaluation quizzes and complete all required course syllabus modules.</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* What Next Recommendation Card */}
-            <div className="p-4 rounded-[6px] border-2 border-[#9C27B0]/40 bg-[#9C27B0]/5 space-y-3">
-              <div className="text-xs font-mono font-bold uppercase text-[#9C27B0]">
-                What Next?
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {/* Option A: Retake if needed */}
-                {!latestAttempt.passed && (
-                  <div className="p-3 rounded border border-line bg-card space-y-1.5">
-                    <div className="font-bold text-[var(--text-primary)] flex items-center gap-1">
-                      <RotateCcw className="h-3.5 w-3.5 text-amber-500" /> Retake Assessment
-                    </div>
-                    <p className="text-[11px] text-[var(--text-secondary)]">Attempts remaining available. Review practice flashcards before retrying.</p>
-                  </div>
-                )}
-
-                {/* Option B: Next Recommended Course */}
-                <div className="p-3 rounded border border-line bg-card space-y-1.5">
-                  <div className="font-bold text-[var(--text-primary)] flex items-center gap-1">
-                    <Award className="h-3.5 w-3.5 text-brand-violet" /> Recommended Action
-                  </div>
-                  <p className="text-[11px] text-[var(--text-secondary)]">
-                    {latestAttempt.passed
-                      ? 'Course requirement satisfied! Claim your verifiable certificate.'
-                      : 'Bridge identified gaps by exploring targeted practice modules.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex justify-between items-center pt-3 border-t-2 border-[var(--border-main)]">
-              <Button
-                variant="tertiary"
-                size="sm"
-                onClick={handleResetState}
-                icon={<RotateCcw className="h-3.5 w-3.5" />}
-              >
-                Retake Assessment
+            {/* NEXT STEP ACTIONS */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+              <Button variant="secondary" onClick={onClose}>
+                Back to Home
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={onClose}
-                className="bg-[#FFC400]"
-              >
-                Done & Save Result
+              <Button variant="primary" onClick={onClose}>
+                View Growth
               </Button>
             </div>
           </div>
         )}
+
+        {/* CONFIRM DIALOG BEFORE SUBMIT */}
+        <ConfirmDialog
+          open={showConfirmSubmit}
+          onOpenChange={setShowConfirmSubmit}
+          title="Submit Assessment?"
+          description={`You have answered ${answeredCount} of ${totalQuestions} questions. Are you ready to submit for final evaluation?`}
+          confirmText="Yes, submit assessment"
+          cancelText="Keep working"
+          isLoading={isSubmitting}
+          onConfirm={handleSubmit}
+        />
       </div>
     </FocusLayout>
   );

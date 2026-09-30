@@ -20,6 +20,7 @@ import { getAllCertificates } from '../utils/certificateUtils';
 import { COURSES } from '../teacher-portal/lib/mockData';
 import { DEMO_TRAINEES, DEMO_TRAINERS, isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import { getAdminAnalytics, AdminAnalyticsData } from '../services/adminUserService';
+import { ChartCard, BarChart as StandardBarChart, LineChart as StandardLineChart, Heatmap as StandardHeatmap } from '../components/charts';
 import {
   BarChart3,
   Building,
@@ -593,95 +594,55 @@ export default function AdminAnalyticsView({
         </div>
       </div>
 
-      {/* SECTION 2: TRAINING PARTICIPATION & COMPLETION (Requirement 4 & 5) */}
+      {/* SECTION 2: TRAINING PARTICIPATION & COMPLETION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Participation Breakdown Card */}
-        <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-3">
-            <div>
-              <h3 className="text-sm font-extrabold uppercase text-[var(--text-primary)] flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-[#FFC400]" />
-                TRAINING PARTICIPATION BREAKDOWN
-              </h3>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">Real enrollment state across the selected dataset.</p>
-            </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded bg-[#FFC400]/20 text-[#B78103] dark:text-[#FFD54F] border border-[#FFC400]/40">
-              Enrollment Lifecycle
-            </span>
-          </div>
+        <ChartCard
+          title="Training Participation Breakdown (Course Funnel)"
+          description="Real enrollment lifecycle state across the selected dataset (Enrolled → In Progress → Passed → Certified)."
+          tableData={[
+            { stage: 'Completed Trainings', count: kpis.completedEnrollments },
+            { stage: 'In-Progress', count: kpis.inProgressEnrollments },
+            { stage: 'Assessment Pending', count: kpis.assessmentPendingEnrollments },
+            { stage: 'Not Started', count: kpis.notStartedEnrollments },
+          ]}
+          tableHeaders={['stage', 'count']}
+          exportFileName="training-participation-funnel"
+        >
+          <StandardBarChart
+            data={[
+              { label: 'Completed', value: kpis.completedEnrollments },
+              { label: 'In-Progress', value: kpis.inProgressEnrollments },
+              { label: 'Assessment Pending', value: kpis.assessmentPendingEnrollments },
+              { label: 'Not Started', value: kpis.notStartedEnrollments },
+            ]}
+            orientation="horizontal"
+            unit=""
+            formatType="integer"
+            axisTitle="Trainee Enrollment Lifecycle Count"
+          />
+        </ChartCard>
 
-          {kpis.totalEnrollments === 0 ? (
-            <div className="p-8 text-center rounded-[6px] border-2 border-dashed border-[var(--border-main)] bg-[var(--bg-main)] text-xs text-[var(--text-secondary)]">
-              No enrollment records match the selected scope filter.
-            </div>
-          ) : (
-            <div className="space-y-3 text-xs font-bold">
-              
-              <div className="p-3.5 rounded bg-[var(--bg-main)] border border-[var(--border-main)] flex items-center justify-between">
-                <span>Completed Trainings (100% + Assessment Passed)</span>
-                <span className="text-[#19B56B] font-black">{kpis.completedEnrollments} ({Math.round((kpis.completedEnrollments / kpis.totalEnrollments) * 100)}%)</span>
-              </div>
-
-              <div className="p-3.5 rounded bg-[var(--bg-main)] border border-[var(--border-main)] flex items-center justify-between">
-                <span>In-Progress Trainings (1% – 99% Syllabus Progress)</span>
-                <span className="text-[#FFC400] font-black">{kpis.inProgressEnrollments} ({Math.round((kpis.inProgressEnrollments / kpis.totalEnrollments) * 100)}%)</span>
-              </div>
-
-              <div className="p-3.5 rounded bg-[var(--bg-main)] border border-[var(--border-main)] flex items-center justify-between">
-                <span>Assessment Pending (100% Content Done, Quiz Open)</span>
-                <span className="text-purple-600 dark:text-purple-400 font-black">{kpis.assessmentPendingEnrollments} ({Math.round((kpis.assessmentPendingEnrollments / kpis.totalEnrollments) * 100)}%)</span>
-              </div>
-
-              <div className="p-3.5 rounded bg-[var(--bg-main)] border border-[var(--border-main)] flex items-center justify-between">
-                <span>Not Started (0% Progress)</span>
-                <span className="text-[var(--text-secondary)] font-black">{kpis.notStartedEnrollments} ({Math.round((kpis.notStartedEnrollments / kpis.totalEnrollments) * 100)}%)</span>
-              </div>
-
-            </div>
-          )}
-        </div>
-
-        {/* Training Programs Ranking by Real Enrollment */}
-        <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-3">
-            <div>
-              <h3 className="text-sm font-extrabold uppercase text-[var(--text-primary)] flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-[#38BDF8]" />
-                TRAINING PROGRAM ENROLLMENT RANKINGS
-              </h3>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">Ranked by actual participant enrollment counts.</p>
-            </div>
-            <span className="text-xs text-[var(--text-secondary)] font-bold">Active Courses</span>
-          </div>
-
-          <div className="space-y-2.5">
-            {courses.map((course, idx) => {
-              const enrolledCount = filteredEnrollments.filter(e => e.courseId === course.id || e.courseCode === course.courseCode).length;
-              const completedCount = filteredEnrollments.filter(e => (e.courseId === course.id || e.courseCode === course.courseCode) && e.status === 'completed').length;
-
-              return (
-                <div key={course.id} className="p-3 rounded bg-[var(--bg-main)] border border-[var(--border-main)] flex items-center justify-between text-xs">
-                  <div className="space-y-0.5">
-                    <div className="font-extrabold text-[var(--text-primary)] flex items-center gap-2">
-                      <span className="h-5 w-5 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] flex items-center justify-center text-[10px] font-black border border-[#38BDF8]/40">
-                        #{idx + 1}
-                      </span>
-                      <span>{course.courseName}</span>
-                    </div>
-                    <div className="text-[10px] text-[var(--text-secondary)]">Code: {course.courseCode} | Duration: {course.duration || '4 Weeks'}</div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="font-black text-[#FFC400]">{enrolledCount} Enrolled</div>
-                    <div className="text-[10px] text-[#19B56B] font-bold">{completedCount} Completed</div>
-                  </div>
-                </div>
-              );
+        <ChartCard
+          title="Training Program Enrollment Rankings"
+          description="Ranked by participant enrollment counts and course completions."
+          tableData={courses.map((course) => {
+            const enrolledCount = filteredEnrollments.filter((e) => e.courseId === course.id || e.courseCode === course.courseCode).length;
+            return { course: course.courseName, enrolled: enrolledCount };
+          })}
+          tableHeaders={['course', 'enrolled']}
+          exportFileName="program-enrollment-rankings"
+        >
+          <StandardBarChart
+            data={courses.map((course) => {
+              const enrolledCount = filteredEnrollments.filter((e) => e.courseId === course.id || e.courseCode === course.courseCode).length;
+              return { label: course.courseCode || course.courseName, value: enrolledCount };
             })}
-          </div>
-        </div>
-
+            orientation="vertical"
+            unit=" Trainees"
+            formatType="integer"
+            axisTitle="Active Program Enrollment Volume"
+          />
+        </ChartCard>
       </div>
 
       {/* SECTION 3: SKILL GAP ANALYTICS & DEVELOPMENT PRIORITIES (Requirement 7 & 8) */}

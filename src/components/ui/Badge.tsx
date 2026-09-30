@@ -22,7 +22,7 @@ export const Badge: React.FC<BadgeProps> = ({
   };
 
   const sizeStyles = {
-    sm: 'px-2 py-0.5 text-[11px] leading-tight',
+    sm: 'px-2 py-0.5 text-xs leading-tight',
     md: 'px-2.5 py-0.5 text-xs leading-normal',
   };
 
@@ -43,10 +43,11 @@ export const Badge: React.FC<BadgeProps> = ({
 
 export interface StatusPillProps {
   status: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed' | 'pending';
+  children?: React.ReactNode;
   className?: string;
 }
 
-export const StatusPill: React.FC<StatusPillProps> = ({ status, className }) => {
+export const StatusPill: React.FC<StatusPillProps> = ({ status, children, className }) => {
   const statusConfig: Record<StatusPillProps['status'], { label: string; variant: BadgeProps['variant'] }> = {
     not_started: { label: 'Not started', variant: 'neutral' },
     in_progress: { label: 'In progress', variant: 'info' },
@@ -58,5 +59,5 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, className }) => 
 
   const { label, variant } = statusConfig[status] || { label: status, variant: 'neutral' };
 
-  return <Badge variant={variant} className={className}>{label}</Badge>;
+  return <Badge variant={variant} className={className}>{children || label}</Badge>;
 };

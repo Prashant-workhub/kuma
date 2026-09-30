@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { PageHeader, PageHeaderProps } from '../ui/Breadcrumbs';
+import { PageHeader, PageHeaderProps } from '../ui/Navigation';
 import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/Feedback';
 

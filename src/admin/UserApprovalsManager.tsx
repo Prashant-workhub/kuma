@@ -1,6 +1,7 @@
 /**
  * Project Kuma - Admin User Approvals & Role Management View
- * Features real API fetching, status/role filtering, approval/rejection actions, role modification with confirmation, and audit log telemetry.
+ * Features real API fetching, status/role filtering, bulk operations, CSV import wizard,
+ * detail Drawer, and ConfirmDialogs for consequential actions.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,19 +14,54 @@ import {
   AdminUserRecord,
   AuditLogRecord
 } from '../services/adminUserService';
+import { parseAndValidateCsv, CsvParseResult, MAX_BULK_IMPORT_ROWS } from '../utils/csvImportUtils';
+import { bulkImportUsers, BulkUserImportResponse } from '../services/adminUserService';
+import {
+  Button,
+  Card,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Toolbar,
+  StatusPill,
+  Badge,
+  InlineAlert,
+  ConfirmDialog,
+  Drawer,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  FormField,
+  Input,
+  Select,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '../components/ui';
 import {
   ShieldCheck,
   CheckCircle2,
   XCircle,
   Clock,
-  Filter,
   RefreshCw,
   AlertTriangle,
   UserCheck,
   UserX,
   UserCog,
   FileText,
-  Search
+  Upload,
+  Download,
+  MoreVertical,
+  Check,
+  FileSpreadsheet,
+  Eye,
 } from 'lucide-react';
 
 export default function UserApprovalsManager() {
@@ -37,6 +73,12 @@ export default function UserApprovalsManager() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Bulk selection state
+  const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
+
+  // User detail drawer state
+  const [selectedUserDetail, setSelectedUserDetail] = useState<AdminUserRecord | null>(null);
+
   // Rejection modal state
   const [rejectingUser, setRejectingUser] = useState<AdminUserRecord | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
@@ -44,6 +86,15 @@ export default function UserApprovalsManager() {
   // Role change confirmation modal state
   const [roleModalUser, setRoleModalUser] = useState<AdminUserRecord | null>(null);
   const [targetRole, setTargetRole] = useState<string>('');
+
+  // Bulk CSV Import Wizard State
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
+  const [csvContent, setCsvContent] = useState<string>('');
+  const [fileName, setFileName] = useState<string>('');
+  const [parseResult, setParseResult] = useState<CsvParseResult | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState<BulkUserImportResponse | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -65,7 +116,7 @@ export default function UserApprovalsManager() {
       }
     } catch (err: any) {
       console.error('[UserApprovalsManager] loadData error:', err);
-      setError(err.message || 'An unexpected error occurred loading administrative user accounts.');
+      setError(err.message || 'An unexpected error occurred loading user accounts.');
     } finally {
       setLoading(false);
     }
@@ -133,295 +184,598 @@ export default function UserApprovalsManager() {
     );
   });
 
-  return (
-    <div className="space-y-6 font-mono text-xs">
+  // Bulk selection helpers
+  const toggleSelectAll = () => {
+    if (selectedUids.size === filteredUsers.length) {
+      setSelectedUids(new Set());
+    } else {
+      setSelectedUids(new Set(filteredUsers.map((u) => u.uid)));
+    }
+  };
 
+  const toggleSelectRow = (uid: string) => {
+    const next = new Set(selectedUids);
+    if (next.has(uid)) {
+      next.delete(uid);
+    } else {
+      next.add(uid);
+    }
+    setSelectedUids(next);
+  };
+
+  const handleBulkApprove = async () => {
+    setLoading(true);
+    for (const uid of Array.from(selectedUids)) {
+      await approveUser(uid);
+    }
+    setSelectedUids(new Set());
+    void loadData();
+  };
+
+  // CSV File Upload Reader
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = (event.target?.result as string) || '';
+      setCsvContent(text);
+      const parsed = parseAndValidateCsv(text);
+      setParseResult(parsed);
+      setWizardStep(2);
+    };
+    reader.readAsText(file);
+  };
+
+  // Confirm CSV Bulk Import
+  const handleConfirmBulkImport = async () => {
+    if (!parseResult || parseResult.validRows.length === 0) return;
+    setIsImporting(true);
+    try {
+      const res = await bulkImportUsers(parseResult.validRows);
+      setImportSummary(res);
+      setWizardStep(4);
+      void loadData();
+    } catch (err: any) {
+      setError(`CSV Import Failed: ${err.message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleDownloadSampleCsv = () => {
+    const sample = `Full Name,Email,Department,Designation,Employee ID
+Ananya Sharma,ananya.s@capacity.gov.in,Engineering,Senior Architect,EMP-1001
+Vikram Patel,vikram.p@capacity.gov.in,Operations,Project Manager,EMP-1002
+Priya Reddy,priya.r@capacity.gov.in,Cybersecurity,Security Specialist,EMP-1003`;
+    const blob = new Blob([sample], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Kuma_Bulk_User_Import_Template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadErrorReport = () => {
+    if (!importSummary?.results) return;
+    const errors = importSummary.results.filter((r) => r.status === 'error');
+    if (errors.length === 0) return;
+    let csv = 'Email,Reason\n';
+    errors.forEach((f) => {
+      csv += `"${f.email}","${(f.error || f.message || 'Import failed').replace(/"/g, '""')}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Import_Failures_Report.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight flex items-center gap-2">
-            <UserCog className="h-7 w-7 text-amber-500" />
-            <span>USER APPROVALS & ROLE MANAGEMENT</span>
+          <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
+            <UserCog className="h-6 w-6 text-primary" />
+            <span>Users & Approvals</span>
           </h1>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">
-            Review registration requests, approve/reject trainers, grant custom claim administrative roles, and inspect governance audit trails.
+          <p className="text-xs text-text-secondary mt-1">
+            Review user registrations, manage role assignments, and perform bulk roster imports.
           </p>
         </div>
 
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-[6px] bg-amber-400 text-slate-950 font-bold text-xs border border-amber-300 shadow-paper-yellow hover:brightness-110 cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          <span>{loading ? 'Refreshing…' : 'REFRESH LIST'}</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setWizardStep(1);
+              setParseResult(null);
+              setImportSummary(null);
+              setShowImportWizard(true);
+            }}
+          >
+            <Upload className="h-4 w-4 mr-1.5" /> Bulk CSV Import
+          </Button>
+          <Button variant="secondary" size="sm" onClick={loadData} isLoading={loading}>
+            <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh Roster
+          </Button>
+        </div>
       </div>
 
-      {error && (
-        <div role="alert" className="p-4 rounded-lg bg-rose-500/15 border border-rose-500 text-rose-300 flex items-center justify-between">
+      {error && <InlineAlert variant="danger">{error}</InlineAlert>}
+
+      {/* TOOLBAR & FILTERS */}
+      <Toolbar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search users by name, email, organization..."
+        actions={
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-36 text-xs"
+            >
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </Select>
+
+            <Select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="w-36 text-xs"
+            >
+              <option value="all">All Roles</option>
+              <option value="trainee">Trainee</option>
+              <option value="trainer">Trainer</option>
+              <option value="admin">Administrator</option>
+            </Select>
           </div>
-          <button onClick={() => setError(null)} className="text-rose-400 hover:text-white font-bold">✕</button>
-        </div>
+        }
+      />
+
+      {/* BULK ACTION BAR */}
+      {selectedUids.size > 0 && (
+        <Card className="p-3 bg-surface-muted border-primary/40 flex items-center justify-between">
+          <span className="text-xs font-semibold text-text-primary">
+            {selectedUids.size} user{selectedUids.size > 1 ? 's' : ''} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="primary" size="sm" onClick={handleBulkApprove} isLoading={loading}>
+              <UserCheck className="h-4 w-4 mr-1.5" /> Approve Selected
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedUids(new Set())}>
+              Deselect All
+            </Button>
+          </div>
+        </Card>
       )}
 
-      {/* Filters & Search */}
-      <div className="p-4 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        
-        {/* Status Tabs */}
-        <div className="flex items-center gap-1 bg-[var(--bg-paper)] p-1 rounded-lg border border-[var(--border-main)]">
-          {['all', 'pending', 'approved', 'rejected'].map((st) => (
-            <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-md font-bold uppercase text-[11px] transition-all cursor-pointer ${
-                statusFilter === st
-                  ? 'bg-amber-400 text-slate-950 shadow-sm'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
-
-        {/* Search & Role Filter */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter by name, email, UID..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-[var(--border-main)] bg-[var(--bg-paper)] text-xs font-medium text-[var(--text-primary)] outline-none"
-            />
-          </div>
-
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="py-1.5 px-3 rounded-lg border border-[var(--border-main)] bg-[var(--bg-paper)] text-xs font-bold text-[var(--text-primary)] outline-none cursor-pointer"
-          >
-            <option value="all">All Roles</option>
-            <option value="trainee">Trainees</option>
-            <option value="trainer">Trainers / Faculty</option>
-            <option value="admin">Administrators</option>
-          </select>
-        </div>
-
-      </div>
-
       {/* USERS TABLE */}
-      <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
-        
+      <Card>
         {loading && users.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">Loading user accounts and approval records…</div>
+          <div className="p-8 text-center text-xs text-text-secondary">Loading user roster...</div>
         ) : filteredUsers.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">No user accounts found matching the selected filters.</div>
+          <div className="p-8 text-center text-xs text-text-secondary">No users found matching filters.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse font-mono">
-              <thead>
-                <tr className="border-b-2 border-[var(--border-main)] text-[10px] uppercase text-[var(--text-secondary)]">
-                  <th className="py-2.5 px-3">User Profile</th>
-                  <th className="py-2.5 px-3">Role & Permissions</th>
-                  <th className="py-2.5 px-3">Approval Status</th>
-                  <th className="py-2.5 px-3">Organization</th>
-                  <th className="py-2.5 px-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y border-b border-[var(--border-main)]">
-                {filteredUsers.map((u) => {
-                  const status = u.approvalStatus || 'approved';
-                  return (
-                    <tr key={u.uid} className="hover:bg-[var(--panel-bg)]">
-                      
-                      {/* Profile Name & Email */}
-                      <td className="py-3 px-3">
-                        <div className="font-extrabold text-[var(--text-primary)]">{u.fullName || 'User Profile'}</div>
-                        <div className="text-[10px] text-[var(--text-secondary)]">{u.email || u.uid}</div>
-                      </td>
-
-                      {/* Role Dropdown */}
-                      <td className="py-3 px-3">
-                        <select
-                          value={(u.role || 'trainee').toLowerCase()}
-                          onChange={(e) => handleRoleChangeSelect(u, e.target.value)}
-                          className="px-2.5 py-1 rounded bg-[var(--bg-paper)] border border-[var(--border-main)] font-bold text-[11px] text-[var(--text-primary)] cursor-pointer"
-                        >
-                          <option value="trainee">Trainee</option>
-                          <option value="trainer">Trainer</option>
-                          <option value="admin">Administrator</option>
-                        </select>
-                      </td>
-
-                      {/* Approval Status Badge */}
-                      <td className="py-3 px-3">
-                        {status === 'approved' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
-                            <CheckCircle2 size={12} />
-                            <span>Approved</span>
-                          </span>
-                        )}
-                        {status === 'pending' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
-                            <Clock size={12} />
-                            <span>Pending Review</span>
-                          </span>
-                        )}
-                        {status === 'rejected' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-bold">
-                            <XCircle size={12} />
-                            <span>Rejected</span>
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Organization */}
-                      <td className="py-3 px-3 text-[var(--text-secondary)]">
-                        {u.organization || 'Kuma Platform'}
-                      </td>
-
-                      {/* Action Buttons */}
-                      <td className="py-3 px-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedUids.size === filteredUsers.length && filteredUsers.length > 0}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all users"
+                    className="rounded border-border"
+                  />
+                </TableHead>
+                <TableHead>User Profile</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Organization</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.map((u) => {
+                const status = u.approvalStatus || 'approved';
+                const isSelected = selectedUids.has(u.uid);
+                return (
+                  <TableRow
+                    key={u.uid}
+                    className="cursor-pointer hover:bg-surface-muted/60"
+                    onClick={() => setSelectedUserDetail(u)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectRow(u.uid)}
+                        aria-label={`Select ${u.fullName}`}
+                        className="rounded border-border"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-semibold text-text-primary">{u.fullName || 'User Profile'}</div>
+                        <div className="text-xs text-text-secondary font-mono">{u.email || u.uid}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={(u.role || 'trainee').toLowerCase()}
+                        onChange={(e) => handleRoleChangeSelect(u, e.target.value)}
+                        className="w-32 text-xs py-1"
+                      >
+                        <option value="trainee">Trainee</option>
+                        <option value="trainer">Trainer</option>
+                        <option value="admin">Administrator</option>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill
+                        status={
+                          status === 'approved'
+                            ? 'completed'
+                            : status === 'pending'
+                            ? 'in_progress'
+                            : 'not_started'
+                        }
+                      >
+                        {status === 'approved' ? 'Approved' : status === 'pending' ? 'Pending' : 'Rejected'}
+                      </StatusPill>
+                    </TableCell>
+                    <TableCell className="text-xs text-text-secondary">{u.organization || 'Kuma Platform'}</TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" isIconOnly aria-label="User actions">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setSelectedUserDetail(u)}>
+                            <Eye className="h-4 w-4 mr-2" /> View Details
+                          </DropdownMenuItem>
                           {status !== 'approved' && (
-                            <button
-                              onClick={() => handleApprove(u.uid)}
-                              disabled={loading}
-                              className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] border border-emerald-400 cursor-pointer flex items-center gap-1"
-                            >
-                              <UserCheck size={12} />
-                              <span>Approve</span>
-                            </button>
+                            <DropdownMenuItem onClick={() => handleApprove(u.uid)}>
+                              <UserCheck className="h-4 w-4 mr-2 text-success" /> Approve Request
+                            </DropdownMenuItem>
                           )}
-
                           {status !== 'rejected' && (
-                            <button
-                              onClick={() => setRejectingUser(u)}
-                              disabled={loading}
-                              className="px-2.5 py-1 rounded bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-[11px] border border-rose-500/40 cursor-pointer flex items-center gap-1"
-                            >
-                              <UserX size={12} />
-                              <span>Reject</span>
-                            </button>
+                            <DropdownMenuItem onClick={() => setRejectingUser(u)}>
+                              <UserX className="h-4 w-4 mr-2 text-danger" /> Reject Request
+                            </DropdownMenuItem>
                           )}
-                        </div>
-                      </td>
-
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
+      </Card>
 
-      </div>
+      {/* USER DETAIL DRAWER */}
+      {selectedUserDetail && (
+        <Drawer
+          isOpen={!!selectedUserDetail}
+          onClose={() => setSelectedUserDetail(null)}
+          title="User Account Details"
+        >
+          <div className="space-y-6">
+            <div className="p-4 rounded-container bg-surface-muted border border-border flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center font-bold text-primary text-lg">
+                {(selectedUserDetail.fullName || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="font-semibold text-text-primary">{selectedUserDetail.fullName}</h3>
+                <p className="text-xs text-text-secondary font-mono">{selectedUserDetail.email}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <Badge variant="info">{selectedUserDetail.role || 'trainee'}</Badge>
+                  <StatusPill
+                    status={
+                      selectedUserDetail.approvalStatus === 'approved' ? 'completed' : 'in_progress'
+                    }
+                  >
+                    {selectedUserDetail.approvalStatus || 'Approved'}
+                  </StatusPill>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-text-secondary">User UID</span>
+                <span className="font-mono text-text-primary">{selectedUserDetail.uid}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-text-secondary">Organization</span>
+                <span className="text-text-primary">{selectedUserDetail.organization || 'Kuma Platform'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-text-secondary">Registration Timestamp</span>
+                <span className="text-text-primary font-mono">
+                  {selectedUserDetail.createdAt
+                    ? new Date(selectedUserDetail.createdAt).toLocaleString()
+                    : 'N/A'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              {selectedUserDetail.approvalStatus !== 'approved' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    handleApprove(selectedUserDetail.uid);
+                    setSelectedUserDetail(null);
+                  }}
+                >
+                  Approve User
+                </Button>
+              )}
+              <Button variant="secondary" size="sm" onClick={() => setSelectedUserDetail(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </Drawer>
+      )}
+
+      {/* REJECTION CONFIRM DIALOG */}
+      <ConfirmDialog
+        open={!!rejectingUser}
+        onOpenChange={(open) => !open && setRejectingUser(null)}
+        title="Reject Registration Request"
+        description={
+          <div className="space-y-3">
+            <p>
+              Are you sure you want to reject registration for{' '}
+              <strong>{rejectingUser?.fullName}</strong> ({rejectingUser?.email})?
+            </p>
+            <FormField label="Reason for Rejection (Optional)">
+              <Input
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter feedback for user..."
+              />
+            </FormField>
+          </div>
+        }
+        confirmText="Confirm Rejection"
+        isDanger
+        onConfirm={handleConfirmReject}
+      />
+
+      {/* ADMIN ROLE GRANT CONFIRM DIALOG */}
+      <ConfirmDialog
+        open={!!roleModalUser}
+        onOpenChange={(open) => !open && setRoleModalUser(null)}
+        title="Confirm Administrator Elevation"
+        description={
+          <p>
+            Granting <strong>{roleModalUser?.fullName}</strong> ({roleModalUser?.email}) the{' '}
+            <strong>Administrator</strong> role will assign full platform access claims. This operation will be recorded in the audit log.
+          </p>
+        }
+        confirmText="Grant Admin Access"
+        isDanger
+        onConfirm={() => roleModalUser && executeRoleChange(roleModalUser.uid, 'admin', true)}
+      />
+
+      {/* BULK CSV IMPORT WIZARD DIALOG */}
+      {showImportWizard && (
+        <Dialog open={showImportWizard} onOpenChange={setShowImportWizard}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Bulk CSV User Roster Import</DialogTitle>
+              <DialogDescription>
+                Step {wizardStep} of 4:{' '}
+                {wizardStep === 1
+                  ? 'Upload CSV File'
+                  : wizardStep === 2
+                  ? 'Validate Roster Preview'
+                  : wizardStep === 3
+                  ? 'Confirm Import'
+                  : 'Import Complete'}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* STEP 1: UPLOAD */}
+            {wizardStep === 1 && (
+              <div className="space-y-4 py-4">
+                <div className="p-8 border-2 border-dashed border-border rounded-container text-center space-y-3 bg-surface-muted">
+                  <FileSpreadsheet className="h-10 w-10 text-primary mx-auto" />
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">Select a CSV roster file to upload</p>
+                    <p className="text-xs text-text-secondary mt-1">
+                      File must contain headers: Full Name, Email, Department, Designation, Employee ID
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="csv-file-input"
+                  />
+                  <Button variant="primary" size="sm" onClick={() => document.getElementById('csv-file-input')?.click()}>
+                    Choose CSV File
+                  </Button>
+                </div>
+
+                <div className="flex justify-between items-center pt-2">
+                  <Button variant="ghost" size="sm" onClick={handleDownloadSampleCsv}>
+                    <Download className="h-4 w-4 mr-1.5" /> Download Sample CSV Template
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: PREVIEW & VALIDATION */}
+            {wizardStep === 2 && parseResult && (
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                  <Card className="p-2">
+                    <div className="text-text-secondary">Total</div>
+                    <div className="font-bold text-sm">{parseResult.totalRows}</div>
+                  </Card>
+                  <Card className="p-2">
+                    <div className="text-text-secondary">Valid</div>
+                    <div className="font-bold text-sm text-success">{parseResult.validCount}</div>
+                  </Card>
+                  <Card className="p-2">
+                    <div className="text-text-secondary">Warnings</div>
+                    <div className="font-bold text-sm text-warning">{parseResult.warningCount}</div>
+                  </Card>
+                  <Card className="p-2">
+                    <div className="text-text-secondary">Errors</div>
+                    <div className="font-bold text-sm text-danger">{parseResult.errorCount}</div>
+                  </Card>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto border border-border rounded-container">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Row</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {parseResult.rows.slice(0, 10).map((r) => (
+                        <TableRow key={r.rowNumber}>
+                          <TableCell className="font-mono text-xs">{r.rowNumber}</TableCell>
+                          <TableCell className="text-xs">{r.name}</TableCell>
+                          <TableCell className="text-xs font-mono">{r.email}</TableCell>
+                          <TableCell>
+                            {r.isValid ? (
+                              <Badge variant="success">Valid</Badge>
+                            ) : (
+                              <Badge variant="danger">{r.errors.join(', ')}</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <DialogFooter>
+                  <Button variant="secondary" size="sm" onClick={() => setWizardStep(1)}>
+                    Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={parseResult.validCount === 0}
+                    onClick={() => setWizardStep(3)}
+                  >
+                    Proceed to Import ({parseResult.validCount} rows)
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+
+            {/* STEP 3: CONFIRM */}
+            {wizardStep === 3 && parseResult && (
+              <div className="space-y-4 py-4">
+                <InlineAlert variant="info">
+                  You are about to import <strong>{parseResult.validRows.length}</strong> valid user accounts into Kuma.
+                </InlineAlert>
+                <DialogFooter>
+                  <Button variant="secondary" size="sm" onClick={() => setWizardStep(2)}>
+                    Back
+                  </Button>
+                  <Button variant="primary" size="sm" isLoading={isImporting} onClick={handleConfirmBulkImport}>
+                    Confirm & Provision Accounts
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+
+            {/* STEP 4: SUMMARY */}
+            {wizardStep === 4 && importSummary && (
+              <div className="space-y-4 py-4">
+                <div className="p-4 rounded-container bg-surface-muted border border-border text-center space-y-2">
+                  <CheckCircle2 className="h-8 w-8 text-success mx-auto" />
+                  <h4 className="font-semibold text-text-primary">Roster Import Completed</h4>
+                  <p className="text-xs text-text-secondary">
+                    Provisioned {importSummary.createdCount} accounts successfully.
+                  </p>
+                </div>
+
+                {importSummary.errorCount > 0 && (
+                  <div className="flex items-center justify-between p-3 border border-danger/30 bg-danger/10 rounded-container text-xs">
+                    <span className="text-danger font-medium">
+                      {importSummary.errorCount} rows failed to import.
+                    </span>
+                    <Button variant="secondary" size="sm" onClick={handleDownloadErrorReport}>
+                      <Download className="h-4 w-4 mr-1.5" /> Download Error Report CSV
+                    </Button>
+                  </div>
+                )}
+
+                <DialogFooter>
+                  <Button variant="primary" size="sm" onClick={() => setShowImportWizard(false)}>
+                    Done
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* AUDIT LOG TELEMETRY */}
-      <div className="p-6 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-3">
-          <h2 className="text-sm font-extrabold uppercase text-[var(--text-primary)] flex items-center gap-2">
-            <FileText className="h-4 w-4 text-cyan-400" />
-            <span>ADMINISTRATIVE GOVERNANCE AUDIT TRAIL</span>
-          </h2>
-          <span className="text-[10px] font-bold text-slate-400 uppercase font-mono">Immutable Log</span>
-        </div>
+      <Card className="p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          <span>Administrative Audit Trail</span>
+        </h2>
 
         {auditLogs.length === 0 ? (
-          <div className="p-4 text-center text-slate-500">No administrative audit log records found yet.</div>
+          <p className="text-xs text-text-secondary">No administrative audit records found.</p>
         ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-2 font-mono text-[11px]">
+          <div className="space-y-2 max-h-56 overflow-y-auto text-xs">
             {auditLogs.map((log) => (
-              <div key={log.id} className="p-3 rounded-lg bg-[var(--bg-paper)] border border-[var(--border-main)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div
+                key={log.id}
+                className="p-3 rounded-control bg-surface-muted border border-border flex items-center justify-between gap-2"
+              >
                 <div>
-                  <span className="font-bold text-amber-400 uppercase mr-2">[{log.action}]</span>
-                  <span className="text-[var(--text-primary)] font-bold">{log.actorEmail || log.actorUid}</span>
-                  <span className="text-slate-400 mx-1">acted on target</span>
-                  <span className="text-cyan-400 font-bold">{log.targetUid}</span>
+                  <Badge variant="neutral" className="mr-2">
+                    {log.action}
+                  </Badge>
+                  <span className="font-semibold text-text-primary">{log.actorEmail || log.actorUid}</span>
+                  <span className="text-text-secondary mx-1">acted on</span>
+                  <span className="font-mono text-primary">{log.targetUid}</span>
                 </div>
-                <div className="text-[10px] text-slate-500">{new Date(log.timestamp).toLocaleString()}</div>
+                <div className="text-xs text-text-tertiary font-mono">
+                  {new Date(log.timestamp).toLocaleString()}
+                </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      {/* REJECTION REASON MODAL */}
-      {rejectingUser && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md font-mono select-none">
-          <div className="w-full max-w-md rounded-xl border-2 border-rose-500 bg-slate-900 p-6 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <UserX className="text-rose-500" />
-              <span>Reject Registration Request</span>
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              You are rejecting the trainer/user registration for <strong className="text-white">{rejectingUser.fullName}</strong> ({rejectingUser.email}).
-            </p>
-            <div>
-              <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Reason for Rejection (Optional)</label>
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Enter rejection reason or guidance for the user..."
-                className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white outline-none focus:border-rose-500 h-24"
-              />
-            </div>
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setRejectingUser(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmReject}
-                className="px-4 py-2 rounded-lg bg-rose-600 text-white font-bold text-xs hover:bg-rose-500 cursor-pointer"
-              >
-                Confirm Rejection
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ADMIN ROLE CONFIRMATION MODAL */}
-      {roleModalUser && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md font-mono select-none">
-          <div className="w-full max-w-md rounded-xl border-2 border-amber-500 bg-slate-900 p-6 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-              <ShieldCheck className="text-amber-400" />
-              <span>Confirm Admin Role Grant</span>
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Granting <strong className="text-white">{roleModalUser.fullName}</strong> ({roleModalUser.email}) the <span className="text-amber-400 font-bold">Administrator</span> role will assign them Firebase Auth Custom Claims (<span className="font-mono text-cyan-300">admin: true</span>), granting full administrative governance authority across the platform.
-            </p>
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300">
-              ⚠️ This operation will be logged to the immutable audit trail.
-            </div>
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setRoleModalUser(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => executeRoleChange(roleModalUser.uid, 'admin', true)}
-                className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 cursor-pointer"
-              >
-                Confirm & Grant Admin
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      </Card>
     </div>
   );
 }

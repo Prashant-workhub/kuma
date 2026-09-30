@@ -90,30 +90,59 @@ export const DialogFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ c
 
 // --- Drawer Component ---
 export interface DrawerProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root> {
+  isOpen?: boolean;
+  onClose?: () => void;
+  title?: string;
   position?: 'right' | 'left';
+  side?: 'right' | 'left' | 'top' | 'bottom';
   children?: React.ReactNode;
+  className?: string;
 }
 
-export const Drawer: React.FC<DrawerProps> = ({ open, onOpenChange, position = 'right', children }) => {
+export const Drawer: React.FC<DrawerProps> = ({
+  open,
+  onOpenChange,
+  isOpen,
+  onClose,
+  title,
+  position = 'right',
+  side,
+  className,
+  children,
+}) => {
+  const isControlledOpen = isOpen !== undefined ? isOpen : open;
+  const handleOpenChange = (newOpen: boolean) => {
+    if (onOpenChange) onOpenChange(newOpen);
+    if (!newOpen && onClose) onClose();
+  };
+
+  const activePos = side === 'left' || position === 'left' ? 'left' : 'right';
   const positionStyles = {
     right: 'right-0 top-0 bottom-0 h-full w-full max-w-md border-l border-border',
     left: 'left-0 top-0 bottom-0 h-full w-full max-w-md border-r border-border',
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={isControlledOpen} onOpenChange={handleOpenChange}>
       <DialogPortal>
         <DialogOverlay />
         <DialogPrimitive.Content
           className={cn(
             'fixed z-modal bg-surface p-6 shadow-overlay transition-transform duration-200 focus-visible:outline-none flex flex-col justify-between',
-            positionStyles[position]
+            positionStyles[activePos],
+            className
           )}
         >
+          {title && (
+            <DialogHeader className="mb-4">
+              <DialogTitle>{title}</DialogTitle>
+            </DialogHeader>
+          )}
           <div className="flex-1 overflow-y-auto">{children}</div>
           <DialogPrimitive.Close
             className="absolute right-4 top-4 rounded-control p-1 text-text-secondary opacity-70 transition-opacity hover:opacity-100 hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Close drawer"
+            onClick={onClose}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </DialogPrimitive.Close>
@@ -123,12 +152,13 @@ export const Drawer: React.FC<DrawerProps> = ({ open, onOpenChange, position = '
   );
 };
 
+
 // --- ConfirmDialog Component ---
 export interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  description: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   isDanger?: boolean;

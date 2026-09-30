@@ -50,8 +50,6 @@ import { clearOfflineStores } from './offline/db';
 import { COURSES } from './teacher-portal/lib/mockData';
 
 // Core component imports
-import Sidebar from './components/Sidebar';
-import Navbar from './components/Navbar';
 import DashboardView from './components/DashboardView';
 import AuthView from './components/AuthView';
 import ProfileView from './components/ProfileView';
@@ -1045,12 +1043,11 @@ export default function App() {
     return (
       <ErrorBoundary theme={theme}>
         {!isOnline && (
-          <div className="fixed top-0 left-0 right-0 z-[99999] bg-red-600 text-white text-center py-2 px-4 text-sm font-mono font-bold">
-            ⚠️ No network connection. Some features may be unavailable.
+          <div className="fixed top-0 left-0 right-0 z-[99999] bg-danger text-white text-center py-2 px-4 text-sm font-mono font-bold">
+            No network connection. Some features may be unavailable.
           </div>
         )}
-        <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-[#0a0a0c]' : 'bg-[#FAF9F5]'
-          }`}>
+        <div className="min-h-screen flex items-center justify-center bg-page">
           <BruteLoader size="lg" message="Loading Kuma Capacity Connect..." />
         </div>
         <FeedbackWidget theme={theme} />
@@ -1112,8 +1109,8 @@ export default function App() {
     if (activePage === 'pricing') {
       return (
         <ErrorBoundary theme={theme}>
-          <div className="bg-[#FAF9F5] min-h-screen text-gray-900 overflow-x-hidden font-sans relative pb-12">
-            <header className="sticky top-0 z-50 bg-[#FAF9F5]/80 backdrop-blur-md border-b border-[#EAE3D2] transition-colors">
+          <div className="bg-page min-h-screen text-text-primary overflow-x-hidden font-sans relative pb-12">
+            <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-border transition-colors">
               <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActivePage('landing')}>
                   <AILogo size={38} showText={true} theme="light" />

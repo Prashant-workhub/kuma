@@ -11,8 +11,8 @@
     "server": "node server/index.js",
     "reset-users": "npx tsx scripts/deleteFirebaseUserProfiles.ts",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit",
-    "test": "tsx --test src/utils/__tests__/*.test.ts",
+    "lint": "tsc --noEmit && tsx scripts/uiGuardrails.ts",
+    "test": "tsx --test src/utils/__tests__/*.test.ts src/components/charts/__tests__/*.test.ts",
     "test:rules": "firebase emulators:exec --project demo-kuma-rules --only firestore \"tsx --test src/firestore/__tests__/*.test.ts\"",
     "test:watch": "tsx --test --watch src/utils/__tests__/*.test.ts"
   },
@@ -59,7 +59,9 @@
     "youtube-transcript": "^1.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.63.0",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/node": "^22.14.0",

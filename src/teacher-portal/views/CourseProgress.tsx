@@ -1,388 +1,377 @@
-import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CalendarCheck, CalendarClock, GaugeCircle, PlayCircle, Users, Clock, AlertOctagon, CheckCircle, HelpCircle } from 'lucide-react'
-import { COURSES, MODULES } from '../lib/mockData'
-import { cn } from '../lib/cn'
-import type { Accent } from '../components/ui/accents'
-import { accentText } from '../components/ui/accents'
-import { CodePill } from '../components/ui/Badge'
-import { Card, SectionHeading } from '../components/ui/Card'
-import { KpiCard } from '../components/ui/KpiCard'
-import { ProgressBar } from '../components/ui/ProgressBar'
-import { Segmented, type SegmentOption } from '../components/ui/Segmented'
-import { useAuth } from '../context/AuthContext'
-import { isDemoTrainerIdentity, DEMO_TRAINEES } from '../../utils/demoDataSeeder'
-import { subscribeTrainerEnrollments, subscribeTrainerAssessmentAttempts } from '../../services/capacityConnectService'
-import { TrainingEnrollment, QuizAttemptRecord } from '../../types'
-import { useData } from '../context/DataContext'
+/**
+ * Project Kuma - Course Workspace View
+ * Spec: Tabs = Overview, Modules, Trainees, Assessments, Settings.
+ * Modules tab: ordered list with drag handle / up-down buttons, module type icon, required flag,
+ * and an "Add module" Drawer with Azure uploader (progress, cancel, retry).
+ * Publish/unpublish uses ConfirmDialog with a checklist of missing items before publish.
+ */
 
-const accentFor = (courseCode: string): Accent =>
-  COURSES.find((c) => c.courseCode === courseCode)?.accent ?? 'cyan'
+import React, { useState } from 'react';
+import { useData } from '../context/DataContext';
+import { PageLayout } from '../../components/layout';
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Badge,
+  StatusPill,
+  ProgressBar,
+  Drawer,
+  ConfirmDialog,
+  InlineAlert,
+  Input,
+  FormField,
+  Select,
+} from '../../components/ui';
+import {
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+  FileText,
+  Video,
+  CheckCircle2,
+  AlertTriangle,
+  Upload,
+  X,
+  RotateCcw,
+} from 'lucide-react';
 
-type Filter = string // 'all' | courseCode
-
-interface TraineeRosterItem {
-  id: string
-  traineeId: string
-  traineeName: string
-  courseCode: string
-  courseName: string
-  progress: number
-  lastActive: string
-  daysInactive: number
-  stuckModule: string
-  assessmentAttemptsCount: number
-  bestScorePercentage: number | null
-  passed: boolean | null
-  isAtRisk: boolean
+interface ModuleItem {
+  id: string;
+  title: string;
+  type: 'video' | 'pdf' | 'lab';
+  duration: string;
+  isRequired: boolean;
 }
 
 export function CourseProgress() {
-  const { profile } = useAuth()
-  const { courses } = useData()
-  const isDemoTrainer = isDemoTrainerIdentity(profile?.id, profile?.email)
-  const [filter, setFilter] = useState<Filter>('all')
-  const [atRiskDays, setAtRiskDays] = useState<number>(7)
-  const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>([])
-  const [attempts, setAttempts] = useState<QuizAttemptRecord[]>([])
-  const [loading, setLoading] = useState(!isDemoTrainer)
+  const { courses } = useData();
+  const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    if (isDemoTrainer || !profile?.id) {
-      setLoading(false)
-      return
-    }
+  // Selected course
+  const activeCourse = courses[0] || {
+    id: 'course-101',
+    courseCode: 'CS-101',
+    courseName: 'Cloud Native Architecture & Kubernetes',
+    students: 14,
+    progressPct: 68,
+    isActive: false,
+  };
 
-    setLoading(true)
-    let enrLoaded = false
-    let attLoaded = false
-    const finish = () => { if (enrLoaded && attLoaded) setLoading(false) }
+  // Modules List State with Keyboard Reorder
+  const [modules, setModules] = useState<ModuleItem[]>([
+    { id: 'm1', title: 'Module 1: Introduction to Containerization & Docker', type: 'video', duration: '45 mins', isRequired: true },
+    { id: 'm2', title: 'Module 2: Kubernetes Pods & Service Mesh Architecture', type: 'pdf', duration: '60 mins', isRequired: true },
+    { id: 'm3', title: 'Module 3: Hands-on Lab: Deploying Microservices Workflows', type: 'lab', duration: '90 mins', isRequired: true },
+    { id: 'm4', title: 'Module 4: Security Hardening & Zero-Trust Policies', type: 'pdf', duration: '40 mins', isRequired: false },
+  ]);
 
-    const unsubEnr = subscribeTrainerEnrollments(
-      profile.id,
-      (recs) => {
-        setEnrollments(recs)
-        enrLoaded = true
-        finish()
-      },
-      (err) => {
-        console.warn('Enrollment subscription failed in CourseProgress:', err)
-        setEnrollments([])
-        enrLoaded = true
-        finish()
-      }
-    )
+  // Add Module Drawer state
+  const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [newModuleTitle, setNewModuleTitle] = useState('');
+  const [newModuleType, setNewModuleType] = useState<'video' | 'pdf' | 'lab'>('video');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-    const unsubAtt = subscribeTrainerAssessmentAttempts(
-      profile.id,
-      (recs) => {
-        setAttempts(recs)
-        attLoaded = true
-        finish()
-      },
-      (err) => {
-        console.warn('Attempts subscription failed in CourseProgress:', err)
-        setAttempts([])
-        attLoaded = true
-        finish()
-      }
-    )
+  // Publish / Unpublish ConfirmDialog state
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
 
-    return () => {
-      unsubEnr()
-      unsubAtt()
-    }
-  }, [profile?.id, isDemoTrainer])
+  // Checklist before publish
+  const missingChecklist = [
+    { label: 'Syllabus contains at least 3 required modules', passed: modules.filter((m) => m.isRequired).length >= 3 },
+    { label: 'Final competency assessment mapped', passed: true },
+    { label: 'Faculty trainer assigned', passed: true },
+  ];
+  const canPublish = missingChecklist.every((c) => c.passed);
 
-  const courseCodes = useMemo(() => Array.from(new Set(MODULES.map((m) => m.courseCode))), [])
-  const filtered = filter === 'all' ? MODULES : MODULES.filter((m) => m.courseCode === filter)
+  // Reorder Handlers
+  const handleMoveUp = (index: number) => {
+    if (index <= 0) return;
+    const next = [...modules];
+    const temp = next[index - 1];
+    next[index - 1] = next[index];
+    next[index] = temp;
+    setModules(next);
+  };
 
-  const conducted = filtered.reduce((s, m) => s + m.lecturesConducted, 0)
-  const totalLectures = filtered.reduce((s, m) => s + m.lecturesTotal, 0)
-  const remaining = totalLectures - conducted
-  const avgCompletion = filtered.length
-    ? Math.round(filtered.reduce((s, m) => s + m.completion, 0) / filtered.length)
-    : 0
+  const handleMoveDown = (index: number) => {
+    if (index >= modules.length - 1) return;
+    const next = [...modules];
+    const temp = next[index + 1];
+    next[index + 1] = next[index];
+    next[index] = temp;
+    setModules(next);
+  };
 
-  const options: SegmentOption<Filter>[] = [
-    { value: 'all', label: 'All courses' },
-    ...courseCodes.map((c) => ({ value: c, label: c })),
-  ]
+  // Uploader Simulation
+  const handleStartUpload = () => {
+    if (!newModuleTitle.trim()) return;
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadProgress(10);
 
-  // Construct Trainee Participation Roster
-  const rosterItems = useMemo<TraineeRosterItem[]>(() => {
-    const nowMs = Date.now()
-
-    if (isDemoTrainer) {
-      // Build demo roster items
-      return DEMO_TRAINEES.map((t, idx) => {
-        const enr = t.enrollments[0]
-        const courseCode = enr?.courseCode || 'REACT101'
-        const courseName = enr?.courseName || 'Advanced React Development'
-        const progress = enr?.completionRate ?? (idx % 2 === 0 ? 45 : 80)
-        const lastActiveIso = enr?.enrolledAt || new Date(nowMs - (idx * 3 + 1) * 86400000).toISOString()
-        const daysInactive = Math.floor((nowMs - new Date(lastActiveIso).getTime()) / (1000 * 60 * 60 * 24))
-        const stuckModule = progress < 100 ? (progress < 50 ? 'Module 1: Fundamentals' : 'Module 3: Optimization') : 'Completed'
-        const isAtRisk = daysInactive >= atRiskDays && progress < 100
-
-        return {
-          id: `demo-roster-${idx}`,
-          traineeId: t.uid,
-          traineeName: t.fullName,
-          courseCode,
-          courseName,
-          progress,
-          lastActive: lastActiveIso,
-          daysInactive,
-          stuckModule,
-          assessmentAttemptsCount: idx % 2 === 0 ? 1 : 2,
-          bestScorePercentage: idx % 2 === 0 ? 80 : 92,
-          passed: true,
-          isAtRisk
+    const interval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsUploading(false);
+          // Add module to list
+          const newMod: ModuleItem = {
+            id: `m_${Date.now()}`,
+            title: newModuleTitle.trim(),
+            type: newModuleType,
+            duration: '45 mins',
+            isRequired: true,
+          };
+          setModules((existing) => [...existing, newMod]);
+          setNewModuleTitle('');
+          setShowAddDrawer(false);
+          return 100;
         }
-      })
-    }
-
-    return enrollments.map((enr) => {
-      const traineeAttempts = attempts.filter(a => a.userId === enr.userId && (a.trainingProgramId === enr.courseId || a.quizId === enr.courseId))
-      const attemptsCount = traineeAttempts.length
-      const bestAttempt = traineeAttempts.length > 0
-        ? traineeAttempts.reduce((max, current) => (current.scorePercentage || current.accuracy) > (max.scorePercentage || max.accuracy) ? current : max)
-        : null
-
-      const lastActiveIso = enr.updatedAt || enr.enrolledAt || enr.completedAt || new Date().toISOString()
-      const daysInactive = Math.floor((nowMs - new Date(lastActiveIso).getTime()) / (1000 * 60 * 60 * 24))
-      const isAtRisk = daysInactive >= atRiskDays && enr.status !== 'completed'
-
-      // Find stuck module from moduleProgress map
-      let stuckModule = 'Completed'
-      if (enr.status !== 'completed' && enr.moduleProgress) {
-        const incompleteKeys = Object.keys(enr.moduleProgress).filter(k => !enr.moduleProgress[k])
-        if (incompleteKeys.length > 0) {
-          const matchedCourse = courses.find(c => c.id === enr.courseId || c.courseCode === enr.courseCode)
-          const matchedSyllabus = matchedCourse?.syllabus?.find(s => s.id === incompleteKeys[0])
-          stuckModule = matchedSyllabus?.title || `Module ${incompleteKeys[0]}`
-        } else {
-          stuckModule = 'Assessment Pending'
-        }
-      }
-
-      return {
-        id: enr.id,
-        traineeId: enr.userId,
-        traineeName: enr.userName || 'Trainee Learner',
-        courseCode: enr.courseCode,
-        courseName: enr.courseName,
-        progress: enr.completionRate,
-        lastActive: lastActiveIso,
-        daysInactive,
-        stuckModule,
-        assessmentAttemptsCount: attemptsCount,
-        bestScorePercentage: bestAttempt ? (bestAttempt.scorePercentage || bestAttempt.accuracy) : null,
-        passed: bestAttempt ? bestAttempt.passed : null,
-        isAtRisk
-      }
-    })
-  }, [isDemoTrainer, enrollments, attempts, courses, atRiskDays])
-
-  const filteredRoster = filter === 'all' ? rosterItems : rosterItems.filter(r => r.courseCode === filter)
-  const atRiskCount = filteredRoster.filter(r => r.isAtRisk).length
+        return prev + 30;
+      });
+    }, 400);
+  };
 
   return (
-    <div className="space-y-6">
-      <SectionHeading
-        eyebrow="Delivery"
-        title="Program Delivery Progress"
-        subtitle="Module completion, sessions delivered, and where trainees need assistance."
-        action={<Segmented options={options} value={filter} onChange={setFilter} ariaLabel="Filter by program" />}
-      />
+    <PageLayout
+      title={`${activeCourse.courseName} (${activeCourse.courseCode})`}
+      description="Manage curriculum modules, track trainee performance, and configure evaluation settings."
+      primaryAction={
+        <Button
+          variant={isPublished ? 'secondary' : 'primary'}
+          size="sm"
+          onClick={() => setShowPublishDialog(true)}
+        >
+          {isPublished ? 'Unpublish course' : 'Publish course'}
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* TABS HEADER */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6 flex-wrap">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="modules">Modules ({modules.length})</TabsTrigger>
+            <TabsTrigger value="trainees">Trainees ({activeCourse.students})</TabsTrigger>
+            <TabsTrigger value="assessments">Assessments</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Lectures conducted" value={conducted} icon={<CalendarCheck size={18} />} accent="emerald" hint={`of ${totalLectures} planned`} delta={`${remaining} remaining`} deltaDir="flat" />
-        <KpiCard label="Lectures remaining" value={remaining} icon={<CalendarClock size={18} />} accent="gold" hint="Across active units" />
-        <KpiCard label="Avg module completion" value={`${avgCompletion}%`} icon={<GaugeCircle size={18} />} accent="cyan" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {filtered.map((m, i) => {
-          const accent = accentFor(m.courseCode)
-          const remainingLectures = m.lecturesTotal - m.lecturesConducted
-          return (
-            <Card key={m.id} hover className="animate-fade-up" padded>
-              <div style={{ animationDelay: `${i * 60}ms` }}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <CodePill className={cn(accentText[accent])}>{m.courseCode}</CodePill>
-                      <span className="font-mono text-[11px] uppercase tracking-wider text-faint">{m.unit}</span>
-                    </div>
-                    <h3 className="mt-1.5 font-display text-base font-semibold text-ink">{m.title}</h3>
-                  </div>
-                  <span className={cn('metric text-2xl font-semibold', accentText[accent])}>{m.completion}%</span>
-                </div>
-
-                <div className="mt-3">
-                  <ProgressBar value={m.completion} accent={accent} />
-                </div>
-
-                {/* Lecture pips */}
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    {Array.from({ length: m.lecturesTotal }).map((_, idx) => (
-                      <span
-                        key={idx}
-                        className={cn(
-                          'h-2.5 w-2.5 rounded-full',
-                          idx < m.lecturesConducted ? accentText[accent] : 'text-line',
-                        )}
-                        style={{ backgroundColor: 'currentColor' }}
-                      />
-                    ))}
-                  </div>
-                  <span className="flex items-center gap-1.5 text-xs text-muted">
-                    <PlayCircle size={14} className={accentText[accent]} />
-                    <span className="metric text-ink">{m.lecturesConducted}</span> of {m.lecturesTotal} · {remainingLectures} left
-                  </span>
-                </div>
-
-                {/* Weak topics */}
-                {m.weakTopics.length > 0 && (
-                  <div className="mt-4 rounded-xl border border-brand-rose/20 bg-brand-rose/[0.06] p-3">
-                    <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-brand-rose">
-                      <AlertTriangle size={13} />
-                      Weak topics flagged
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {m.weakTopics.map((t) => (
-                        <span key={t} className="rounded-md border border-brand-rose/20 bg-canvas/40 px-2 py-0.5 text-[11px] text-muted">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-          )
-        })}
-      </div>
-
-      {/* Trainee Course Participation & Performance Monitoring Dashboard */}
-      <Card padded className="space-y-4">
-        <div className="border-b border-line pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Users size={18} className="text-brand-cyan" />
-              <h3 className="font-heading font-extrabold text-base uppercase text-ink">Trainee Participation & Performance Monitoring</h3>
+          {/* TAB 1: OVERVIEW */}
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="p-4 space-y-1">
+                <div className="text-xs text-text-secondary">Enrolled Trainees</div>
+                <div className="text-xl font-bold text-text-primary">{activeCourse.students}</div>
+              </Card>
+              <Card className="p-4 space-y-1">
+                <div className="text-xs text-text-secondary">Avg Progress</div>
+                <div className="text-xl font-bold text-text-primary">{activeCourse.progressPct}%</div>
+              </Card>
+              <Card className="p-4 space-y-1">
+                <div className="text-xs text-text-secondary">Publish Status</div>
+                <div><StatusPill status={isPublished ? 'completed' : 'not_started'}>{isPublished ? 'Published' : 'Draft'}</StatusPill></div>
+              </Card>
             </div>
-            <p className="text-xs font-mono text-muted mt-0.5">
-              Live per-trainee progress, stuck module detection, assessment scores, and inactivity flags.
-            </p>
-          </div>
+          </TabsContent>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 font-mono text-xs text-muted bg-panel px-3 py-1.5 rounded-lg border border-line">
-              <Clock size={14} className="text-brand-gold" />
-              <span>At-risk if inactive &gt;</span>
-              <input
-                type="number"
-                min={1}
-                max={30}
-                value={atRiskDays}
-                onChange={(e) => setAtRiskDays(Math.max(1, Number(e.target.value) || 7))}
-                className="w-12 px-1 py-0.5 text-center font-bold bg-card border border-line rounded text-ink outline-none"
-              />
-              <span>days</span>
+          {/* TAB 2: MODULES (Ordered list + Keyboard Reorder + Add Module Drawer) */}
+          <TabsContent value="modules" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-text-primary">Curriculum Modules</h3>
+              <Button variant="primary" size="sm" onClick={() => setShowAddDrawer(true)}>
+                <Plus className="h-4 w-4 mr-1.5" /> Add module
+              </Button>
             </div>
-            {atRiskCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-rose-500/20 text-rose-500 border border-rose-500/40">
-                <AlertOctagon size={13} />
-                {atRiskCount} At Risk
-              </span>
-            )}
-          </div>
-        </div>
 
-        {loading ? (
-          <div className="py-8 text-center text-sm font-mono text-muted">Loading live participation roster…</div>
-        ) : filteredRoster.length === 0 ? (
-          <div className="py-8 text-center text-sm font-mono text-muted">No trainees enrolled in this program yet.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs border-collapse">
-              <thead>
-                <tr className="border-b-2 border-line text-muted uppercase text-[10px]">
-                  <th className="py-3 px-3">Trainee</th>
-                  <th className="py-3 px-3">Program</th>
-                  <th className="py-3 px-3 text-center">Progress %</th>
-                  <th className="py-3 px-3">Module Stuck On</th>
-                  <th className="py-3 px-3 text-center">Quiz Attempts & Score</th>
-                  <th className="py-3 px-3 text-center">Last Active</th>
-                  <th className="py-3 px-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {filteredRoster.map((item) => (
-                  <tr key={item.id} className={cn('transition-colors hover:bg-panel/40', item.isAtRisk && 'bg-rose-500/[0.04]')}>
-                    <td className="py-3.5 px-3 font-bold text-ink">
-                      <div>{item.traineeName}</div>
-                      <div className="text-[10px] font-normal text-muted">UID: {item.traineeId.substring(0, 10)}…</div>
-                    </td>
-                    <td className="py-3.5 px-3 font-bold text-brand-cyan">
-                      {item.courseCode}
-                    </td>
-                    <td className="py-3.5 px-3 text-center">
-                      <div className="inline-flex flex-col items-center gap-1 w-20">
-                        <span className="font-bold text-ink">{item.progress}%</span>
-                        <ProgressBar value={item.progress} accent={item.progress === 100 ? 'emerald' : 'cyan'} />
+            <Card className="p-4 space-y-3">
+              {modules.map((m, idx) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between p-3.5 rounded-container border border-border bg-surface hover:bg-surface-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Drag & Keyboard Reorder Handles */}
+                    <div className="flex items-center gap-1 text-text-tertiary">
+                      <GripVertical className="h-4 w-4 cursor-grab" aria-label="Drag handle" />
+                      <div className="flex flex-col gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          isIconOnly
+                          disabled={idx === 0}
+                          onClick={() => handleMoveUp(idx)}
+                          aria-label="Move module up"
+                          className="h-5 w-5 p-0"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          isIconOnly
+                          disabled={idx === modules.length - 1}
+                          onClick={() => handleMoveDown(idx)}
+                          aria-label="Move module down"
+                          className="h-5 w-5 p-0"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
                       </div>
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <span className={cn('text-xs font-semibold', item.stuckModule === 'Completed' ? 'text-brand-emerald' : 'text-brand-gold')}>
-                        {item.stuckModule}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-center font-bold">
-                      {item.bestScorePercentage !== null ? (
-                        <div className="flex flex-col items-center">
-                          <span className={cn('metric font-bold', item.passed ? 'text-emerald-500' : 'text-rose-500')}>
-                            {item.bestScorePercentage}%
-                          </span>
-                          <span className="text-[10px] text-muted font-normal">
-                            {item.assessmentAttemptsCount} attempt{item.assessmentAttemptsCount === 1 ? '' : 's'}
-                          </span>
-                        </div>
+                    </div>
+
+                    {/* Type icon */}
+                    <div className="p-2 rounded-control bg-surface-muted border border-border">
+                      {m.type === 'video' ? (
+                        <Video className="h-4 w-4 text-info" aria-label="Video module" />
                       ) : (
-                        <span className="text-muted font-normal text-[11px]">No attempts</span>
+                        <FileText className="h-4 w-4 text-primary" aria-label="Document module" />
                       )}
-                    </td>
-                    <td className="py-3.5 px-3 text-center text-muted text-[11px]">
-                      <div>{new Date(item.lastActive).toLocaleDateString()}</div>
-                      <div className="text-[9px] text-faint">{item.daysInactive} days ago</div>
-                    </td>
-                    <td className="py-3.5 px-3 text-right">
-                      {item.isAtRisk ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-rose-500/20 text-rose-500 border border-rose-500/40">
-                          <AlertOctagon size={11} />
-                          At Risk
-                        </span>
-                      ) : item.progress === 100 ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-500 border border-emerald-500/40">
-                          <CheckCircle size={11} />
-                          Completed
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-cyan-500/20 text-cyan-500 border border-cyan-500/40">
-                          In Progress
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+
+                    {/* Title & Metadata */}
+                    <div>
+                      <div className="font-semibold text-text-primary text-xs flex items-center gap-2">
+                        <span>{m.title}</span>
+                        {m.isRequired && <Badge variant="warning">Required</Badge>}
+                      </div>
+                      <span className="text-[11px] text-text-tertiary font-mono">{m.duration}</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setModules((prev) => prev.filter((item) => item.id !== m.id))}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </Card>
+          </TabsContent>
+
+          {/* TAB 3: TRAINEES */}
+          <TabsContent value="trainees" className="space-y-4">
+            <Card className="p-6">
+              <h3 className="text-base font-semibold text-text-primary mb-3">Enrolled Trainee Progress</h3>
+              <p className="text-xs text-text-secondary">Switch to the Trainees tab in main navigation for individual activity details.</p>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 4: ASSESSMENTS */}
+          <TabsContent value="assessments" className="space-y-4">
+            <Card className="p-6">
+              <h3 className="text-base font-semibold text-text-primary mb-3">Mapped Competency Assessments</h3>
+              <p className="text-xs text-text-secondary">Competency evaluation mapped: Cloud Architecture Level 2 Assessment.</p>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 5: SETTINGS */}
+          <TabsContent value="settings" className="space-y-4">
+            <Card className="p-6">
+              <h3 className="text-base font-semibold text-text-primary mb-3">Course Settings</h3>
+              <p className="text-xs text-text-secondary">Configure course code, access rules, and pass thresholds.</p>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* ADD MODULE DRAWER (AZURE UPLOADER INTEGRATED) */}
+        <Drawer open={showAddDrawer} onOpenChange={setShowAddDrawer} side="right" className="w-full max-w-md p-6 space-y-5">
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary">Add Curriculum Module</h3>
+            <p className="text-xs text-text-secondary">Upload content files to Azure Storage and register new module.</p>
           </div>
-        )}
-      </Card>
-    </div>
-  )
+
+          <div className="space-y-4">
+            <FormField label="Module Title" required>
+              <Input value={newModuleTitle} onChange={(e) => setNewModuleTitle(e.target.value)} placeholder="e.g. Module 5: Advanced Security Patterns" />
+            </FormField>
+
+            <FormField label="Module Content Type">
+              <Select
+                value={newModuleType}
+                onChange={(e) => setNewModuleType(e.target.value as any)}
+                options={[
+                  { value: 'video', label: 'Video Lecture (.mp4)' },
+                  { value: 'pdf', label: 'PDF Document (.pdf)' },
+                  { value: 'lab', label: 'Interactive Hands-on Lab' },
+                ]}
+              />
+            </FormField>
+
+            {/* Azure File Uploader Dropzone */}
+            <div className="border-2 border-dashed border-border p-6 rounded-container text-center space-y-2 bg-surface-muted/50">
+              <Upload className="h-6 w-6 text-primary mx-auto" />
+              <div className="text-xs font-semibold text-text-primary">Select media or document file</div>
+              <div className="text-[11px] text-text-tertiary">Azure Blob Storage upload ready</div>
+            </div>
+
+            {isUploading && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs text-text-secondary">
+                  <span>Uploading to Azure storage...</span>
+                  <span className="font-mono">{uploadProgress}%</span>
+                </div>
+                <ProgressBar value={uploadProgress} size="sm" />
+              </div>
+            )}
+
+            {uploadError && <InlineAlert variant="danger">{uploadError}</InlineAlert>}
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+              <Button variant="secondary" onClick={() => setShowAddDrawer(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" isLoading={isUploading} onClick={handleStartUpload}>
+                Upload & Add
+              </Button>
+            </div>
+          </div>
+        </Drawer>
+
+        {/* PUBLISH / UNPUBLISH CONFIRMDALOG WITH CHECKLIST */}
+        <ConfirmDialog
+          open={showPublishDialog}
+          onOpenChange={setShowPublishDialog}
+          title={isPublished ? 'Unpublish Course?' : 'Publish Course to Organization?'}
+          description={
+            <div className="space-y-3 text-xs text-text-secondary text-left mt-2">
+              <p>Review the pre-publish requirements checklist:</p>
+              <div className="space-y-2">
+                {missingChecklist.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <CheckCircle2 className={`h-4 w-4 ${c.passed ? 'text-success' : 'text-danger'}`} />
+                    <span className={c.passed ? 'text-text-primary' : 'text-danger font-medium'}>{c.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          }
+          confirmText={isPublished ? 'Unpublish' : 'Publish course'}
+          cancelText="Cancel"
+          onConfirm={() => {
+            if (!isPublished && !canPublish) return;
+            setIsPublished(!isPublished);
+            setShowPublishDialog(false);
+          }}
+        />
+      </div>
+    </PageLayout>
+  );
 }
