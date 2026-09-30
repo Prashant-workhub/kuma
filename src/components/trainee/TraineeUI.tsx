@@ -106,28 +106,53 @@ export function LevelBlocks({
   accent?: Accent
   className?: string
 }) {
-  // Level tier colors: L1=Sky, L2=Purple, L3=Emerald, L4=Amber Gold
-  const tierColors = ['bg-sky-400', 'bg-purple-400', 'bg-emerald-400', 'bg-amber-400']
+  // Explicit tier colors for progressive proficiency levels: L1=Sky Blue, L2=Amber Gold, L3=Emerald Green, L4=Violet Purple
+  const tierColors = [
+    'bg-sky-500 border-sky-600 dark:bg-sky-400 dark:border-sky-300',
+    'bg-amber-500 border-amber-600 dark:bg-amber-400 dark:border-amber-300',
+    'bg-emerald-500 border-emerald-600 dark:bg-emerald-400 dark:border-emerald-300',
+    'bg-violet-500 border-violet-600 dark:bg-violet-400 dark:border-violet-300',
+  ];
+
+  const accentColorMap: Record<Accent, string> = {
+    gold: 'bg-amber-500 border-amber-600 dark:bg-amber-400 dark:border-amber-300',
+    amber: 'bg-amber-500 border-amber-600 dark:bg-amber-400 dark:border-amber-300',
+    cyan: 'bg-teal-500 border-teal-600 dark:bg-teal-400 dark:border-teal-300',
+    teal: 'bg-teal-500 border-teal-600 dark:bg-teal-400 dark:border-teal-300',
+    emerald: 'bg-emerald-500 border-emerald-600 dark:bg-emerald-400 dark:border-emerald-300',
+    violet: 'bg-violet-500 border-violet-600 dark:bg-violet-400 dark:border-violet-300',
+    purple: 'bg-purple-500 border-purple-600 dark:bg-purple-400 dark:border-purple-300',
+    rose: 'bg-rose-500 border-rose-600 dark:bg-rose-400 dark:border-rose-300',
+    sky: 'bg-sky-500 border-sky-600 dark:bg-sky-400 dark:border-sky-300',
+    indigo: 'bg-indigo-500 border-indigo-600 dark:bg-indigo-400 dark:border-indigo-300',
+  };
 
   return (
     <span className={cn('inline-flex items-center gap-1', className)}>
       {Array.from({ length: max }, (_, i) => {
-        const activeColor = accent ? accentBar[accent] : (tierColors[i] || 'bg-cyan-400')
+        const isFilled = i < level;
+        const colorClass = accent
+          ? (accentColorMap[accent] || tierColors[i])
+          : (tierColors[i] || 'bg-emerald-500 border-emerald-600');
+
         return (
           <span
             key={i}
             className={cn(
-              'h-2.5 w-4 rounded-[3px] border border-line transition-all duration-200',
-              i < level ? activeColor : 'bg-panel/60 opacity-40',
+              'h-3 w-4 rounded-[4px] border transition-all duration-200 shadow-xs',
+              isFilled
+                ? colorClass
+                : 'bg-slate-100 border-slate-300 opacity-60 dark:bg-slate-800/80 dark:border-slate-700/80',
             )}
+            title={`Level ${i + 1} of ${max}`}
           />
-        )
+        );
       })}
       <span className="ml-1.5 font-mono text-[11px] font-bold text-ink">
         {level}/{max}
       </span>
     </span>
-  )
+  );
 }
 /* ------------------------------------------------------------------ *
  * Badges, pills & actions

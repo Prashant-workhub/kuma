@@ -223,7 +223,7 @@ export default function SkillGapView({
     return Object.entries(groups).map(([category, stats]) => ({
       category,
       ...stats,
-      pct: stats.targetSum > 0 ? Math.round((stats.currentSum / stats.targetSum) * 100) : 0,
+      pct: stats.targetSum > 0 ? Math.min(100, Math.round((stats.currentSum / stats.targetSum) * 100)) : 0,
     }));
   }, [designationGaps]);
 
@@ -440,7 +440,7 @@ export default function SkillGapView({
                       <div className="flex items-center justify-between gap-2">
                         <LevelBlocks
                           level={rec.currentNumericLevel}
-                          accent={rec.currentNumericLevel === 0 ? 'rose' : 'gold'}
+                          accent={rec.currentNumericLevel === 0 ? 'rose' : undefined}
                         />
                         <span className="text-sm font-medium text-ink">{rec.currentLevel}</span>
                       </div>
