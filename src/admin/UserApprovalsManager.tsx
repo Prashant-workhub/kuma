@@ -64,13 +64,13 @@ import {
   Eye,
 } from 'lucide-react';
 
-export default function UserApprovalsManager() {
+export default function UserApprovalsManager({ role }: { role?: 'trainee' | 'faculty' } = {}) {
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<string>(role || 'all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Bulk selection state
@@ -95,6 +95,7 @@ export default function UserApprovalsManager() {
   const [parseResult, setParseResult] = useState<CsvParseResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<BulkUserImportResponse | null>(null);
+  const pageTitle = role === 'faculty' ? 'Trainer Directory' : role === 'trainee' ? 'Trainee Directory & Approvals' : 'Users & Approvals';
 
   const loadData = async () => {
     setLoading(true);
@@ -121,6 +122,10 @@ export default function UserApprovalsManager() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setRoleFilter(role || 'all');
+  }, [role]);
 
   useEffect(() => {
     void loadData();
@@ -283,7 +288,7 @@ Priya Reddy,priya.r@capacity.gov.in,Cybersecurity,Security Specialist,EMP-1003`;
         <div>
           <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
             <UserCog className="h-6 w-6 text-primary" />
-            <span>Users & Approvals</span>
+            <span>{pageTitle}</span>
           </h1>
           <p className="text-xs text-text-secondary mt-1">
             Review user registrations, manage role assignments, and perform bulk roster imports.

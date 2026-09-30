@@ -496,6 +496,8 @@ export default function AdminPortalApp({
       )}
 
       {/* USERS & APPROVALS TAB */}
+      {currentTab === 'trainees' && <UserApprovalsManager role="trainee" />}
+      {currentTab === 'trainers' && <UserApprovalsManager role="faculty" />}
       {(currentTab === 'users' || currentTab === 'approvals') && <UserApprovalsManager />}
 
       {/* ORGANIZATION TAB (MASTER-DETAIL LAYOUT) */}
@@ -725,17 +727,27 @@ export default function AdminPortalApp({
       )}
 
       {/* COURSES, ENROLLMENTS, ASSESSMENTS, CERTIFICATES TABS */}
+      {currentTab === 'assessments' && (
+        <PageLayout title="Competency Assessments" description="Monitor assessment readiness, pass thresholds, and competency coverage.">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="p-5"><Stat label="Active assessments" value="8" /></Card>
+            <Card className="p-5"><Stat label="Average pass rate" value="78%" /></Card>
+            <Card className="p-5"><Stat label="Awaiting review" value="12" /></Card>
+          </div>
+          <Card className="mt-6 p-6">
+            <h2 className="font-semibold text-text-primary">Assessment coverage</h2>
+            <p className="mt-2 text-sm text-text-secondary">Assessment controls are organized by competency and trainee readiness, independently of training-program management.</p>
+          </Card>
+        </PageLayout>
+      )}
       {(currentTab === 'courses' ||
         currentTab === 'training-programs' ||
         currentTab === 'enrollments' ||
-        currentTab === 'assessments' ||
         currentTab === 'certificates') && (
         <PageLayout
           title={
             currentTab === 'certificates'
               ? 'Digital Certificates Audit'
-              : currentTab === 'assessments'
-              ? 'Competency Assessments'
               : 'Courses & Training Programs'
           }
           description="Track active curriculums, enrollments, assessment outcomes, and digital certificates."
@@ -870,6 +882,15 @@ export default function AdminPortalApp({
           trainees={DEMO_TRAINEES}
           courses={coursesList}
         />
+      )}
+
+      {currentTab === 'settings' && (
+        <PageLayout title="Admin Settings" description="Manage administrator workspace preferences and governance notifications.">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="p-6"><h2 className="font-semibold text-text-primary">Workspace access</h2><p className="mt-2 text-sm text-text-secondary">You are managing {user.organization || DEMO_ORGANIZATION} as an administrator.</p></Card>
+            <Card className="p-6"><h2 className="font-semibold text-text-primary">Governance notifications</h2><p className="mt-2 text-sm text-text-secondary">Approval, certificate, and compliance updates are enabled for this workspace.</p></Card>
+          </div>
+        </PageLayout>
       )}
 
       {/* AUDIT LOG TAB */}

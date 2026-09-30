@@ -70,6 +70,8 @@ import { normalizeProfileFields } from './models/firestoreModels';
 import { queueOperation } from './services/offlineOutbox';
 
 import FindTrainerDiscoveryView from './components/FindTrainerDiscoveryView';
+import MyLearningView from './components/MyLearningView';
+import AssessmentsView from './components/AssessmentsView';
 import SkillGapView from './components/SkillGapView';
 import CertificatesView from './components/CertificatesView';
 import CertificateVerificationView from './components/CertificateVerificationView';
@@ -935,20 +937,17 @@ export default function App() {
         );
       case 'my-learning':
         return (
-          <FindTrainerDiscoveryView
+          <MyLearningView
             settings={settings}
-            setActivePage={setActivePage}
-            theme={theme}
+            onFindTrainer={() => setActivePage('find-trainer')}
+            onViewGrowth={() => setActivePage('skill-gap')}
           />
         );
       case 'assessments':
         return (
-          <SkillGapView
-            settings={settings}
-            onUpdateSettings={handleUpdateSettings}
-            setActivePage={setActivePage}
-            theme={theme}
-            onTakeAssessment={(quizToTake) => setActiveAssessmentQuiz(quizToTake)}
+          <AssessmentsView
+            quizzes={quizzes}
+            onStartAssessment={setActiveAssessmentQuiz}
           />
         );
       case 'certificates':
