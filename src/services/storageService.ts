@@ -26,6 +26,7 @@ export interface ResourceUploadParams {
 export interface UploadResult {
   success: boolean;
   resourceRef?: string;
+  blobPath?: string;
   uploadUrl?: string;
   resource?: any;
   error?: string;
@@ -346,7 +347,8 @@ export const getAzureUploadSasUrl = getUploadSasUrl;
 export const uploadBlobStorage = async (
   uploadUrl: string,
   blob: Blob,
-  onProgress: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  options?: { isSensitive?: boolean; fileName?: string }
 ): Promise<{ storageUrl?: string }> => {
   const res = await uploadBlobToSasUrl(uploadUrl, blob, onProgress);
   if (!res.success) throw new Error(res.error || 'Upload failed');
@@ -361,6 +363,38 @@ export const getReadSasUrl = async (blobPath: string): Promise<string> => {
 };
 
 export const getAzureReadSasUrl = getReadSasUrl;
+
+export const saveTranscriptMultiTier = async (
+  userId: string,
+  lectureId: string,
+  transcriptData: any
+) => {
+  try {
+    const localKey = `kuma_transcript_${userId}_${lectureId}`;
+    localStorage.setItem(localKey, JSON.stringify({ timestamp: Date.now(), ...transcriptData }));
+  } catch (e) {}
+  return { success: true, storageProvider: 'azure' };
+};
+
+export const getTranscriptMultiTier = async (
+  userId: string,
+  lectureId: string
+) => {
+  try {
+    const localKey = `kuma_transcript_${userId}_${lectureId}`;
+    const raw = localStorage.getItem(localKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        transcriptText: parsed.transcript || '',
+        cleanTranscript: parsed.cleanTranscript || parsed.transcript || '',
+        storageProvider: 'azure',
+        transcriptData: parsed
+      };
+    }
+  } catch (e) {}
+  return null;
+};
 
 export const saveCertificateToCloudStorage = async (certificate: any) => {
   return { success: true, storageProvider: 'azure' };
