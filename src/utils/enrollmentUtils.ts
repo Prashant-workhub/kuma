@@ -2,9 +2,10 @@
  * Project Kuma - Phase 3F Training Enrollment & Completion Lifecycle Engine
  */
 
-import { TrainingEnrollment, TeacherAssignment, UserSettings, TrainingCertificate } from '../types';
+import { TrainingEnrollment, TeacherAssignment, UserSettings, TrainingCertificate, FirestoreEnrollment } from '../types';
 import { issueCertificateForCompletion } from './certificateUtils';
 import { readJson, writeJson } from './safeStorage';
+import { saveEnrollmentToFirestore } from '../services/learningDataService';
 
 const ENROLLMENT_STORAGE_KEY = 'kuma_user_enrollments';
 
@@ -26,6 +27,22 @@ let inMemoryEnrollments: TrainingEnrollment[] = [
     certificateId: 'KUMA-2026-DA10199X'
   }
 ];
+
+function syncEnrollmentToFirestore(enrollment: TrainingEnrollment): void {
+  const firestoreRecord: FirestoreEnrollment = {
+    id: `${enrollment.userId}_${enrollment.courseId}`,
+    uid: enrollment.userId,
+    courseId: enrollment.courseId,
+    status: enrollment.status === 'completed' ? 'completed' : 'active',
+    moduleProgress: {},
+    percent: enrollment.completionRate,
+    createdAt: enrollment.enrolledAt,
+    updatedAt: new Date().toISOString()
+  };
+  saveEnrollmentToFirestore(firestoreRecord).catch((err) =>
+    console.warn('[enrollmentUtils] Firestore enrollment sync warning:', err)
+  );
+}
 
 /**
  * Returns all stored training enrollments.
@@ -120,6 +137,8 @@ export function enrollInCourse(
   inMemoryEnrollments = updated;
   writeJson(ENROLLMENT_STORAGE_KEY, updated);
 
+  syncEnrollmentToFirestore(newEnrollment);
+
   return newEnrollment;
 }
 
@@ -179,5 +198,8 @@ export function updateEnrollmentProgress(
   inMemoryEnrollments = nextList;
   writeJson(ENROLLMENT_STORAGE_KEY, nextList);
 
+  syncEnrollmentToFirestore(updatedEnrollment);
+
   return { enrollment: updatedEnrollment, certificate: cert };
 }
+

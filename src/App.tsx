@@ -45,6 +45,7 @@ import { getEnrollmentByCourse, updateEnrollmentProgress } from './utils/enrollm
 import { portalRoleFromProfile } from './utils/userRoles';
 import { isDemoTraineeIdentity } from './utils/demoDataSeeder';
 import { issuePersistentCertificate, persistAssessmentOutcome, subscribeTraineeAssignedAssessments } from './services/capacityConnectService';
+import { saveAttempt, recordAssessedCompetency, recordDeclaredCompetency } from './services/learningDataService';
 import { COURSES } from './teacher-portal/lib/mockData';
 
 // Core component imports
@@ -577,6 +578,27 @@ export default function App() {
     };
 
     if (!isDemoTrainee) {
+      await saveAttempt({
+        id: attemptRecord.id,
+        uid: sessionUser.uid,
+        assessmentId: attemptRecord.quizId,
+        competencyId: targetCompId || 'general',
+        courseId: attemptRecord.trainingProgramId,
+        answers: {},
+        score: attemptRecord.scorePercentage || attemptRecord.accuracy || 0,
+        resultingLevel: attemptRecord.assessedNumericLevel || 2,
+        createdAt: attemptRecord.completedAt || new Date().toISOString()
+      });
+
+      if (targetCompId) {
+        await recordAssessedCompetency(
+          sessionUser.uid,
+          targetCompId,
+          attemptRecord.assessedNumericLevel || 2,
+          attemptRecord.id
+        );
+      }
+
       const outcome = await persistAssessmentOutcome(attemptRecord, updatedComps);
       if (outcome.trainingCompleted && attemptRecord.trainingProgramId) {
         await issuePersistentCertificate(
@@ -698,6 +720,17 @@ export default function App() {
         }
         try {
           await batch.commit();
+
+          // Sync competencies to competencyRecords/{uid}_{competencyId}
+          if (newSettings.profile.competencies && newSettings.profile.competencies.length > 0) {
+            for (const comp of newSettings.profile.competencies) {
+              const compId = comp.competencyId || comp.id;
+              const numericLvl = comp.numericLevel || (comp.level === 'Expert' ? 4 : comp.level === 'Advanced' ? 3 : comp.level === 'Intermediate' ? 2 : 1);
+              if (compId) {
+                await recordDeclaredCompetency(currentUser.uid, compId, numericLvl);
+              }
+            }
+          }
         } catch (error) {
           console.warn('[Settings] Firestore online save failed; fallback queue to IndexedDB outbox:', error);
           await queueOperation(currentUser.uid, 'profile_update', profileData);

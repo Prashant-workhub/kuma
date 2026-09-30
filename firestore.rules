@@ -497,6 +497,26 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /attempts/{attemptId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /competencyRecords/{recordId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == resource.data.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == resource.data.uid);
+      allow delete: if isAdmin();
+    }
+
     // Certificates, assessment attempts, organization data, announcements and
     // doubts remain admin-only until their ownership fields are migrated and
     // validated. This is safer than exposing them to every authenticated user.
@@ -505,3 +525,4 @@ service cloud.firestore {
     }
   }
 }
+

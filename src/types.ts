@@ -703,3 +703,44 @@ export interface TrainerAssignmentRecord {
   createdAt: string;
 }
 
+export interface AssessmentAttempt {
+  id?: string;
+  uid: string;
+  assessmentId: string;
+  competencyId: string;
+  courseId?: string;
+  answers: Record<string, any>;
+  score: number; // percent 0-100
+  resultingLevel: number; // 1 | 2 | 3 | 4
+  createdAt: string | number;
+}
+
+export interface CompetencyHistoryEntry {
+  level: number;
+  source: 'declared' | 'assessed';
+  at: string | number;
+  attemptId?: string;
+}
+
+export interface CompetencyRecord {
+  uid: string;
+  competencyId: string;
+  declaredLevel: number;
+  assessedLevel: number;
+  currentLevel: number;
+  history: CompetencyHistoryEntry[];
+  updatedAt?: string | number;
+}
+
+export interface FirestoreEnrollment {
+  id?: string;
+  uid: string;
+  courseId: string;
+  status: 'active' | 'completed';
+  moduleProgress: Record<string, { completed: boolean; completedAt?: string | number }>;
+  percent: number; // 0-100
+  createdAt: string | number;
+  updatedAt: string | number;
+}
+
+
