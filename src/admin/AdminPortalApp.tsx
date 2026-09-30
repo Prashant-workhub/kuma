@@ -404,29 +404,31 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
         <div>
           {/* Brand Header */}
           <div className="flex items-center gap-3 p-2 mb-6">
-            <div className="p-1.5 rounded-[6px] bg-[#38BDF8] border-2 border-[var(--border-main)] shadow-paper-sm text-[#111111]">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500 to-rose-600 border-2 border-[var(--border-main)] shadow-paper-sm text-white">
               <ShieldCheck size={22} className="stroke-[2.5]" />
             </div>
             <div>
-              <div className="font-heading font-extrabold text-sm text-[var(--text-primary)] tracking-tight uppercase">KUMA ADMIN</div>
-              <div className="text-[9px] font-mono font-bold text-[#38BDF8] uppercase tracking-widest">ORGANIZATION GOVERNANCE</div>
+              <div className="font-heading font-extrabold text-sm text-[var(--text-primary)] tracking-tight uppercase flex items-center gap-1.5">
+                KUMA ADMIN <span className="text-[9px] px-1.5 py-0.5 rounded role-badge-admin font-mono font-bold">GOV</span>
+              </div>
+              <div className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest">ORGANIZATION GOVERNANCE</div>
             </div>
           </div>
 
           {/* Nav Items */}
           <nav className="space-y-1 font-mono text-xs font-bold">
             {[
-              { id: 'admin-dashboard', label: 'DASHBOARD', icon: BarChart3 },
-              { id: 'admin-organization', label: 'ORGANIZATION', icon: Building },
-              { id: 'admin-trainees', label: 'TRAINEES', icon: Users },
-              { id: 'admin-trainers', label: 'TRAINERS', icon: Briefcase },
-              { id: 'admin-competencies', label: 'COMPETENCIES', icon: Target },
-              { id: 'admin-training-programs', label: 'TRAINING PROGRAMS', icon: BookOpen },
-              { id: 'admin-assessments', label: 'ASSESSMENTS', icon: Award },
-              { id: 'admin-analytics', label: 'ANALYTICS', icon: TrendingUp },
-              { id: 'admin-certificates', label: 'CERTIFICATES', icon: ShieldCheck },
-              { id: 'admin-feedback', label: 'TELEMETRY & BUGS', icon: MessageSquare },
-              { id: 'admin-settings', label: 'SETTINGS', icon: Settings }
+              { id: 'admin-dashboard', label: 'DASHBOARD', icon: BarChart3, activeColor: 'bg-amber-400 text-slate-950 border-amber-300 shadow-paper-yellow', iconColor: 'text-amber-400' },
+              { id: 'admin-organization', label: 'ORGANIZATION', icon: Building, activeColor: 'bg-indigo-500 text-white border-indigo-400 shadow-paper-blue', iconColor: 'text-indigo-400' },
+              { id: 'admin-trainees', label: 'TRAINEES', icon: Users, activeColor: 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-paper-sm', iconColor: 'text-emerald-400' },
+              { id: 'admin-trainers', label: 'TRAINERS', icon: Briefcase, activeColor: 'bg-purple-500 text-white border-purple-400 shadow-paper-sm', iconColor: 'text-purple-400' },
+              { id: 'admin-competencies', label: 'COMPETENCIES', icon: Target, activeColor: 'bg-rose-500 text-white border-rose-400 shadow-paper-red', iconColor: 'text-rose-400' },
+              { id: 'admin-training-programs', label: 'TRAINING PROGRAMS', icon: BookOpen, activeColor: 'bg-sky-500 text-slate-950 border-sky-400 shadow-paper-sm', iconColor: 'text-sky-400' },
+              { id: 'admin-assessments', label: 'ASSESSMENTS', icon: Award, activeColor: 'bg-amber-500 text-slate-950 border-amber-400 shadow-paper-yellow', iconColor: 'text-amber-400' },
+              { id: 'admin-analytics', label: 'ANALYTICS', icon: TrendingUp, activeColor: 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-paper-sm', iconColor: 'text-cyan-400' },
+              { id: 'admin-certificates', label: 'CERTIFICATES', icon: ShieldCheck, activeColor: 'bg-teal-500 text-slate-950 border-teal-400 shadow-paper-sm', iconColor: 'text-teal-400' },
+              { id: 'admin-feedback', label: 'TELEMETRY & BUGS', icon: MessageSquare, activeColor: 'bg-pink-500 text-white border-pink-400 shadow-paper-sm', iconColor: 'text-pink-400' },
+              { id: 'admin-settings', label: 'SETTINGS', icon: Settings, activeColor: 'bg-slate-700 text-white border-slate-600 shadow-paper-sm', iconColor: 'text-slate-400' }
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activePage === item.id;
@@ -434,13 +436,13 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
                 <button
                   key={item.id}
                   onClick={() => setActivePage(item.id as PageId)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[6px] border-2 transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border-2 transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-[#38BDF8] text-[#111111] border-[var(--border-main)] shadow-paper-sm font-extrabold'
-                      : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)]'
+                      ? `${item.activeColor} font-extrabold`
+                      : `border-transparent text-[var(--text-secondary)] hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)]`
                   }`}
                 >
-                  <Icon size={16} />
+                  <Icon size={16} className={isActive ? 'text-current' : item.iconColor} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -451,7 +453,7 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
         {/* User Info & Sign Out */}
         <div className="border-t-2 border-[var(--border-main)] pt-4 space-y-3 font-mono">
           <div className="flex items-center gap-2.5 px-2">
-            <div className="h-8 w-8 rounded-full bg-[#FFC400] border-2 border-[var(--border-main)] flex items-center justify-center font-bold text-xs text-[#111111]">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 border-2 border-[var(--border-main)] flex items-center justify-center font-extrabold text-xs text-slate-950 shadow-sm">
               AD
             </div>
             <div className="overflow-hidden">
@@ -462,7 +464,7 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
 
           <button
             onClick={onSignOut}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] text-xs font-bold text-[#FF4D4D] hover:bg-[#FF4D4D]/10 cursor-pointer shadow-paper-sm transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-[6px] border-2 border-rose-500/40 bg-rose-500/10 text-xs font-bold text-rose-400 hover:bg-rose-500/20 cursor-pointer shadow-paper-sm transition-colors"
           >
             <LogOut size={14} />
             <span>SIGN OUT</span>
@@ -479,7 +481,7 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
             <span className="text-xs font-extrabold uppercase text-[var(--text-secondary)] tracking-wider">
               GOVERNANCE PORTAL • {DEMO_ORGANIZATION}
             </span>
-            <span className="text-xs font-bold text-[#38BDF8] bg-[#38BDF8]/10 px-2 py-0.5 rounded border border-[#38BDF8]">
+            <span className="text-xs font-bold role-badge-admin px-2.5 py-0.5 rounded-full border">
               {currentTab.toUpperCase()}
             </span>
           </div>
@@ -487,7 +489,7 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
           <div className="flex items-center gap-3">
             <button
               onClick={handleSeedData}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] bg-[#FFC400] text-[#111111] font-bold text-xs border border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold text-xs border border-amber-300 shadow-paper-yellow hover:brightness-110 cursor-pointer"
             >
               <RefreshCw size={13} />
               <span>SEED DEMO DATA</span>
@@ -497,9 +499,9 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
 
         {/* Status notice banner */}
         {statusNotice && (
-          <div className="bg-[#19B56B]/15 border-b-2 border-[#19B56B] px-6 py-2 text-xs font-mono font-bold text-[var(--text-primary)] flex items-center justify-between">
+          <div className="bg-emerald-500/15 border-b-2 border-emerald-500 px-6 py-2 text-xs font-mono font-bold text-[var(--text-primary)] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CheckCircle size={14} className="text-[#19B56B]" />
+              <CheckCircle size={14} className="text-emerald-400" />
               <span>{statusNotice}</span>
             </div>
             <button onClick={() => setStatusNotice(null)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">✕</button>
@@ -513,30 +515,36 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
           {currentTab === 'dashboard' && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight">ORGANIZATIONAL CAPACITY DASHBOARD</h1>
+                <h1 className="text-2xl font-heading font-extrabold uppercase text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+                  <span>ORGANIZATIONAL CAPACITY DASHBOARD</span>
+                  <span className="text-xs font-mono font-normal px-2.5 py-1 rounded-full role-badge-admin">LIVE INSIGHTS</span>
+                </h1>
                 <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Real-time capacity building insights, workforce competencies, and training progress for {DEMO_ORGANIZATION}.</p>
               </div>
 
               {/* KPI Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
                 {[
-                  { label: 'TOTAL TRAINEES', val: kpis.totalTrainees, icon: Users, color: '#FFC400' },
-                  { label: 'ACTIVE TRAINERS', val: kpis.totalTrainers, icon: Briefcase, color: '#38BDF8' },
-                  { label: 'TRAINING PROGRAMS', val: kpis.activeCourses, icon: BookOpen, color: '#A855F7' },
-                  { label: 'COMPETENCIES', val: kpis.totalCompetencies, icon: Target, color: '#19B56B' },
-                  { label: 'COMPLETION RATE', val: `${kpis.completionRate}%`, icon: TrendingUp, color: '#38BDF8' },
-                  { label: 'SKILL GAPS IDENTIFIED', val: kpis.totalSkillGaps, icon: AlertCircle, color: '#FF4D4D' },
-                  { label: 'CERTIFICATES ISSUED', val: kpis.certificatesIssued, icon: ShieldCheck, color: '#19B56B' },
-                  { label: 'ORGANIZATION DEPTS', val: DEMO_DEPARTMENTS.length, icon: Building, color: '#FFC400' }
+                  { label: 'TOTAL TRAINEES', val: kpis.totalTrainees, icon: Users, color: '#F59E0B', bgTint: 'bg-amber-500/10', border: 'border-amber-500/40' },
+                  { label: 'ACTIVE TRAINERS', val: kpis.totalTrainers, icon: Briefcase, color: '#38BDF8', bgTint: 'bg-sky-500/10', border: 'border-sky-500/40' },
+                  { label: 'TRAINING PROGRAMS', val: kpis.activeCourses, icon: BookOpen, color: '#A855F7', bgTint: 'bg-purple-500/10', border: 'border-purple-500/40' },
+                  { label: 'COMPETENCIES', val: kpis.totalCompetencies, icon: Target, color: '#22C55E', bgTint: 'bg-emerald-500/10', border: 'border-emerald-500/40' },
+                  { label: 'COMPLETION RATE', val: `${kpis.completionRate}%`, icon: TrendingUp, color: '#06B6D4', bgTint: 'bg-cyan-500/10', border: 'border-cyan-500/40' },
+                  { label: 'SKILL GAPS IDENTIFIED', val: kpis.totalSkillGaps, icon: AlertCircle, color: '#F43F5E', bgTint: 'bg-rose-500/10', border: 'border-rose-500/40' },
+                  { label: 'CERTIFICATES ISSUED', val: kpis.certificatesIssued, icon: ShieldCheck, color: '#10B981', bgTint: 'bg-teal-500/10', border: 'border-teal-500/40' },
+                  { label: 'ORGANIZATION DEPTS', val: DEMO_DEPARTMENTS.length, icon: Building, color: '#6366F1', bgTint: 'bg-indigo-500/10', border: 'border-indigo-500/40' }
                 ].map((kpi, idx) => {
                   const Icon = kpi.icon;
                   return (
-                    <div key={idx} className="p-4 rounded-[8px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-sm space-y-2">
-                      <div className="flex items-center justify-between text-[10px] font-extrabold text-[var(--text-secondary)] uppercase">
+                    <div key={idx} className={`p-4 rounded-xl bg-[var(--card-bg)] border-2 ${kpi.border} shadow-paper-sm space-y-3 relative overflow-hidden transition-all duration-300 hover:scale-[1.02]`}>
+                      <div className={`pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-40 blur-xl ${kpi.bgTint}`} />
+                      <div className="flex items-center justify-between text-[11px] font-extrabold text-[var(--text-secondary)] uppercase tracking-wider">
                         <span>{kpi.label}</span>
-                        <Icon size={16} style={{ color: kpi.color }} />
+                        <div className={`p-2 rounded-lg ${kpi.bgTint} border ${kpi.border}`}>
+                          <Icon size={18} style={{ color: kpi.color }} />
+                        </div>
                       </div>
-                      <div className="text-2xl font-black text-[var(--text-primary)]">{kpi.val}</div>
+                      <div className="text-3xl font-black text-[var(--text-primary)] tracking-tight">{kpi.val}</div>
                     </div>
                   );
                 })}

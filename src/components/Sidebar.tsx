@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -46,19 +46,19 @@ export default function Sidebar({
   // Sidebar expand/collapse state for desktop
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Grouped Menu Navigation
-  const workspaceItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'find-trainer', label: 'Find a Trainer', icon: Users },
-    { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Target },
-    { id: 'certificates', label: 'My Certificates', icon: Award },
-    { id: 'verify-certificate', label: 'Verify Certificate', icon: ShieldCheck }
+  // Grouped Menu Navigation with Vibrant Accents
+  const workspaceItems: { id: PageId; label: string; icon: React.ElementType; accent: 'teal' | 'violet' | 'amber' | 'gold' | 'emerald' }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, accent: 'teal' },
+    { id: 'find-trainer', label: 'Find a Trainer', icon: Users, accent: 'violet' },
+    { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Target, accent: 'amber' },
+    { id: 'certificates', label: 'My Certificates', icon: Award, accent: 'gold' },
+    { id: 'verify-certificate', label: 'Verify Certificate', icon: ShieldCheck, accent: 'emerald' }
   ];
 
-  const accountItems = [
-    { id: 'notifications', label: 'Activity Center', icon: Bell, indicator: true },
-    { id: 'profile', label: 'My Profile', icon: UserCheck },
-    { id: 'settings', label: 'Settings', icon: Settings }
+  const accountItems: { id: PageId; label: string; icon: React.ElementType; indicator?: boolean; accent: 'rose' | 'cyan' | 'sky' }[] = [
+    { id: 'notifications', label: 'Activity Center', icon: Bell, indicator: true, accent: 'rose' },
+    { id: 'profile', label: 'My Profile', icon: UserCheck, accent: 'cyan' },
+    { id: 'settings', label: 'Settings', icon: Settings, accent: 'sky' }
   ];
 
   const handleNavClick = (pageId: PageId) => {
@@ -118,6 +118,7 @@ export default function Sidebar({
               icon={<item.icon className="h-4 w-4" />}
               label={item.label}
               active={activePage === item.id}
+              accent={item.accent}
               onClick={() => handleNavClick(item.id as PageId)}
               collapsed={isCollapsed}
             />
@@ -138,6 +139,7 @@ export default function Sidebar({
               icon={<item.icon className="h-4 w-4" />}
               label={item.label}
               active={activePage === item.id}
+              accent={item.accent}
               showDot={item.indicator}
               onClick={() => handleNavClick(item.id as PageId)}
               collapsed={isCollapsed}

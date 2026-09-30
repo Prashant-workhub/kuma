@@ -41,7 +41,7 @@ export function SidebarNav({
                       icon={<Icon size={17} />}
                       label={item.label}
                       active={item.id === active}
-                      accent="emerald"
+                      accent={item.accent}
                       onClick={() => onNavigate(item.id)}
                     />
                   </li>

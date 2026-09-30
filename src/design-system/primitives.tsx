@@ -12,7 +12,7 @@
 
 import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react'
 import { cn } from './cn'
-import { accentBar, accentBgSoft, accentText, type Accent } from './accents'
+import { accentBar, accentBgSoft, accentBorder, accentText, type Accent } from './accents'
 
 export type { Accent } from './accents'
 
@@ -206,7 +206,15 @@ export function Kpi({
 
   if (typeof onClick !== 'function') {
     return (
-      <div className={cn('glass-panel glass-panel-hover p-5', className)} style={style}>
+      <div
+        className={cn(
+          'glass-panel glass-panel-hover relative overflow-hidden p-5 border-t-2 transition-all duration-300',
+          accentBorder[accent],
+          className
+        )}
+        style={style}
+      >
+        <div className={cn('pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-25 blur-2xl', accentBar[accent])} />
         {content}
       </div>
     )
@@ -216,9 +224,14 @@ export function Kpi({
     <button
       type="button"
       onClick={onClick}
-      className={cn('glass-panel glass-panel-hover p-5 text-left cursor-pointer', className)}
+      className={cn(
+        'glass-panel glass-panel-hover relative overflow-hidden p-5 text-left cursor-pointer border-t-2 transition-all duration-300',
+        accentBorder[accent],
+        className
+      )}
       style={style}
     >
+      <div className={cn('pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-25 blur-2xl', accentBar[accent])} />
       {content}
     </button>
   )

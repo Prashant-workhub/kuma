@@ -44,6 +44,11 @@
     --brand-emerald: 34 197 94;
     --brand-rose: 244 63 94;
     --brand-violet: 167 139 250;
+    --brand-indigo: 129 140 248;
+    --brand-amber: 251 191 36;
+    --brand-sky: 56 189 248;
+    --brand-teal: 45 212 191;
+    --brand-purple: 192 132 252;
     --brand-accent: 45 212 191;
 
     /* Legacy aliases → same scale */
@@ -111,6 +116,11 @@
     --brand-emerald: 21 128 61;
     --brand-rose: 190 18 60;
     --brand-violet: 109 40 217;
+    --brand-indigo: 67 56 202;
+    --brand-amber: 217 119 6;
+    --brand-sky: 3 105 161;
+    --brand-teal: 15 118 110;
+    --brand-purple: 126 34 206;
     --brand-accent: 14 116 144;
 
     --bg-paper: #F8FAFC;
@@ -970,6 +980,84 @@
 
 @utility shadow-glow-rose {
   box-shadow: 0 10px 30px -12px rgb(var(--brand-rose) / 0.5);
+}
+
+@utility shadow-glow-indigo {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-indigo) / 0.5);
+}
+
+@utility shadow-glow-amber {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-amber) / 0.5);
+}
+
+@utility shadow-glow-purple {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-purple) / 0.5);
+}
+
+@utility shadow-glow-sky {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-sky) / 0.5);
+}
+
+@utility shadow-glow-teal {
+  box-shadow: 0 10px 30px -12px rgb(var(--brand-teal) / 0.5);
+}
+
+/* --------------------------------------------------------------------------
+   Vibrant Role Palette & Rich Category Badges
+   -------------------------------------------------------------------------- */
+.role-badge-admin {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(244, 63, 94, 0.15) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: rgb(var(--brand-amber));
+}
+
+.role-badge-trainer {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.18) 0%, rgba(56, 189, 248, 0.15) 100%);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  color: rgb(var(--brand-violet));
+}
+
+.role-badge-trainee {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.18) 0%, rgba(34, 197, 94, 0.15) 100%);
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  color: rgb(var(--brand-emerald));
+}
+
+/* Competency Category Pill Palette */
+.cat-tag-technical {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: rgb(var(--brand-sky));
+}
+
+.cat-tag-communication {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: rgb(var(--brand-emerald));
+}
+
+.cat-tag-leadership {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: rgb(var(--brand-amber));
+}
+
+.cat-tag-management {
+  background: rgba(167, 139, 250, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  color: rgb(var(--brand-violet));
+}
+
+.cat-tag-digital {
+  background: rgba(45, 212, 191, 0.12);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  color: rgb(var(--brand-teal));
+}
+
+.cat-tag-domain {
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: rgb(var(--brand-rose));
 }
 
 /* --------------------------------------------------------------------------
