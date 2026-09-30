@@ -21,6 +21,7 @@ export type PageId =
   | 'faculty-login'
   | 'faculty-dashboard'
   | 'faculty-courses'
+  | 'faculty-my-trainees'
   | 'faculty-course-progress'
   | 'faculty-doubts'
   | 'faculty-quiz-analytics'

@@ -1,8 +1,5 @@
-/**
- * LIVE TRAINER SHELL — Primary live entry point for the Trainer/Faculty Portal.
- * Mounted by src/App.tsx for trainer routing and management workflows.
- */
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { ViewId, FacultyProfile } from './types'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -23,6 +20,46 @@ import { ActivityCenter } from './views/ActivityCenter'
 import { ProfileSettings } from './views/ProfileSettings'
 import { DEMO_PROFILE } from './lib/mockData'
 import { Clock, XCircle, LogOut } from 'lucide-react'
+
+const FACULTY_VIEW_TO_PATH: Record<ViewId, string> = {
+  overview: '/faculty/dashboard',
+  courses: '/faculty/courses',
+  'my-trainees': '/faculty/trainees',
+  progress: '/faculty/course-progress',
+  quizzes: '/faculty/quiz-analytics',
+  doubts: '/faculty/doubts',
+  analytics: '/faculty/learning-analytics',
+  insights: '/faculty/lecture-insights',
+  announcements: '/faculty/announcements',
+  activity: '/faculty/activity-center',
+  settings: '/faculty/settings',
+}
+
+const FACULTY_PATH_TO_VIEW: Record<string, ViewId> = Object.entries(FACULTY_VIEW_TO_PATH).reduce(
+  (acc, [viewId, path]) => {
+    acc[path] = viewId as ViewId
+    return acc
+  },
+  {} as Record<string, ViewId>
+)
+
+function facultyPathToViewId(pathname: string): ViewId {
+  const cleanPath = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname
+  if (FACULTY_PATH_TO_VIEW[cleanPath]) {
+    return FACULTY_PATH_TO_VIEW[cleanPath]
+  }
+  if (cleanPath.startsWith('/faculty/trainees') || cleanPath.startsWith('/faculty/my-trainees')) return 'my-trainees'
+  if (cleanPath.startsWith('/faculty/courses')) return 'courses'
+  if (cleanPath.startsWith('/faculty/course-progress')) return 'progress'
+  if (cleanPath.startsWith('/faculty/doubts')) return 'doubts'
+  if (cleanPath.startsWith('/faculty/quiz-analytics')) return 'quizzes'
+  if (cleanPath.startsWith('/faculty/learning-analytics')) return 'analytics'
+  if (cleanPath.startsWith('/faculty/lecture-insights')) return 'insights'
+  if (cleanPath.startsWith('/faculty/announcements')) return 'announcements'
+  if (cleanPath.startsWith('/faculty/activity-center')) return 'activity'
+  if (cleanPath.startsWith('/faculty/settings')) return 'settings'
+  return 'overview'
+}
 
 function ViewRouter({ active, onNavigate }: { active: ViewId; onNavigate: (id: ViewId) => void }) {
   switch (active) {
@@ -69,7 +106,20 @@ interface TeacherPortalAppProps {
 
 function TeacherPortalInner({ user, onSignOut }: TeacherPortalAppProps) {
   const { stage, initProfile } = useAuth()
-  const [active, setActive] = useState<ViewId>('overview')
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const active = useMemo(() => facultyPathToViewId(location.pathname), [location.pathname])
+
+  const handleNavigate = useCallback(
+    (targetView: ViewId) => {
+      const targetPath = FACULTY_VIEW_TO_PATH[targetView] || '/faculty/dashboard'
+      if (location.pathname !== targetPath) {
+        navigate(targetPath)
+      }
+    },
+    [location.pathname, navigate]
+  )
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
@@ -168,9 +218,9 @@ function TeacherPortalInner({ user, onSignOut }: TeacherPortalAppProps) {
   }
 
   return (
-    <PortalLayout active={active} onNavigate={setActive} user={user} onSignOut={onSignOut}>
+    <PortalLayout active={active} onNavigate={handleNavigate} user={user} onSignOut={onSignOut}>
       <div key={active} className="animate-fade-in">
-        <ViewRouter active={active} onNavigate={setActive} />
+        <ViewRouter active={active} onNavigate={handleNavigate} />
       </div>
     </PortalLayout>
   )

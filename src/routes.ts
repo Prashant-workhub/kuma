@@ -23,6 +23,7 @@ export const PAGE_TO_PATH_MAP: Record<PageId, string> = {
   'faculty-login': '/faculty/login',
   'faculty-dashboard': '/faculty/dashboard',
   'faculty-courses': '/faculty/courses',
+  'faculty-my-trainees': '/faculty/trainees',
   'faculty-course-progress': '/faculty/course-progress',
   'faculty-doubts': '/faculty/doubts',
   'faculty-quiz-analytics': '/faculty/quiz-analytics',
@@ -78,6 +79,9 @@ export function pathToPageId(pathname: string): PageId {
   }
   if (cleanPath.startsWith('/faculty')) {
     const facultySubPath = cleanPath.replace('/faculty/', '');
+    if (facultySubPath === 'trainees' || facultySubPath === 'my-trainees') {
+      return 'faculty-my-trainees';
+    }
     const candidate = `faculty-${facultySubPath}` as PageId;
     if (PAGE_TO_PATH_MAP[candidate]) {
       return candidate;
