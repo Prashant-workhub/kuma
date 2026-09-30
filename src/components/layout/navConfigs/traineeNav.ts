@@ -15,10 +15,10 @@ export const TRAINEE_NAV_CONFIG: NavGroupConfig[] = [
     groupLabel: 'Learning',
     items: [
       { id: 'dashboard', label: 'Home', icon: Home },
-      { id: 'library', label: 'Discover', icon: Compass },
-      { id: 'mylearning', label: 'My learning', icon: BookOpen },
+      { id: 'find-trainer', label: 'Find a trainer', icon: Compass },
+      { id: 'my-learning', label: 'My learning', icon: BookOpen },
       { id: 'assessments', label: 'Assessments', icon: Award },
-      { id: 'growth', label: 'Growth', icon: TrendingUp },
+      { id: 'skill-gap', label: 'Growth', icon: TrendingUp },
       { id: 'certificates', label: 'Certificates', icon: FileCheck },
     ],
   },

@@ -30,7 +30,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-control transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 select-none';
+      'inline-flex cursor-pointer items-center justify-center font-medium rounded-control transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 select-none';
 
     const variantStyles = {
       primary: 'bg-primary text-white hover:bg-primary-hover active:opacity-90 shadow-sm',
