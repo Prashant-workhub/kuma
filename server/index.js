@@ -145,6 +145,59 @@ app.get('/api/admin/summary', verifyAdminToken, async (req, res) => {
   }
 });
 
+// Validation helper for designation requirements
+function validateDesignationRequirements(requiredCompetencies) {
+  if (!Array.isArray(requiredCompetencies)) return null;
+  const seenIds = new Set();
+  for (const reqItem of requiredCompetencies) {
+    const cId = reqItem.competencyId;
+    if (!cId || typeof cId !== 'string') {
+      return 'Competency ID is required';
+    }
+    if (seenIds.has(cId)) {
+      return `Duplicate competency in designation requirements: ${cId}`;
+    }
+    seenIds.add(cId);
+
+    const level = Number(reqItem.targetLevel || reqItem.requiredNumericLevel);
+    if (isNaN(level) || level < 1 || level > 5) {
+      return `Target level must be between 1 and 5 (got ${reqItem.targetLevel || reqItem.requiredNumericLevel})`;
+    }
+  }
+  return null;
+}
+
+// Admin Organizations API Routes
+app.get('/api/admin/organizations', verifyAdminToken, async (req, res) => {
+  try {
+    if (db) {
+      const snap = await db.collection('organizations').get();
+      const organizations = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return res.json({ success: true, count: organizations.length, organizations });
+    }
+    return res.json({ success: true, organizations: [] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/organizations', verifyAdminToken, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Organization name is required' });
+    }
+    const orgDoc = { name: name.trim(), createdAt: new Date().toISOString() };
+    if (db) {
+      const ref = await db.collection('organizations').add(orgDoc);
+      return res.json({ success: true, organization: { id: ref.id, ...orgDoc } });
+    }
+    return res.json({ success: true, organization: { id: `org-${Date.now()}`, ...orgDoc } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Admin Department API Routes
 app.get('/api/admin/departments', verifyAdminToken, async (req, res) => {
   try {
@@ -153,14 +206,7 @@ app.get('/api/admin/departments', verifyAdminToken, async (req, res) => {
       const departments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       return res.json({ success: true, count: departments.length, departments });
     }
-    return res.json({
-      success: true,
-      departments: [
-        { id: 'dept-data-analytics', name: 'Data & Analytics', description: 'Data processing and BI analytics.', isActive: true },
-        { id: 'dept-technology', name: 'Technology', description: 'Software engineering and IT systems.', isActive: true },
-        { id: 'dept-human-resources', name: 'Human Resources', description: 'Workforce capacity building.', isActive: true }
-      ]
-    });
+    return res.json({ success: true, departments: [] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -168,12 +214,13 @@ app.get('/api/admin/departments', verifyAdminToken, async (req, res) => {
 
 app.post('/api/admin/departments', verifyAdminToken, async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, orgId, description } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, error: 'Department name is required' });
     }
     const deptDoc = {
       name: name.trim(),
+      orgId: orgId || 'org-default',
       description: (description || '').trim(),
       isActive: true,
       createdAt: new Date().toISOString()
@@ -183,6 +230,18 @@ app.post('/api/admin/departments', verifyAdminToken, async (req, res) => {
       return res.json({ success: true, department: { id: ref.id, ...deptDoc } });
     }
     return res.json({ success: true, department: { id: `dept-${Date.now()}`, ...deptDoc } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/admin/departments/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (db) {
+      await db.collection('departments').doc(id).delete();
+    }
+    return res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -204,20 +263,26 @@ app.get('/api/admin/designations', verifyAdminToken, async (req, res) => {
 
 app.post('/api/admin/designations', verifyAdminToken, async (req, res) => {
   try {
-    const { name, departmentId, departmentName, description } = req.body;
+    const { name, departmentId, departmentName, description, requiredCompetencies } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, error: 'Designation name is required' });
     }
     if (!departmentId) {
       return res.status(400).json({ success: false, error: 'Department ID is required' });
     }
+
+    const validationErr = validateDesignationRequirements(requiredCompetencies || []);
+    if (validationErr) {
+      return res.status(400).json({ success: false, error: validationErr });
+    }
+
     const desigDoc = {
       name: name.trim(),
       departmentId,
       departmentName: departmentName || 'General',
       description: (description || '').trim(),
       isActive: true,
-      requiredCompetencies: [],
+      requiredCompetencies: requiredCompetencies || [],
       createdAt: new Date().toISOString()
     };
     if (db) {
@@ -225,6 +290,76 @@ app.post('/api/admin/designations', verifyAdminToken, async (req, res) => {
       return res.json({ success: true, designation: { id: ref.id, ...desigDoc } });
     }
     return res.json({ success: true, designation: { id: `desig-${Date.now()}`, ...desigDoc } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/admin/designations/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { requiredCompetencies, ...rest } = req.body;
+
+    if (requiredCompetencies) {
+      const validationErr = validateDesignationRequirements(requiredCompetencies);
+      if (validationErr) {
+        return res.status(400).json({ success: false, error: validationErr });
+      }
+    }
+
+    const updateDoc = { ...rest, ...(requiredCompetencies ? { requiredCompetencies } : {}), updatedAt: new Date().toISOString() };
+    if (db) {
+      await db.collection('designations').doc(id).set(updateDoc, { merge: true });
+    }
+    return res.json({ success: true, id, designation: updateDoc });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/admin/designations/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (db) {
+      await db.collection('designations').doc(id).delete();
+    }
+    return res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Competencies Catalog API Routes
+app.post('/api/admin/competencies', verifyAdminToken, async (req, res) => {
+  try {
+    const { name, category, description } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Competency name is required' });
+    }
+    const compDoc = {
+      name: name.trim(),
+      category: category || 'Technical',
+      description: (description || '').trim(),
+      isActive: true,
+      createdAt: new Date().toISOString()
+    };
+    if (db) {
+      const ref = await db.collection('competencyCatalog').add(compDoc);
+      return res.json({ success: true, competency: { id: ref.id, ...compDoc } });
+    }
+    return res.json({ success: true, competency: { id: `comp-${Date.now()}`, ...compDoc } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/admin/competencies/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (db) {
+      await db.collection('competencyCatalog').doc(id).delete();
+    }
+    return res.json({ success: true, id });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -18,7 +18,8 @@ import {
 import { DEMO_ORG_DESIGNATIONS_FULL, isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import { getTrainingRecommendations } from '../utils/recommendationUtils';
 import { enrollInCourse, updateEnrollmentProgress } from '../utils/enrollmentUtils';
-import { COURSES } from '../teacher-portal/lib/mockData';
+import { getAvailableCourses } from '../services/courseProvider';
+import { useRequiredCompetencies } from '../hooks/useRequiredCompetencies';
 import { getUserEnrollments } from '../utils/enrollmentUtils';
 import { subscribePublishedPrograms, subscribeTraineeEnrollments } from '../services/capacityConnectService';
 import { INITIAL_COMPETENCY_CATALOG } from '../data';
@@ -90,7 +91,7 @@ export default function SkillGapView({
   const [competencies, setCompetencies] = useState<TraineeCompetency[]>(
     settings.profile.competencies || []
   );
-  const [trainingPrograms, setTrainingPrograms] = useState<TeacherAssignment[]>(() => isDemoTrainee ? COURSES : []);
+  const [trainingPrograms, setTrainingPrograms] = useState<TeacherAssignment[]>(() => isDemoTrainee ? getAvailableCourses() : []);
   const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>(() =>
     isDemoTrainee ? getUserEnrollments(settings.profile.emailAddress) : []
   );
@@ -104,7 +105,7 @@ export default function SkillGapView({
 
   useEffect(() => {
     if (isDemoTrainee) {
-      setTrainingPrograms(COURSES);
+      setTrainingPrograms(getAvailableCourses());
       setTrainingLoading(false);
       setTrainingError(null);
       return;
@@ -196,10 +197,19 @@ export default function SkillGapView({
     };
   }, [settings.profile.designation, settings.profile.department]);
 
+  const { designation: firestoreDesignation } = useRequiredCompetencies(settings.profile);
+
+  const activeDesignation = useMemo(() => {
+    if (firestoreDesignation && firestoreDesignation.requiredCompetencies && firestoreDesignation.requiredCompetencies.length > 0) {
+      return firestoreDesignation;
+    }
+    return traineeDesignation;
+  }, [firestoreDesignation, traineeDesignation]);
+
   // Dynamic Designation Skill Gap Calculations
   const designationGaps = useMemo(() => {
-    return calculateDesignationSkillGaps(competencies, traineeDesignation, INITIAL_COMPETENCY_CATALOG);
-  }, [competencies, traineeDesignation]);
+    return calculateDesignationSkillGaps(competencies, activeDesignation, INITIAL_COMPETENCY_CATALOG);
+  }, [competencies, activeDesignation]);
 
   const totalCompetencies = designationGaps.length;
   const meetingTargetCount = designationGaps.filter((g) => g.gap === 0).length;
@@ -227,16 +237,20 @@ export default function SkillGapView({
 
 
   // Recommendation Engine execution against Trainee Designation Skill Gaps
+  const availableCourses = useMemo(() => {
+    return trainingPrograms.length > 0 ? trainingPrograms : getAvailableCourses();
+  }, [trainingPrograms]);
+
   const { recommendedCourses, unmatchedGaps, activeGaps } = getTrainingRecommendations(
     competencies,
-    trainingPrograms,
+    availableCourses,
     [],
     INITIAL_COMPETENCY_CATALOG,
     Object.fromEntries(enrollments.map((enrollment) => [enrollment.courseId, {
       completionRate: enrollment.completionRate,
       status: enrollment.status === 'enrolled' ? 'not_started' : enrollment.status
     }])),
-    traineeDesignation
+    activeDesignation
   );
 
   const refreshDemoEnrollments = () => {

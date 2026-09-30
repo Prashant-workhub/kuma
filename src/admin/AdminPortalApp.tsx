@@ -3,7 +3,7 @@
  * Executive Organization Management, Competency Administration & Governance Dashboard
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Building,
   Users,
@@ -33,13 +33,25 @@ import {
   Download
 } from 'lucide-react';
 import { PageId, CatalogCompetency, TrainingCertificate, TrainingEnrollment, OrgDepartment, OrgDesignation, DesignationCompetencyRequirement, SkillProficiencyLevel } from '../types';
-import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, DEMO_TRAINEES, DEMO_ORG_DEPARTMENTS_FULL, DEMO_ORG_DESIGNATIONS_FULL, seedDemoEnvironment, resetDemoEnvironment } from '../utils/demoDataSeeder';
+import { DEMO_ORGANIZATION, DEMO_DEPARTMENTS, DEMO_COMPETENCIES, DEMO_TRAINERS, DEMO_TRAINEES, DEMO_ORG_DEPARTMENTS_FULL, DEMO_ORG_DESIGNATIONS_FULL, seedDemoEnvironment, resetDemoEnvironment, isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import { getAllCertificates } from '../utils/certificateUtils';
 import { calculateDesignationSkillGaps } from '../utils/competencyUtils';
 import { LearningAnalytics } from '../teacher-portal/views/LearningAnalytics';
 import AdminAnalyticsView from './AdminAnalyticsView';
 import { COURSES } from '../teacher-portal/lib/mockData';
 import { TeacherAssignment } from '../teacher-portal/types';
+import {
+  subscribeDepartments,
+  subscribeDesignations,
+  subscribeCompetencies,
+  createDepartmentInFirestore,
+  deleteDepartmentFromFirestore,
+  createDesignationInFirestore,
+  saveDesignationRequirementsInFirestore,
+  deleteDesignationFromFirestore,
+  createCatalogCompetencyInFirestore,
+  deleteCatalogCompetencyFromFirestore
+} from '../services/adminDataService';
 
 
 
@@ -72,14 +84,50 @@ export default function AdminPortalApp({
     return 'dashboard';
   }, [activePage]);
 
+  // Check if current user is an explicit demo admin
+  const isDemoAdmin = useMemo(() => {
+    return isDemoTraineeIdentity(user?.emailAddress || '') || user?.uid === 'user-demo-admin' || user?.emailAddress === 'admin@capacityconnect.in';
+  }, [user?.emailAddress, user?.uid]);
+
   // Seeder & local records state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [loadingStructure, setLoadingStructure] = useState(true);
 
-  // Organization Hierarchy State
-  const [departments, setDepartments] = useState<OrgDepartment[]>(DEMO_ORG_DEPARTMENTS_FULL);
-  const [designations, setDesignations] = useState<OrgDesignation[]>(DEMO_ORG_DESIGNATIONS_FULL);
+  // Organization Hierarchy State (initialize with demo fixtures ONLY for demo admin)
+  const [departments, setDepartments] = useState<OrgDepartment[]>(isDemoAdmin ? DEMO_ORG_DEPARTMENTS_FULL : []);
+  const [designations, setDesignations] = useState<OrgDesignation[]>(isDemoAdmin ? DEMO_ORG_DESIGNATIONS_FULL : []);
+  const [competencies, setCompetencies] = useState<CatalogCompetency[]>(isDemoAdmin ? DEMO_COMPETENCIES : []);
+  const [coursesList, setCoursesList] = useState<TeacherAssignment[]>(COURSES);
+
+  // Firestore Subscriptions for Real Admin Users
+  useEffect(() => {
+    if (isDemoAdmin) {
+      setLoadingStructure(false);
+      return;
+    }
+
+    setLoadingStructure(true);
+    const unsubDepts = subscribeDepartments((depts) => {
+      setDepartments(depts.length > 0 ? depts : []);
+      setLoadingStructure(false);
+    });
+
+    const unsubDesigs = subscribeDesignations((desigs) => {
+      setDesignations(desigs.length > 0 ? desigs : []);
+    });
+
+    const unsubComps = subscribeCompetencies((comps) => {
+      setCompetencies(comps.length > 0 ? comps : []);
+    });
+
+    return () => {
+      unsubDepts();
+      unsubDesigs();
+      unsubComps();
+    };
+  }, [isDemoAdmin]);
 
   // Department Modal States
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
@@ -105,9 +153,6 @@ export default function AdminPortalApp({
   const [newCompCategory, setNewCompCategory] = useState<'Technical' | 'Professional' | 'Communication' | 'Leadership' | 'Management' | 'Digital' | 'Domain Specific'>('Technical');
   const [newCompDesc, setNewCompDesc] = useState('');
 
-  const [competencies, setCompetencies] = useState<CatalogCompetency[]>(DEMO_COMPETENCIES);
-  const [coursesList, setCoursesList] = useState<TeacherAssignment[]>(COURSES);
-
   // Course Competency Mapping Modal State
   const [selectedCourseForComp, setSelectedCourseForComp] = useState<TeacherAssignment | null>(null);
   const [showCourseCompModal, setShowCourseCompModal] = useState(false);
@@ -116,7 +161,7 @@ export default function AdminPortalApp({
   const [traineeList, setTraineeList] = useState<typeof DEMO_TRAINEES>(DEMO_TRAINEES);
   const [selectedTrainee, setSelectedTrainee] = useState<typeof DEMO_TRAINEES[0] | null>(null);
 
-  const handleCreateDepartment = (e: React.FormEvent) => {
+  const handleCreateDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanName = newDeptName.trim();
     if (!cleanName) return;
@@ -124,68 +169,81 @@ export default function AdminPortalApp({
       setStatusNotice(`Department '${cleanName}' already exists.`);
       return;
     }
-    const newDept: OrgDepartment = {
-      id: `dept-${Date.now()}`,
-      name: cleanName,
-      description: newDeptDesc.trim() || 'Organizational capacity building department.',
-      isActive: true,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    setDepartments(prev => [...prev, newDept]);
-    setShowAddDeptModal(false);
-    setNewDeptName('');
-    setNewDeptDesc('');
-    setStatusNotice(`Department '${newDept.name}' created successfully.`);
+
+    try {
+      const created = await createDepartmentInFirestore({
+        name: cleanName,
+        description: newDeptDesc.trim() || 'Organizational capacity building department.',
+        isActive: true
+      });
+      setDepartments(prev => [...prev.filter(d => d.id !== created.id), created]);
+      setShowAddDeptModal(false);
+      setNewDeptName('');
+      setNewDeptDesc('');
+      setStatusNotice(`Department '${created.name}' created successfully.`);
+    } catch (err: any) {
+      setStatusNotice(`Error: ${err.message || 'Failed to create department'}`);
+    }
   };
 
   const handleToggleDeptStatus = (id: string) => {
     setDepartments(prev => prev.map(d => d.id === id ? { ...d, isActive: !d.isActive } : d));
   };
 
-  const handleCreateDesignation = (e: React.FormEvent) => {
+  const handleCreateDesignation = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanName = newDesigName.trim();
-    if (!cleanName || !newDesigDeptId) return;
+    if (!cleanName || !newDesigDeptId) {
+      setStatusNotice('Error: Designation title and department selection are required.');
+      return;
+    }
     const targetDept = departments.find(d => d.id === newDesigDeptId);
-    if (!targetDept) return;
+    if (!targetDept) {
+      setStatusNotice('Error: Selected department not found.');
+      return;
+    }
 
     if (designations.some(d => d.name.toLowerCase() === cleanName.toLowerCase() && d.departmentId === newDesigDeptId)) {
       setStatusNotice(`Designation '${cleanName}' already exists in ${targetDept.name}.`);
       return;
     }
 
-    const newDesig: OrgDesignation = {
-      id: `desig-${Date.now()}`,
-      name: cleanName,
-      departmentId: targetDept.id,
-      departmentName: targetDept.name,
-      description: newDesigDesc.trim() || 'Organizational role definition.',
-      isActive: true,
-      requiredCompetencies: [],
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-
-    setDesignations(prev => [...prev, newDesig]);
-    setShowAddDesigModal(false);
-    setNewDesigName('');
-    setNewDesigDesc('');
-    setStatusNotice(`Designation '${newDesig.name}' added under ${targetDept.name}.`);
+    try {
+      const created = await createDesignationInFirestore({
+        name: cleanName,
+        departmentId: targetDept.id,
+        departmentName: targetDept.name,
+        description: newDesigDesc.trim() || 'Organizational role definition.',
+        isActive: true,
+        requiredCompetencies: []
+      });
+      setDesignations(prev => [...prev.filter(d => d.id !== created.id), created]);
+      setShowAddDesigModal(false);
+      setNewDesigName('');
+      setNewDesigDesc('');
+      setStatusNotice(`Designation '${created.name}' added under ${targetDept.name}.`);
+    } catch (err: any) {
+      setStatusNotice(`Error: ${err.message || 'Failed to create designation'}`);
+    }
   };
 
   const handleToggleDesigStatus = (id: string) => {
     setDesignations(prev => prev.map(d => d.id === id ? { ...d, isActive: !d.isActive } : d));
   };
 
-  const handleAddRequiredCompetency = (e: React.FormEvent) => {
+  const handleAddRequiredCompetency = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDesigForComp || !reqCompId) return;
     const catalogComp = competencies.find(c => c.id === reqCompId);
-    if (!catalogComp) return;
+    if (!catalogComp) {
+      setStatusNotice('Error: Referenced competency ID does not exist in catalog.');
+      return;
+    }
 
     // Check duplicate competency requirement on same designation
     const existingReqs = selectedDesigForComp.requiredCompetencies || [];
     if (existingReqs.some(r => r.competencyId === reqCompId)) {
-      setStatusNotice(`Competency '${catalogComp.name}' is already assigned to ${selectedDesigForComp.name}.`);
+      setStatusNotice(`Error: Duplicate competency '${catalogComp.name}' is already assigned to ${selectedDesigForComp.name}.`);
       return;
     }
 
@@ -196,36 +254,58 @@ export default function AdminPortalApp({
       'Expert': 4
     };
 
+    const targetLevelNumeric = numericMap[reqProfLevel] || 2;
+    if (targetLevelNumeric < 1 || targetLevelNumeric > 5) {
+      setStatusNotice('Error: Target level must be between 1 and 5.');
+      return;
+    }
+
     const newReq: DesignationCompetencyRequirement = {
       competencyId: catalogComp.id,
       competencyName: catalogComp.name,
       requiredLevel: reqProfLevel,
-      requiredNumericLevel: numericMap[reqProfLevel] || 2,
+      requiredNumericLevel: targetLevelNumeric,
       priority: reqPriority
     };
 
-    const updatedDesig = {
-      ...selectedDesigForComp,
-      requiredCompetencies: [...existingReqs, newReq]
-    };
+    const updatedReqs = [...existingReqs, newReq];
 
-    setDesignations(prev => prev.map(d => d.id === updatedDesig.id ? updatedDesig : d));
-    setSelectedDesigForComp(updatedDesig);
-    setShowAddReqCompModal(false);
-    setReqCompId('');
-    setStatusNotice(`Required competency '${catalogComp.name} (${reqProfLevel})' assigned to ${selectedDesigForComp.name}.`);
+    try {
+      await saveDesignationRequirementsInFirestore(selectedDesigForComp.id, updatedReqs);
+      const updatedDesig = {
+        ...selectedDesigForComp,
+        requiredCompetencies: updatedReqs
+      };
+
+      setDesignations(prev => prev.map(d => d.id === updatedDesig.id ? updatedDesig : d));
+      setSelectedDesigForComp(updatedDesig);
+      setShowAddReqCompModal(false);
+      setReqCompId('');
+      setStatusNotice(`Required competency '${catalogComp.name} (${reqProfLevel})' assigned to ${selectedDesigForComp.name}.`);
+    } catch (err: any) {
+      setStatusNotice(`Error: ${err.message || 'Failed to save competency requirement'}`);
+    }
   };
 
-  const handleRemoveRequiredCompetency = (desigId: string, compId: string) => {
-    setDesignations(prev => prev.map(d => {
-      if (d.id !== desigId) return d;
-      const filtered = d.requiredCompetencies.filter(r => r.competencyId !== compId);
-      const updated = { ...d, requiredCompetencies: filtered };
-      if (selectedDesigForComp?.id === desigId) {
-        setSelectedDesigForComp(updated);
-      }
-      return updated;
-    }));
+  const handleRemoveRequiredCompetency = async (desigId: string, compId: string) => {
+    const targetDesig = designations.find(d => d.id === desigId);
+    if (!targetDesig) return;
+
+    const filteredReqs = (targetDesig.requiredCompetencies || []).filter(r => r.competencyId !== compId);
+
+    try {
+      await saveDesignationRequirementsInFirestore(desigId, filteredReqs);
+      setDesignations(prev => prev.map(d => {
+        if (d.id !== desigId) return d;
+        const updated = { ...d, requiredCompetencies: filteredReqs };
+        if (selectedDesigForComp?.id === desigId) {
+          setSelectedDesigForComp(updated);
+        }
+        return updated;
+      }));
+    } catch (err: any) {
+      setStatusNotice(`Error: ${err.message || 'Failed to remove competency requirement'}`);
+    }
   };
 
   const handleAddCompetencyToCourse = (courseId: string, compId: string) => {

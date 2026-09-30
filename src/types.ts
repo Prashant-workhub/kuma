@@ -254,6 +254,12 @@ export interface DesignationCompetencyRequirement {
   priority?: 'high' | 'medium' | 'low';
 }
 
+export interface Organization {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
+
 export interface OrgDepartment {
   id: string;
   name: string;

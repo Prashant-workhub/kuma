@@ -517,6 +517,26 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /organizations/{orgId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /departments/{deptId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /designations/{desigId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /competencies/{compId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
     // Certificates, assessment attempts, organization data, announcements and
     // doubts remain admin-only until their ownership fields are migrated and
     // validated. This is safer than exposing them to every authenticated user.
