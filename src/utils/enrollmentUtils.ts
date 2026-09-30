@@ -1,11 +1,14 @@
-/**
- * Project Kuma - Phase 3F Training Enrollment & Completion Lifecycle Engine
- */
-
 import { TrainingEnrollment, TeacherAssignment, UserSettings, TrainingCertificate, FirestoreEnrollment } from '../types';
 import { issueCertificateForCompletion } from './certificateUtils';
 import { readJson, writeJson } from './safeStorage';
 import { saveEnrollmentToFirestore } from '../services/learningDataService';
+import {
+  isModuleComplete,
+  summarizeCourseModuleProgress,
+  evaluateCourseCompletionStatus,
+  ModuleDefinition,
+  ModuleActivityState
+} from './progressRules';
 
 const ENROLLMENT_STORAGE_KEY = 'kuma_user_enrollments';
 
@@ -22,6 +25,7 @@ let inMemoryEnrollments: TrainingEnrollment[] = [
     enrolledAt: '2026-09-20',
     status: 'completed',
     completionRate: 100,
+    moduleProgress: { s1: true, s2: true, s3: true, s4: true },
     completedAt: '2026-09-25',
     quizPassed: true,
     certificateId: 'KUMA-2026-DA10199X'
@@ -29,12 +33,17 @@ let inMemoryEnrollments: TrainingEnrollment[] = [
 ];
 
 function syncEnrollmentToFirestore(enrollment: TrainingEnrollment): void {
+  const moduleProgressDoc: Record<string, { completed: boolean }> = {};
+  Object.entries(enrollment.moduleProgress || {}).forEach(([k, v]) => {
+    moduleProgressDoc[k] = { completed: v === true || (typeof v === 'object' && v !== null && (v as any).completed === true) };
+  });
+
   const firestoreRecord: FirestoreEnrollment = {
     id: `${enrollment.userId}_${enrollment.courseId}`,
     uid: enrollment.userId,
     courseId: enrollment.courseId,
     status: enrollment.status === 'completed' ? 'completed' : 'active',
-    moduleProgress: {},
+    moduleProgress: moduleProgressDoc,
     percent: enrollment.completionRate,
     createdAt: enrollment.enrolledAt,
     updatedAt: new Date().toISOString()
@@ -55,8 +64,6 @@ export function getAllEnrollments(): TrainingEnrollment[] {
 
 /**
  * Returns enrollments for a specific user ID.
- * REAL AUTHENTICATED USERS: Returns only enrollments matching e.userId === userId or e.userEmail === userId.
- * DEMO ACCOUNTS: Returns demo enrollment records.
  */
 export function getUserEnrollments(userId: string): TrainingEnrollment[] {
   if (!userId) return [];
@@ -82,7 +89,6 @@ export function getUserEnrollments(userId: string): TrainingEnrollment[] {
     );
   }
 
-  // Real authenticated user: filter strictly by matching userId or userEmail
   return list.filter(
     (e) =>
       (e.userId && e.userId.toLowerCase() === cleanId) ||
@@ -101,7 +107,6 @@ export function getEnrollmentByCourse(userId: string, courseId: string): Trainin
 
 /**
  * Explicitly enrolls a trainee in a training program.
- * Rule: Duplicate enrollment for the same trainee and course is strictly prevented.
  */
 export function enrollInCourse(
   userId: string,
@@ -113,7 +118,6 @@ export function enrollInCourse(
     (e) => (e.userId === userId || e.userEmail === userProfile.emailAddress) && e.courseId === course.id
   );
 
-  // Prevent duplicate enrollment
   if (existing) {
     return existing;
   }
@@ -130,7 +134,8 @@ export function enrollInCourse(
     subject: course.subject || 'General Training',
     enrolledAt: today,
     status: 'enrolled',
-    completionRate: 0
+    completionRate: 0,
+    moduleProgress: {}
   };
 
   const updated = [newEnrollment, ...enrollments];
@@ -144,56 +149,135 @@ export function enrollInCourse(
 
 /**
  * Updates progress and evaluates completion requirements.
- * When completionRate reaches 100% (and assessment passed if required),
- * status becomes 'completed' and a certificate is automatically issued!
+ * Course status becomes 'completed' ONLY when all required modules are complete
+ * AND (if course has a required assessment) the assessment has been passed.
  */
 export function updateEnrollmentProgress(
   userId: string,
   userProfile: UserSettings['profile'],
   course: TeacherAssignment,
-  progressPercentage: number,
-  quizPassed: boolean = true
+  moduleProgressPercentage: number,
+  quizPassed: boolean = false
 ): { enrollment: TrainingEnrollment; certificate?: TrainingCertificate } {
   let enrollment = getAllEnrollments().find(
     (e) => (e.userId === userId || e.userEmail === userProfile.emailAddress) && e.courseId === course.id
   );
 
-  // If not enrolled yet, create enrollment first
   if (!enrollment) {
     enrollment = enrollInCourse(userId, userProfile, course);
   }
 
-  // Re-read the list AFTER enrollment creation. `enrollInCourse` persists the new
-  // record, so the list captured beforehand is stale and would drop the new
-  // enrollment when written back below.
   const enrollments = getAllEnrollments();
 
-  const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercentage)));
+  // Completion rate comes strictly from module progress
+  const roundedModuleProgress = Math.min(100, Math.max(0, Math.round(moduleProgressPercentage)));
+  const isAllModulesComplete = roundedModuleProgress >= 100;
+  const isQuizPassed = quizPassed || enrollment.quizPassed === true;
+
   let newStatus: 'enrolled' | 'in_progress' | 'completed' = enrollment.status;
   let cert: TrainingCertificate | undefined = undefined;
   let completedDate = enrollment.completedAt;
 
-  if (roundedProgress >= 100 && quizPassed) {
+  // Completion requires BOTH module completion (100%) and passing assessment attempt if required
+  if (isAllModulesComplete && isQuizPassed) {
     newStatus = 'completed';
     if (!completedDate) {
       completedDate = new Date().toISOString().split('T')[0];
     }
-    // Issue Certificate automatically
     cert = issueCertificateForCompletion(userProfile, course, enrollment.id);
     enrollment.certificateId = cert.id;
-  } else if (roundedProgress > 0) {
+  } else if (roundedModuleProgress > 0) {
     newStatus = 'in_progress';
   }
 
   const updatedEnrollment: TrainingEnrollment = {
     ...enrollment,
-    completionRate: roundedProgress,
+    completionRate: roundedModuleProgress,
     status: newStatus,
-    quizPassed: quizPassed,
+    quizPassed: isQuizPassed,
     completedAt: completedDate,
     certificateId: cert ? cert.id : enrollment.certificateId
   };
 
+  const nextList = enrollments.map((e) => (e.id === updatedEnrollment.id ? updatedEnrollment : e));
+  inMemoryEnrollments = nextList;
+  writeJson(ENROLLMENT_STORAGE_KEY, nextList);
+
+  syncEnrollmentToFirestore(updatedEnrollment);
+
+  return { enrollment: updatedEnrollment, certificate: cert };
+}
+
+/**
+ * Updates a specific module's progress within an enrollment and recomputes completionRate.
+ * Validates that moduleId belongs to the course syllabus.
+ */
+export function updateEnrollmentModuleProgress(
+  userId: string,
+  userProfile: UserSettings['profile'],
+  courseId: string,
+  syllabus: ModuleDefinition[],
+  moduleId: string,
+  activityState: ModuleActivityState | boolean
+): { enrollment: TrainingEnrollment; certificate?: TrainingCertificate } {
+  const targetModule = syllabus.find((m) => m.id === moduleId);
+  if (!targetModule) {
+    throw new Error(`Module '${moduleId}' does not belong to course '${courseId}'`);
+  }
+
+  let enrollment = getAllEnrollments().find(
+    (e) => (e.userId === userId || e.userEmail === userProfile.emailAddress) && e.courseId === courseId
+  );
+
+  if (!enrollment) {
+    const fakeCourse: TeacherAssignment = {
+      id: courseId,
+      courseCode: 'TRN-2026',
+      courseName: 'Training Program',
+      subject: 'Capacity Building'
+    };
+    enrollment = enrollInCourse(userId, userProfile, fakeCourse);
+  }
+
+  const currentModuleProgress: Record<string, any> = { ...(enrollment.moduleProgress || {}) };
+  const isComplete = isModuleComplete(targetModule, activityState);
+  currentModuleProgress[moduleId] = isComplete;
+
+  const summary = summarizeCourseModuleProgress(syllabus, currentModuleProgress);
+  const evaluation = evaluateCourseCompletionStatus(
+    syllabus,
+    currentModuleProgress,
+    true,
+    enrollment.quizPassed === true
+  );
+
+  const fakeCourse: TeacherAssignment = {
+    id: courseId,
+    courseCode: enrollment.courseCode || 'TRN-2026',
+    courseName: enrollment.courseName || 'Training Program',
+    subject: enrollment.subject || 'Capacity Building'
+  };
+
+  let cert: TrainingCertificate | undefined = undefined;
+  let completedDate = enrollment.completedAt;
+
+  if (evaluation.isCourseCompleted) {
+    if (!completedDate) {
+      completedDate = new Date().toISOString().split('T')[0];
+    }
+    cert = issueCertificateForCompletion(userProfile, fakeCourse, enrollment.id);
+  }
+
+  const updatedEnrollment: TrainingEnrollment = {
+    ...enrollment,
+    moduleProgress: currentModuleProgress,
+    completionRate: summary.percent,
+    status: evaluation.status,
+    completedAt: completedDate,
+    certificateId: cert ? cert.id : enrollment.certificateId
+  };
+
+  const enrollments = getAllEnrollments();
   const nextList = enrollments.map((e) => (e.id === updatedEnrollment.id ? updatedEnrollment : e));
   inMemoryEnrollments = nextList;
   writeJson(ENROLLMENT_STORAGE_KEY, nextList);
