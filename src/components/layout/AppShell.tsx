@@ -198,7 +198,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   {activePage.replace('-', ' ')}
                 </h1>
                 <Badge variant="neutral" size="sm" className="hidden sm:inline-flex capitalize">
-                  {role}
+                  {role === 'student' ? 'Trainee' : role === 'faculty' ? 'Trainer' : 'Admin'}
                 </Badge>
               </div>
             </div>

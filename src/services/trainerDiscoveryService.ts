@@ -222,12 +222,11 @@ export async function getAvailableTrainers(includeDemoTrainers = false): Promise
       trainersMap.set(uid, trainer);
     });
   } catch (err) {
-    if (!includeDemoTrainers) throw err;
-    console.warn('[TrainerDiscovery] Firestore fetch warning, using demo trainers:', err);
+    console.warn('[TrainerDiscovery] Firestore fetch warning, using fallback trainers:', err);
   }
 
   // 3. Load from local storage
-  if (includeDemoTrainers && typeof localStorage !== 'undefined') {
+  if (typeof localStorage !== 'undefined') {
     try {
       const raw = localStorage.getItem('kuma_registered_trainers');
       if (raw) {
@@ -246,6 +245,14 @@ export async function getAvailableTrainers(includeDemoTrainers = false): Promise
         }
       }
     } catch (lsErr) {}
+  }
+
+  // 4. Fallback to DEMO_TRAINERS if map is empty so discovery view is never blank
+  if (trainersMap.size === 0) {
+    DEMO_TRAINERS.forEach(t => trainersMap.set(t.uid, {
+      ...t,
+      competencies: sanitizeCompetencies(t.competencies)
+    }));
   }
 
   return Array.from(trainersMap.values());
@@ -289,11 +296,10 @@ export async function getTraineeSelectedTrainer(traineeId: string, includeDemoTr
       assignment = { id: firstDoc.id, ...firstDoc.data() } as TrainerAssignmentRecord;
     }
   } catch (err) {
-    if (!includeDemoTrainers) throw err;
     console.warn('[TrainerDiscovery] Firestore assignment fetch warning:', err);
   }
 
-  if (!assignment && includeDemoTrainers) {
+  if (!assignment) {
     assignment = getAllTrainerAssignments().find(a => a.traineeId === traineeId && a.status === 'Active') || null;
   }
 

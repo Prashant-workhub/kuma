@@ -110,34 +110,31 @@ export default function FindTrainerDiscoveryView({
   }, [searchQuery, selectedDepartment]);
 
   // Load trainers
-  useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      setLoading(true);
-      setLoadError(null);
-      try {
-        const available = await getAvailableTrainers(includeDemoTrainers);
-        if (isMounted) setTrainers(available);
+  const handleReloadData = React.useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const available = await getAvailableTrainers(includeDemoTrainers);
+      setTrainers(available);
 
-        if (traineeId) {
-          const activeRel = await getTraineeSelectedTrainer(traineeId, includeDemoTrainers);
-          if (isMounted && activeRel) {
-            setSelectedAssignment(activeRel.assignment);
-            setActiveTrainerId(activeRel.trainer.uid);
-          }
+      if (traineeId) {
+        const activeRel = await getTraineeSelectedTrainer(traineeId, includeDemoTrainers);
+        if (activeRel) {
+          setSelectedAssignment(activeRel.assignment);
+          setActiveTrainerId(activeRel.trainer.uid);
         }
-      } catch (err) {
-        console.warn('[FindTrainer] Load error:', err);
-        if (isMounted) setLoadError('Unable to load trainers. Please check your connection.');
-      } finally {
-        if (isMounted) setLoading(false);
       }
-    };
-    loadData();
-    return () => {
-      isMounted = false;
-    };
+    } catch (err) {
+      console.warn('[FindTrainer] Load error:', err);
+      setLoadError('Unable to load trainers. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   }, [traineeId, includeDemoTrainers]);
+
+  useEffect(() => {
+    handleReloadData();
+  }, [handleReloadData]);
 
   // Filter options
   const departmentsList = useMemo(() => {
@@ -200,7 +197,14 @@ export default function FindTrainerDiscoveryView({
           </InlineAlert>
         )}
         {loadError && (
-          <InlineAlert variant="danger">
+          <InlineAlert
+            variant="danger"
+            action={
+              <Button size="sm" variant="secondary" onClick={handleReloadData}>
+                Retry
+              </Button>
+            }
+          >
             {loadError}
           </InlineAlert>
         )}
