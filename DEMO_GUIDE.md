@@ -1,105 +1,84 @@
-# Project Kuma — SIH 2026 Judge Demonstration Guide
-**Problem Statement:** SIH26075 — *“CAPACITY CONNECT: A Digital Capacity Building and Learning Management Portal”*
+# Kuma Capacity Connect — Evaluation Demo Guide & Walkthrough
+
+This document provides a **5-10 minute step-by-step evaluator demo script** for testing the complete end-to-end organizational capacity building workflow in **Kuma Capacity Connect**.
 
 ---
 
-## 1. Quick Start & Setup
+## 📋 Evaluation Walkthrough Summary (5–10 Minutes)
 
-### Launch local development server
-```bash
-npm run dev
 ```
-Open your browser at `http://localhost:5173`.
-
-### 1-Click SIH Demo Data Initialization
-On the login screen, click the **`⚡ Reset/Seed Demo`** button inside the **SIH 2026 JUDGE DEMO SELECTOR** card. This populates realistic organization hierarchy, designation competency baselines, trainee profiles, training programs, and assessment evaluations.
+Admin Defines Requirements ➔ Trainer Approved ➔ Trainee Profile & Gap Detection ➔ Explained Trainer Match ➔ Enroll & Learn ➔ Practice ➔ Post-Training Assessment ➔ Gap Reduction & Growth ➔ Certificate HMAC Verification ➔ Admin Capacity Analytics
+```
 
 ---
 
-## 2. SIH Judge Quick Demo Accounts
+## 🛠️ Step-by-Step Evaluation Script
 
-| Role | Quick Button | Account Email | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Admin** | `👑 Admin Login` | `admin@capacityconnect.in` | Org setup, department/designation requirements, and capacity analytics. |
-| **Trainer** | `👨‍🏫 Trainer Login` | `alex.rivera@capacityconnect.in` | Course administration and trainee monitoring. |
-| **Primary Judge Trainee** | `🎓 Primary Judge Demo Trainee` | `aarav.sharma@capacityconnect.in` | **Primary 10-step end-to-end judge demonstration.** |
-| **Trainee A (Significant Gaps)** | Quick Switcher | `priya.patel@capacityconnect.in` | Shows multiple critical gaps (React, JS, Node). |
-| **Trainee B (Moderate Gaps)** | Quick Switcher | `rohan.verma@capacityconnect.in` | Shows moderate single gap (Git). |
-| **Trainee C (Meets Targets)** | Quick Switcher | `neha.gupta@capacityconnect.in` | Shows resolved gaps & verified certificate. |
+### Step 1: Login & Admin Capacity Setup (1 Minute)
+1. On the login page (`AuthView`), click **👑 Select Admin Account**.
+2. **Action**: The server endpoint `POST /api/demo/login-token` mints a custom token for `admin@acme.com` with custom claim `{ admin: true }`.
+3. **Expected Result**: You land in the **Admin Portal** (`AdminPortalApp`). Notice the **🧪 DEMO MODE ACTIVE** banner at the top.
+4. Inspect the **Organization Requirements**: Organization `Acme Digital Services`, Departments (`Engineering & AI`, `Data Science & Analytics`), and Designations with required competencies (`Senior Software Engineer`: `comp-python` L3, `comp-react` L3).
 
----
+### Step 2: Trainer Approval Workflow (1 Minute)
+1. In the Admin Portal sidebar, click **User Management / Approvals**.
+2. **Action**: Click **Approve** on pending trainer registrations (e.g. `Dr. Alex Rivera`).
+3. **Expected Result**: User approval status transitions to `approved`, and a discovery profile is published to `trainerProfiles/`.
 
-## 3. Step-by-Step Judge Demonstration Flow (10-Step Story)
+### Step 3: Trainee Sign-In & Initial Skill Gap Detection (1 Minute)
+1. Log out or switch account to **🎓 Select Judge Trainee (Aarav)**.
+2. **Expected Result**: Lands in the **Trainee Home Dashboard** (`TraineeHome`).
+3. Click **Skill Gap Analysis** (`SkillGapView`).
+4. **Expected Result**: Visualizes current declared level (`React` Level 1, `Python` Level 2) vs designation requirement (`Senior Software Engineer` Target Level 3). Urgent gaps are highlighted: **Gap Delta = 2 Levels** for React.
 
-### Step 1: Login & Organization Governance (Admin)
-1. On the login screen, click **`👑 Admin Login`**.
-2. Navigate to **Organization & Departments** tab (`/admin-organization`).
-3. Observe the three organization departments:
-   - **Engineering**
-   - **Data & Analytics**
-   - **Human Resources**
+### Step 4: Explained Trainer Match & Course Discovery (1 Minute)
+1. Navigate to **Discover Courses** (`DiscoverView`).
+2. Filter or select the published course: **Advanced Web Architecture & Data Engineering**.
+3. Inspect the **Trainer Card** (`Dr. Alex Rivera`).
+4. **Expected Result**: Displays the explained weighted match score computed by `trainerMatching.ts` (e.g. **94% Match Score** based on competency alignment, domain specialization, and teaching experience).
 
-### Step 2: Designation Competency Requirements (Admin)
-1. Under **Engineering**, locate the **Software Developer** designation.
-2. Click **View / Edit Required Competencies**.
-3. Observe the configured organizational baseline benchmarks:
-   - **React:** Required Level = `Advanced (3)` (High Priority)
-   - **JavaScript:** Required Level = `Advanced (3)` (High Priority)
-   - **Node.js:** Required Level = `Intermediate (2)` (Medium Priority)
-   - **Git & Version Control:** Required Level = `Intermediate (2)` (Medium Priority)
+### Step 5: Course Player — "Learn" Step (1.5 Minutes)
+1. Click **Enroll in Course** (duplicate-safe enrollment creation in `trainingEnrollments`).
+2. Enter the **Course Player** (`LearnView`).
+3. **Action**:
+   - Play video module (`1. Modular React Architecture`) — watched percentage updates in real-time.
+   - Type a private note in the **Private Notes** tab (*"React hooks simplify custom state encapsulation"*).
+4. **Expected Result**: Note autosaves with timestamp. Click **Mark Complete** to mark module 1 complete.
 
-### Step 3: Switch to Trainee Workspace
-1. Sign out or click **`🎓 Primary Judge Demo Trainee (Aarav)`** on the login page.
+### Step 6: Low-Stakes Practice & Flashcard Step (1 Minute)
+1. Click **Practice Module** (`PracticeView`).
+2. **Action**: Answer practice question (instant right/wrong feedback with explanation) and flip flashcards.
+3. **Expected Result**: Low-stakes practice results update immediately without modifying formal competency levels.
 
-### Step 4: Trainee Profile & Designation View (Trainee)
-1. Navigate to **My Profile** or **Skill Gaps** (`/skill-gaps`).
-2. Observe Aarav Sharma's assigned role:
-   - **Department:** `Engineering`
-   - **Designation:** `Software Developer`
+### Step 7: Post-Training Assessment & Score Summary (1 Minute)
+1. Complete module 2 (`2. Enterprise Python APIs`).
+2. Click **Start Course Assessment** (`AssessView` / `ImproveView`).
+3. Answer assessment questions and click **Submit Assessment**.
+4. **Expected Result**: Post-assessment result screen displays score (e.g. **85% - PASSED**), per-question review, and the **Competency Change Card**:
+   - `React Development`: **Level 1 ➔ Level 3 (+2 Levels)**.
+   - `Python Programming`: **Level 2 ➔ Level 3 (+1 Level)**.
 
-### Step 5: Automated Skill Gap Engine (Trainee)
-1. In the **Skill Gap Matrix**, observe the automated calculation comparing Required vs Current proficiency levels:
-   - **React:** Required Level 3 (`Advanced`) vs Current Level 2 (`Intermediate`) $\rightarrow$ **Skill Gap: 1 (High Priority)**
-   - **Node.js:** Required Level 2 vs Current Level 1 $\rightarrow$ **Skill Gap: 1**
-   - **Git & Version Control:** Required Level 2 vs Current Level 1 $\rightarrow$ **Skill Gap: 1**
-   - **JavaScript:** Required Level 3 vs Assessed Level 3 $\rightarrow$ **Skill Gap: 0 (Target Met)**
+### Step 8: Growth Timeline & Certificate Cryptographic Verification (1 Minute)
+1. Navigate to **My Growth & Competencies** (`GrowthView`).
+2. **Expected Result**: Shows competency level growth timeline over time and gap reduction.
+3. Click **View & Claim Certificate** (`CertificatesView`).
+4. Click **Verify Certificate Signature** (`CertificateVerificationView`).
+5. **Expected Result**: Displays cryptographic HMAC-SHA256 signature verification status (**VALID - ISSUED BY ACME DIGITAL SERVICES**).
 
-### Step 6: Training Recommendations Engine (Trainee)
-1. Scroll down to **Recommended Training Programs**.
-2. Notice that the platform dynamically recommends **`Advanced React Development`** to address the detected React gap.
-3. Observe the data-driven match explanation: *"Directly targets your gap in React (Target: Level 3)"*.
-
-### Step 7: Training Enrollment & Progress (Trainee)
-1. Click **`Enroll in Training`** on **Advanced React Development**.
-2. The lifecycle modal opens. Click **`Start Training`**.
-3. Check off all module lessons to complete the syllabus (Progress increases to **100%**).
-
-### Step 8: Competency Assessment Execution (Trainee)
-1. Click **`Take Assessment`** to launch **React Advanced Competency Evaluation**.
-2. Answer the 5 multiple-choice questions ($\ge 70\%$ required to pass).
-3. Click **`Submit Assessment`**.
-
-### Step 9: Automated Competency Update, Gap Resolution & Certificate (Trainee)
-1. Upon passing ($\ge 70\%$), observe the immediate automated updates:
-   - **Assessed React Proficiency** updates from `Intermediate (2)` to **`Advanced (3)`**.
-   - **Skill Gap for React** recalculates from `1` to **`0 (Meets Target)`**.
-   - **Training Status** updates to `Completed`.
-   - **Certificate Issued:** A verified certificate with unique ID (e.g. `KUMA-2026-REACT-001`) becomes downloadable under **My Certificates**.
-
-### Step 10: Organizational Capacity Analytics (Admin)
-1. Log back in as **Admin**.
-2. Open **Admin Analytics** (`/admin-analytics`).
-3. Filter by **Department: Engineering**.
-4. Observe that the org-wide analytics reflect:
-   - Total Resolved Skill Gaps (+1)
-   - Verified Certificates Issued (+1)
-   - Updated competency coverage across the Software Developer designation.
+### Step 9: Admin Capacity Analytics & Bulk User Import (1 Minute)
+1. Switch back to **👑 Select Admin Account**.
+2. Navigate to **Capacity Analytics** (`AdminAnalyticsView`).
+3. **Expected Result**: Live organization competency coverage metrics update dynamically based on the completed trainee training.
+4. Click **Bulk User Import**: Upload sample CSV or click **Import 5 Sample Trainees**.
+5. **Expected Result**: Provisions Auth users via `POST /api/admin/users/bulk` and returns password reset invitation links for admin distribution.
 
 ---
 
-## 4. Reset & Reseed Instructions
+## ⚡ Offline Network Fallback Testing
 
-To reset the demo back to its clean initial state for another judge evaluation:
-1. Open the login page (`/auth`).
-2. Click **`⚡ Reset/Seed Demo`** in the top selector card.
-3. A confirmation toast will confirm that demo data is refreshed to the initial clean state. Production records remain safe and untouched.
+1. In DevTools, set Network to **Offline** (or disconnect Wi-Fi).
+2. Complete a module and save a private note in the Course Player.
+3. **Expected Result**: The persistent indicator shows **Offline · 1 change to sync**. Operations are safely queued in the IndexedDB `outbox`.
+4. Restricted actions (Assessments, Certificate Issuance) display clear online guards: *"Assessments require an active internet connection to start and submit for security verification."*
+5. Toggle Network back to **Online**.
+6. **Expected Result**: The outbox automatically flushes, changes sync idempotently to Firestore with `clientOpId` deduplication, and status returns to **Online**.

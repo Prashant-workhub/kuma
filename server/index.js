@@ -69,6 +69,81 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'healthy', version: '1.0.0' });
 });
 
+// Demo Mode Status and Custom Token Endpoint
+app.get('/api/demo/status', (req, res) => {
+  if (process.env.DEMO_MODE !== 'true') {
+    return res.status(404).json({ success: false, error: 'Demo mode is disabled on this server.' });
+  }
+  return res.json({ success: true, demoMode: true, firebaseAdminConnected: !!db });
+});
+
+app.post('/api/demo/login-token', async (req, res) => {
+  if (process.env.DEMO_MODE !== 'true') {
+    return res.status(404).json({
+      success: false,
+      error: 'Demo authentication is disabled. Server environment variable DEMO_MODE is not set to true.'
+    });
+  }
+
+  if (!firebaseAdminApp || !db) {
+    return res.status(503).json({
+      success: false,
+      error: 'Demo authentication is unavailable: Firebase Admin service account is not configured on the server.'
+    });
+  }
+
+  try {
+    const { role, account } = req.body || {};
+    const targetRole = String(role || account || '').toLowerCase().trim();
+
+    const emailMap = {
+      admin: process.env.DEMO_ADMIN_EMAIL || 'admin@acme.com',
+      trainer: process.env.DEMO_TRAINER_EMAIL || 'trainer@acme.com',
+      faculty: process.env.DEMO_TRAINER_EMAIL || 'trainer@acme.com',
+      trainee: process.env.DEMO_TRAINEE_EMAIL || 'trainee@acme.com',
+      student: process.env.DEMO_TRAINEE_EMAIL || 'trainee@acme.com',
+      premium: process.env.DEMO_TRAINEE_EMAIL || 'trainee@acme.com'
+    };
+
+    const email = emailMap[targetRole];
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid demo role requested. Allowed roles are: admin, trainer, trainee.'
+      });
+    }
+
+    let userRecord;
+    try {
+      userRecord = await admin.auth().getUserByEmail(email);
+    } catch (e) {
+      return res.status(404).json({
+        success: false,
+        error: `Seeded demo account for '${email}' was not found in Firebase Auth. Please run "node scripts/seedDemo.js" first.`
+      });
+    }
+
+    const customToken = await admin.auth().createCustomToken(userRecord.uid, {
+      isDemo: true,
+      demoRole: targetRole
+    });
+
+    const userDocSnap = await db.collection('users').doc(userRecord.uid).get();
+    const userData = userDocSnap.exists ? userDocSnap.data() : {};
+
+    return res.json({
+      success: true,
+      customToken,
+      uid: userRecord.uid,
+      email: userRecord.email,
+      fullName: userData.fullName || userRecord.displayName || email.split('@')[0],
+      role: userData.role || (targetRole === 'faculty' ? 'faculty' : (targetRole === 'admin' ? 'admin' : 'trainee'))
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: `Failed to generate demo login token: ${err.message}` });
+  }
+});
+
 // Centralized Competency Catalog API
 app.get('/api/competencies', async (req, res) => {
   try {

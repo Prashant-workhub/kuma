@@ -46,6 +46,7 @@ import { portalRoleFromProfile } from './utils/userRoles';
 import { isDemoTraineeIdentity } from './utils/demoDataSeeder';
 import { issuePersistentCertificate, persistAssessmentOutcome, subscribeTraineeAssignedAssessments } from './services/capacityConnectService';
 import { saveAttempt, recordAssessedCompetency, recordDeclaredCompetency } from './services/learningDataService';
+import { clearOfflineStores } from './offline/db';
 import { COURSES } from './teacher-portal/lib/mockData';
 
 // Core component imports
@@ -262,21 +263,20 @@ export default function App() {
               }
             }
 
-            const isDemoUser = user.uid === 'user-demo-1' || loggedUser.emailAddress === 'aarav.sharma@capacityconnect.in' || loggedUser.emailAddress === 'guest.student@kuma.ai';
             const fullNameFromDb = `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.fullName || loggedUser.fullName;
 
-            // Cleanly parse user skills, competencies, and certifications without polluting real accounts with demo data
+            // Parse user skills, competencies, and certifications strictly from Firestore document
             let parsedSkills = Array.isArray(data.skills)
               ? data.skills.map((s: any, idx: number) => typeof s === 'string' ? { id: `sk-${idx}`, name: s, level: 'Intermediate' as const } : s)
-              : (isDemoUser ? (INITIAL_SETTINGS.profile.skills || []) : []);
+              : [];
 
             let parsedCompetencies = Array.isArray(data.competencies)
               ? data.competencies
-              : (isDemoUser ? (INITIAL_SETTINGS.profile.competencies || []) : []);
+              : [];
 
             let parsedCertifications = Array.isArray(data.certifications)
               ? data.certifications
-              : (isDemoUser ? (INITIAL_SETTINGS.profile.certifications || []) : []);
+              : [];
 
             setSettings({
               profile: {
@@ -285,14 +285,14 @@ export default function App() {
                 firstName: data.first_name || fullNameFromDb.split(' ')[0] || '',
                 lastName: data.last_name || fullNameFromDb.split(' ').slice(1).join(' ') || '',
                 emailAddress: data.email || loggedUser.emailAddress,
-                bio: data.bio !== undefined ? data.bio : (isDemoUser ? INITIAL_SETTINGS.profile.bio : ''),
+                bio: data.bio !== undefined ? data.bio : '',
                 avatarUrl: data.profile_image_url || data.avatarUrl || '',
-                institution: data.organization || data.school_or_university || (isDemoUser ? INITIAL_SETTINGS.profile.institution : ''),
+                institution: data.organization || data.school_or_university || '',
                 role: detectedRole,
-                organization: data.organization !== undefined ? data.organization : (isDemoUser ? INITIAL_SETTINGS.profile.organization : ''),
-                department: data.department !== undefined ? data.department : (isDemoUser ? INITIAL_SETTINGS.profile.department : ''),
-                designation: data.designation !== undefined ? data.designation : (isDemoUser ? INITIAL_SETTINGS.profile.designation : ''),
-                yearsOfExperience: data.experienceYears !== undefined ? data.experienceYears : (data.yearsOfExperience !== undefined ? data.yearsOfExperience : (isDemoUser ? INITIAL_SETTINGS.profile.yearsOfExperience : 0)),
+                organization: data.organization !== undefined ? data.organization : '',
+                department: data.department !== undefined ? data.department : '',
+                designation: data.designation !== undefined ? data.designation : '',
+                yearsOfExperience: data.experienceYears !== undefined ? data.experienceYears : (data.yearsOfExperience !== undefined ? data.yearsOfExperience : 0),
                 qualification: data.qualification || '',
                 degree: data.qualification || '',
                 skills: parsedSkills,
@@ -806,6 +806,7 @@ export default function App() {
     try {
       localStorage.clear();
       sessionStorage.clear();
+      await clearOfflineStores();
       await signOut(auth);
       setSessionUser(null);
       setLectures([]);
@@ -1216,6 +1217,26 @@ export default function App() {
 
         {/* Main core layout frame container */}
         <div className="flex flex-1 flex-col overflow-hidden h-full bg-[var(--bg-paper)]">
+          {/* Demo Mode Banner for Evaluators */}
+          {sessionUser && ['admin@acme.com', 'trainer@acme.com', 'trainee@acme.com', 'admin@capacityconnect.in', 'alex.rivera@capacityconnect.in', 'aarav.sharma@capacityconnect.in', 'guest.student@kuma.ai'].includes((sessionUser.emailAddress || settings.profile.emailAddress || '').toLowerCase()) && (
+            <div className="bg-[#FFC400]/20 border-b-2 border-[#FFC400] px-4 py-1.5 flex items-center justify-between text-xs font-mono font-bold text-[var(--text-primary)] z-50 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-[#FFC400] text-[#111111] font-extrabold text-[10px] tracking-wider uppercase shadow-paper-sm">
+                  🧪 DEMO MODE ACTIVE
+                </span>
+                <span>
+                  Logged in as Seeded <strong className="uppercase">{userRole}</strong> ({sessionUser.emailAddress})
+                </span>
+                <span className="hidden md:inline-block text-[11px] text-[var(--text-secondary)] border-l-2 border-[var(--border-main)] pl-2">
+                  Organization: Acme Digital Services
+                </span>
+              </div>
+              <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-[var(--border-main)] bg-[var(--card-bg)] hidden sm:inline-block">
+                Seeded Firestore Data
+              </span>
+            </div>
+          )}
+
           {/* Navbar - hides on landing page layout */}
           {!isLanding && (
             <Navbar

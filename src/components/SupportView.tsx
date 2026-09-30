@@ -62,7 +62,7 @@ export default function SupportView() {
             </h2>
           </div>
           <p className="text-xs font-mono text-[#666666]">
-            Search official guides, citations mechanics, and student security frameworks.
+            Search official guides, competency frameworks, and security policies.
           </p>
           
           <div className="relative mt-2">

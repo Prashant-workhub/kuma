@@ -1,168 +1,151 @@
-# KUMA (CAPACITY CONNECT) — DIGITAL CAPACITY BUILDING & LMS PORTAL
+# Kuma Capacity Connect (SIH26075 Prototype)
 
-**SIH Problem Statement**: SIH26075 — CAPACITY CONNECT: A Digital Capacity Building and Learning Management Portal  
-**Platform**: Kuma Capacity Connect  
-**License**: Apache-2.0 / SIH2026 Submission  
+**Kuma Capacity Connect** is an AI-enhanced, competency-driven organizational capacity building platform designed for public sector and enterprise workforce development.
 
----
-
-## 1. PROJECT OVERVIEW
-
-**Kuma (Capacity Connect)** is an enterprise-grade Digital Capacity Building and Learning Management Portal engineered for Smart India Hackathon (SIH26075). It empowers government bodies, public enterprises, and private organizations to continuously build workforce competencies, quantitatively identify skill gaps, deliver targeted training programs, issue HMAC-signed server-verifiable digital certificates, and monitor organizational capacity in real time.
+The platform continuously assesses employee skill gaps against organizational designation requirements, provides personalized course discovery and practice workflows, tracks live training progress, issues cryptographically signed (HMAC-SHA256) certificates, and provides platform administrators with organization-wide capacity analytics and user provisioning.
 
 ---
 
-## 2. KEY FEATURES & SIH26075 COMPLIANCE
+## 🏗️ Architecture & Technology Stack
 
-| # | SIH26075 Requirement | Kuma Platform Solution |
-| :-: | :--- | :--- |
-| **1** | **Organizational Training Management** | Department & division taxonomy with catalog mapping in `CourseCatalogView.tsx` and `AdminPortalApp.tsx`. |
-| **2** | **Competency Development** | 5-tier proficiency modeling (*Novice, Beginner, Intermediate, Advanced, Expert*) with target level tracking in `SkillGapView.tsx`. |
-| **3** | **Knowledge Sharing & Resources** | Multimodal Knowledge Studio, AI note/summary synthesis, presentation workspace, and document players in `KnowledgeStudioView.tsx`. |
-| **4** | **Centralized Web & Mobile Portal** | Responsive web app with Bauhaus aesthetic tokens, dark/light modes, and Capacitor Android mobile packaging. |
-| **5** | **Training Program Management** | Multi-module course creation, assigned trainers, competency mapping, and active enrollment tracking in `TeacherPortalApp.tsx`. |
-| **6** | **Competency Assessment** | Multi-question interactive assessment engine with automated scoring and level determination in `AssessmentTakingModal.tsx`. |
-| **7** | **Skill-Gap Identification** | Algorithmic gap calculation separating declared, assessed, and target levels (`Gap = Target - Max(Declared, Assessed)`). |
-| **8** | **Training Recommendations** | Deterministic gap-to-course recommendation engine matching gap competencies directly to training courses in `recommendationUtils.ts`. |
-| **9** | **Training Progress & Completion** | Step-by-step module completion tracking, percentage progress calculation, and completion validation in `enrollmentUtils.ts`. |
-| **10**| **Organizational Capacity Insights** | Real-time executive capacity analytics, competency radar distributions, skill gap urgency matrices, and certificate registers in `LearningAnalytics.tsx`. |
+- **Frontend**: React 19, TypeScript 5.8, Vite 6, Tailwind CSS v4, Vanilla CSS Custom Properties (`src/index.css`), Lucide Icons.
+- **Backend Server**: Node.js, Express 5, Firebase Admin SDK (`server/index.js`), running on port `10000` (or `PORT` env).
+- **Authentication**: Firebase Authentication (Email/Password, Google OAuth, GitHub OAuth, and Server-Minted Custom Tokens for Demo Mode).
+- **Database & Security**: Cloud Firestore with role-based security rules (`firestore.rules`), custom claims for Admin access, and strict organization-level data isolation.
+- **Cloud Storage**: Azure Blob Storage (`@azure/storage-blob`) via short-lived, authenticated SAS URLs for resource uploads (`POST /api/storage/upload-url`).
+- **Offline Support**: IndexedDB database layer (`src/offline/`) with size-capped LRU resource caching (100MB limit), idempotent outbox operation queue with `clientOpId` deduplication, and a persistent connection status UI (`NetworkStatusIndicator`).
+- **AI Integrations (Optional)**: Google Gemini API integration (`src/services/gemini.ts`) for automated note synthesis and quiz generation when an API key is provided.
 
 ---
 
-## 3. THREE-ROLE GOVERNANCE ARCHITECTURE
+## 📁 Repository Structure
 
-Kuma enforces strict role-based access control (RBAC) across three distinct organizational user types:
-
-### 1. Trainee (Workforce Member / Scholar)
-- **Professional Profile**: Department, designation, employee ID, and declared proficiency settings.
-- **Skill Gap Radar**: Dynamic gap visualization based on declared vs. assessed vs. target competency levels.
-- **Interactive Assessments**: Interactive quiz taking with immediate level qualification.
-- **Course Enrollment**: Enroll in recommended or catalog training programs; complete modules step-by-step.
-- **Digital Certificates**: View, download, print, and share server-issued HMAC-signed verifiable certificates (`/verify-certificate?id=:id`).
-
-### 2. Trainer (Instructor / Subject Matter Expert)
-- **Course Management**: Manage assigned training programs, upload lecture resources, and structure course modules.
-- **Trainee Roster**: Track enrolled trainee progress and completion milestones across modules.
-- **Doubt Resolution**: Queue and respond to student inquiries and doubt submissions in real time.
-- **Assessment Publishing**: Configure assessment questions, score weights, and competency target thresholds.
-
-### 3. Admin (Organization Executive / Admin Panel)
-- **Executive Telemetry**: High-level organizational capacity analytics, competency coverage, and skill gap urgency.
-- **Bulk Trainee Import**: Interactive CSV import engine for batch-enrolling organizational cohorts (`/admin/bulk-import`).
-- **Competency Catalog**: Define 5-level proficiency scales, core skills, and skill taxonomy.
-- **Course & Competency Mapping**: Link training courses directly to required organizational competencies.
-- **Certificate Register**: Audit and verify issued digital certificates across the organization.
-
----
-
-## 4. END-TO-END WORKFLOW
-
-```text
-               ┌─────────────────────────────────────────────────────────┐
-               │              KUMA CAPACITY CONNECT PORTAL               │
-               └────────────────────────────┬────────────────────────────┘
-                                            │
-         ┌──────────────────────────────────┼──────────────────────────────────┐
-         │                                  │                                  │
-         ▼                                  ▼                                  ▼
-   TRAINEE PORTAL                     TRAINER PORTAL                      ADMIN PORTAL
-   --------------                     --------------                      ------------
-   ✓ Declare Target Levels            ✓ Manage Course Programs            ✓ Executive Capacity Telemetry
-   ✓ Take Skill Assessment            ✓ Monitor Trainee Progress          ✓ Bulk CSV Cohort Import
-   ✓ View Skill Gap Calculation       ✓ Publish Assessments               ✓ Manage Competency Taxonomy
-   ✓ Enroll in Recommended Course     ✓ Answer Trainee Doubts             ✓ Map Courses to Competencies
-   ✓ Complete Modules (0-100%)        ✓ Resource Upload & Delivery        ✓ Audit Certificate Register
-   ✓ Claim Verifiable Certificate                                         ✓ Security & User RBAC Guards
 ```
-
----
-
-## 5. TECHNOLOGY STACK
-
-- **Frontend Core**: React 19, TypeScript, Vite, Vanilla CSS + Kuma Bauhaus UI System.
-- **Backend API**: Node.js, Express, TypeScript (`server.ts`).
-- **Authentication & Database**: Firebase Auth (with Local Session fallback for demo resiliency) & Cloud Firestore.
-- **AI Engines**: Gemini API (multimodal document processing, flashcard synthesis, lecture summarization).
-- **Mobile Packaging**: Capacitor framework for Android & iOS builds.
-
----
-
-## 6. REPOSITORY STRUCTURE
-
-```text
-kuma/
+.
+├── server/
+│   └── index.js                   # Express 5 REST API & Firebase Admin backend
+├── scripts/
+│   └── seedDemo.js                # Server-side Firebase Auth & Firestore demo seeder
 ├── src/
-│   ├── admin/               Dedicated Admin Portal (`AdminPortalApp.tsx`) & CSV Import Engine
-│   ├── components/          Trainee UI Views (`SkillGapView`, `ProfileView`, `CertificatesView`, etc.)
-│   ├── components/faculty/  Trainer Portal & Instructor Onboarding
-│   ├── teacher-portal/      Trainer & Organization Admin dashboards & `LearningAnalytics.tsx`
-│   ├── services/            Firebase Auth/Firestore, AI Gemini synthesis, Notifications
-│   ├── utils/               Skill gap math, recommendation logic, certificate generator, demo seeder
-│   ├── types.ts             Unified TypeScript interfaces (Trainee, Trainer, Admin, Competency, Course)
-│   ├── routes.ts            Client route registry with administrative security guards
-│   └── App.tsx              Main layout, route dispatcher, and local session manager
-├── server.ts                Express API backend server
-├── DEMO_GUIDE.md            Official SIH Evaluation Demonstration Manual & Walkthrough Script
-└── README.md                Project documentation
+│   ├── admin/                     # Admin Portal (bulk import, summary, analytics)
+│   ├── components/                # Core UI views (TraineeHome, LearnView, PracticeView, etc.)
+│   ├── design-system/             # Theme tokens and Bauhaus primitives
+│   ├── offline/                   # IndexedDB layer, outbox queue, and sync engine
+│   ├── services/                  # Business logic (capacityConnect, azure, gemini, etc.)
+│   ├── teacher-portal/            # Trainer Portal (course editor, module practice, doubts)
+│   └── utils/                     # Utility helpers (trainerMatching, recommendationUtils, etc.)
+├── firestore.rules                # Production Firestore security rules
+├── firestore.indexes.json         # Firestore index declarations
+├── DEMO_GUIDE.md                  # 5-10 minute evaluator demo walkthrough script
+└── ARCHITECTURE.md                # System architecture, API catalog, and Mermaid data flows
 ```
 
 ---
 
-## 7. QUICK START & LOCAL DEVELOPMENT
+## ⚙️ Environment Configuration
 
-### Prerequisites
-- Node.js 18+ (Node.js 20 or 22 recommended)
-- `npm` package manager
+Create a `.env` file in the project root:
 
-### Installation
+```env
+# Server Backend Port
+PORT=10000
 
-1. **Clone Repository & Install Dependencies**:
-   ```bash
-   git clone https://github.com/Prashant-workhub/kuma.git
-   cd kuma
-   npm install
-   ```
+# Firebase Client Environment Variables
+VITE_FIREBASE_API_KEY="your-api-key"
+VITE_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID="your-project-id"
+VITE_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
+VITE_FIREBASE_MESSAGING_SENDER_ID="your-sender-id"
+VITE_FIREBASE_APP_ID="your-app-id"
 
-2. **Environment Configuration** *(Optional — safe local defaults are pre-configured)*:
-   ```bash
-   cp .env.example .env
-   ```
+# Firebase Admin Service Credentials (for server/index.js and scripts/seedDemo.js)
+FIREBASE_PROJECT_ID="your-project-id"
+FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com"
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_KEY_HERE\n-----END PRIVATE KEY-----\n"
 
-3. **Start Development Servers**:
-   ```bash
-   npm run dev
-   ```
-   - **Web Application**: `http://localhost:5173`
-   - **Express Server**: `http://localhost:3003`
+# Demo Mode Configuration
+DEMO_MODE=true
+DEMO_ADMIN_EMAIL="admin@acme.com"
+DEMO_ADMIN_PASSWORD="YourSecureAdminPassword123!"
+DEMO_TRAINER_EMAIL="trainer@acme.com"
+DEMO_TRAINER_PASSWORD="YourSecureTrainerPassword123!"
+DEMO_TRAINEE_EMAIL="trainee@acme.com"
+DEMO_TRAINEE_PASSWORD="YourSecureTraineePassword123!"
+
+# Azure Blob Storage (Optional, for course resource uploads)
+AZURE_STORAGE_ACCOUNT_NAME="your-storage-account"
+AZURE_STORAGE_ACCOUNT_KEY="your-storage-key"
+AZURE_STORAGE_CONTAINER_NAME="course-resources"
+
+# HMAC Certificate Signing Secret
+CERTIFICATE_HMAC_SECRET="kuma-sih-2026-capacity-connect-secret-key"
+```
 
 ---
 
-## 8. DEMONSTRATION & SIH EVALUATION GUIDE
+## 🚀 Quickstart Guide
 
-Kuma includes an automated demo environment and seeder designed for SIH judges and evaluators:
-- **Demonstration Manual**: Refer to [`DEMO_GUIDE.md`](./DEMO_GUIDE.md) for the 8-step evaluation script.
-- **Demo Data Seeder**: `src/utils/demoDataSeeder.ts` populates sample records for *"Acme Digital Services"*.
-- **Pre-Configured Demo Accounts**:
-  - **Admin Portal**: `admin@acme.com` (Access to `/admin/dashboard` & `/admin/bulk-import`)
-  - **Trainer Portal**: `trainer@acme.com` (Access to Trainer Dashboard & Course Manager)
-  - **Trainee Portal**: `analyst@acme.com` (Access to Trainee Dashboard, Skill Gap & Recommendations)
-
----
-
-## 9. BUILD & QUALITY VERIFICATION
-
-Ensure zero TypeScript errors and verify production Vite compilation:
+### 1. Install Dependencies
 
 ```bash
-# Run TypeScript Type Checker
-npx tsc --noEmit
+npm install
+```
 
-# Execute Production Bundle Build
+### 2. Seed the Demo Database
+
+Run the server-side seed script using Node.js to populate Firebase Auth accounts (`admin@acme.com`, `trainer@acme.com`, `trainee@acme.com`), organization metadata, competencies, courses, and history:
+
+```bash
+node scripts/seedDemo.js
+```
+
+### 3. Start the Server Backend
+
+```bash
+npm run start
+```
+
+### 4. Start the Frontend Development Server
+
+```bash
+npm run dev
+```
+
+---
+
+## 🧪 Testing & Build Verification
+
+```bash
+# Run unit tests (88 tests using Node test runner + fake-indexeddb)
+npm test
+
+# Type check TypeScript files
+npm run lint
+
+# Build production bundle (Vite)
 npm run build
 ```
 
 ---
 
-## 10. LICENSE
+## 🔥 Deploying to Firebase
 
-Apache-2.0 License. Developed for Smart India Hackathon 2026 (SIH26075).
+```bash
+# Deploy Firestore security rules and index definitions
+firebase deploy --only firestore:rules,firestore:indexes
+```
+
+---
+
+## 📊 Feature Matrix: Implemented vs. Optional Components
+
+| Feature Component | Status | Implementation Details |
+| :--- | :--- | :--- |
+| **Competency Engine & Gap Analysis** | ✅ Fully Implemented | Calculated using numeric skill levels (1-4) vs designation requirements in `recommendationUtils.ts`. |
+| **Trainer Matching Algorithm** | ✅ Fully Implemented | Multi-factor weighted match score computed in `trainerMatching.ts`. |
+| **IndexedDB Offline Support** | ✅ Fully Implemented | Outbox queue, size-capped LRU resource cache, and max-progress merge in `src/offline/`. |
+| **HMAC Certificate Verification** | ✅ Fully Implemented | HMAC-SHA256 signature generated and verified in `certificateUtils.ts`. |
+| **Bulk User Provisioning** | ✅ Fully Implemented | Client CSV parser + `POST /api/admin/users/bulk` with password reset link generation. |
+| **Azure Storage SAS Uploads** | ✅ Fully Implemented | Express backend SAS token generation via `@azure/storage-blob` in `server/index.js`. |
+| **Gemini AI Integration** | 🟡 Optional BYOK | Requires Gemini API Key in Settings or env to enable note synthesis and quiz generation. |
+| **Capacitor Mobile Shell** | 🟡 Webview Wrapper | Uses `@capacitor/core` webview container; native iOS/Android project bundles are optional additions. |

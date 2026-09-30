@@ -1,257 +1,176 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
+ * Project Kuma — Network & Offline Sync Status Indicator
+ * 
+ * Renders persistent connection status:
+ *   - "Online"
+ *   - "Offline · X changes to sync"
+ *   - "Syncing..."
+ *   - "Sync failed · Retry"
+ * 
+ * Opens an interactive popover showing queued outbox operations and LRU storage usage.
  */
 
 import React, { useState, useEffect } from 'react';
-import { Wifi, WifiOff, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { getOfflineSyncSummary, type OfflineSyncSummary } from '../services/offlineOutbox';
-import { onSyncEvent, retrySyncAll, isSyncInProgress, type SyncEvent } from '../services/syncManager';
+import { subscribeSyncStatus, getSyncEngineStatus, flushOutbox, SyncEngineStatus } from '../offline/syncEngine';
+import { getOfflineResourceStorageUsage, MAX_RESOURCE_STORAGE_BYTES, clearOfflineStores } from '../offline/db';
+import { Wifi, WifiOff, RefreshCw, AlertTriangle, HardDrive, CheckCircle2, ChevronDown, Trash2 } from 'lucide-react';
 
 interface NetworkStatusIndicatorProps {
   userId?: string;
   compact?: boolean;
 }
 
-export default function NetworkStatusIndicator({ userId, compact = false }: NetworkStatusIndicatorProps) {
-  const [isOnline, setIsOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
-  const [isSyncing, setIsSyncing] = useState<boolean>(() => isSyncInProgress());
-  const [summary, setSummary] = useState<OfflineSyncSummary>({
-    pendingCount: 0,
-    failedCount: 0,
-    uploadsPendingCount: 0,
-    uploadsFailedCount: 0,
-    totalPending: 0,
-    totalFailed: 0,
-  });
-  const [showPopover, setShowPopover] = useState(false);
+export default function NetworkStatusIndicator({ userId }: NetworkStatusIndicatorProps) {
+  const [status, setStatus] = useState<SyncEngineStatus>(getSyncEngineStatus());
+  const [storageBytes, setStorageBytes] = useState<number>(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
 
-  // Refresh summary metrics from IndexedDB
-  const refreshSummary = async () => {
+  useEffect(() => {
+    const unsub = subscribeSyncStatus((newStatus) => {
+      setStatus(newStatus);
+    });
+
+    getOfflineResourceStorageUsage().then(setStorageBytes).catch(() => {});
+
+    const interval = setInterval(() => {
+      getOfflineResourceStorageUsage().then(setStorageBytes).catch(() => {});
+    }, 10000);
+
+    return () => {
+      unsub();
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleManualRetry = async () => {
+    setIsManualSyncing(true);
     try {
-      const s = await getOfflineSyncSummary(userId);
-      setSummary(s);
-    } catch {
-      // IndexedDB may not be available or initialized
+      await flushOutbox(userId);
+    } finally {
+      setIsManualSyncing(false);
+      getOfflineResourceStorageUsage().then(setStorageBytes).catch(() => {});
     }
   };
 
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Initial check
-    refreshSummary();
-
-    // Listen to sync manager events
-    const unsubscribe = onSyncEvent((event: SyncEvent) => {
-      if (event.type === 'sync_start') {
-        setIsSyncing(true);
-      } else if (event.type === 'sync_complete') {
-        setIsSyncing(false);
-        if (event.summary) {
-          setSummary(event.summary);
-        } else {
-          refreshSummary();
-        }
-      } else {
-        refreshSummary();
-      }
-    });
-
-    // Periodic check every 10 seconds for unsynced changes
-    const interval = setInterval(refreshSummary, 10_000);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      unsubscribe();
-      clearInterval(interval);
-    };
-  }, [userId]);
-
-  const handleRetry = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isOnline) return;
-    setIsSyncing(true);
-    await retrySyncAll(userId);
-    setIsSyncing(false);
-    await refreshSummary();
+  const handleClearCache = async () => {
+    if (window.confirm('Clear all offline course caches and stored resource blobs?')) {
+      await clearOfflineStores();
+      setStorageBytes(0);
+      setStatus(getSyncEngineStatus());
+    }
   };
 
-  const hasPending = summary.totalPending > 0;
-  const hasFailed = summary.totalFailed > 0;
+  const formatMb = (bytes: number) => {
+    return (bytes / (1024 * 1024)).toFixed(1);
+  };
 
-  if (compact) {
-    return (
-      <div className="relative inline-block">
-        <button
-          onClick={() => setShowPopover(!showPopover)}
-          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
-            !isOnline
-              ? 'border-brand-rose/30 bg-brand-rose/10 text-brand-rose'
-              : isSyncing
-              ? 'border-brand-amber/30 bg-brand-amber/10 text-brand-amber'
-              : hasFailed
-              ? 'border-brand-rose/30 bg-brand-rose/10 text-brand-rose'
-              : hasPending
-              ? 'border-brand-amber/30 bg-brand-amber/10 text-brand-amber'
-              : 'border-brand-emerald/30 bg-brand-emerald/10 text-brand-emerald'
-          }`}
-          title={
-            !isOnline
-              ? 'Offline mode — changes stored locally'
-              : isSyncing
-              ? 'Syncing changes to cloud...'
-              : hasPending
-              ? `${summary.totalPending} change(s) waiting to sync`
-              : 'Online & Synced'
-          }
-        >
-          {isSyncing ? (
-            <RefreshCw className="h-3 w-3 animate-spin text-brand-amber" />
-          ) : !isOnline ? (
-            <WifiOff className="h-3 w-3 text-brand-rose" />
-          ) : (
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                hasFailed ? 'bg-brand-rose animate-pulse' : hasPending ? 'bg-brand-amber animate-pulse' : 'bg-brand-emerald'
-              }`}
-            />
-          )}
-          <span>
-            {!isOnline
-              ? 'Offline'
-              : isSyncing
-              ? 'Syncing...'
-              : hasPending
-              ? `${summary.totalPending} Pending`
-              : 'Online'}
-          </span>
-        </button>
+  // Compute status pill colors and labels
+  let pillBg = 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300';
+  let dotColor = 'bg-emerald-500';
+  let label = 'Online';
+  let Icon = Wifi;
 
-        {/* Popover detailed info */}
-        {showPopover && (
-          <div className="glass-panel absolute right-0 top-full z-50 mt-2 w-64 space-y-3 p-3.5 shadow-xl text-ink">
-            <div className="flex items-center justify-between border-b border-line pb-2">
-              <div className="flex items-center gap-2">
-                {isOnline ? (
-                  <Wifi className="h-4 w-4 text-brand-emerald" />
-                ) : (
-                  <WifiOff className="h-4 w-4 text-brand-rose" />
-                )}
-                <span className="font-display text-xs font-semibold">
-                  Network Status: {isOnline ? 'Connected' : 'Offline'}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 font-mono text-[11px]">
-              <div className="flex justify-between text-muted">
-                <span>Pending Operations:</span>
-                <span className="font-bold text-ink">{summary.pendingCount}</span>
-              </div>
-              <div className="flex justify-between text-muted">
-                <span>Pending File Uploads:</span>
-                <span className="font-bold text-ink">{summary.uploadsPendingCount}</span>
-              </div>
-              {summary.totalFailed > 0 && (
-                <div className="flex justify-between text-brand-rose">
-                  <span>Failed Retries:</span>
-                  <span className="font-bold">{summary.totalFailed}</span>
-                </div>
-              )}
-            </div>
-
-            {isOnline && (hasPending || hasFailed) && (
-              <button
-                onClick={handleRetry}
-                disabled={isSyncing}
-                className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-brand-cyan/20 border border-brand-cyan/40 px-3 py-1.5 font-display text-xs font-semibold text-brand-cyan hover:bg-brand-cyan/30 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isSyncing ? 'Syncing Now...' : 'Sync Now'}</span>
-              </button>
-            )}
-
-            {!isOnline && (
-              <p className="text-[10px] text-faint leading-relaxed">
-                Changes saved locally to IndexedDB outbox. Automatic sync will resume when connection is restored.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    );
+  if (status.state === 'syncing' || isManualSyncing) {
+    pillBg = 'bg-sky-500/15 border-sky-500/40 text-sky-700 dark:text-sky-300';
+    dotColor = 'bg-sky-500 animate-ping';
+    label = 'Syncing...';
+    Icon = RefreshCw;
+  } else if (status.state === 'offline') {
+    pillBg = 'bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300';
+    dotColor = 'bg-amber-500';
+    label = status.pendingCount > 0 ? `Offline · ${status.pendingCount} changes to sync` : 'Offline';
+    Icon = WifiOff;
+  } else if (status.state === 'failed') {
+    pillBg = 'bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-300';
+    dotColor = 'bg-rose-500';
+    label = 'Sync failed · Retry';
+    Icon = AlertTriangle;
   }
 
-  // Full banner / inline card display
   return (
-    <div
-      className={`rounded-xl border p-3 font-sans transition-colors ${
-        !isOnline
-          ? 'border-brand-rose/30 bg-brand-rose/5 text-ink'
-          : isSyncing
-          ? 'border-brand-amber/30 bg-brand-amber/5 text-ink'
-          : hasFailed
-          ? 'border-brand-rose/30 bg-brand-rose/5 text-ink'
-          : hasPending
-          ? 'border-brand-amber/30 bg-brand-amber/5 text-ink'
-          : 'border-brand-emerald/30 bg-brand-emerald/5 text-ink'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          {!isOnline ? (
-            <WifiOff className="h-4 w-4 text-brand-rose shrink-0" />
-          ) : isSyncing ? (
-            <RefreshCw className="h-4 w-4 text-brand-amber animate-spin shrink-0" />
-          ) : hasFailed ? (
-            <AlertTriangle className="h-4 w-4 text-brand-rose shrink-0" />
-          ) : hasPending ? (
-            <RefreshCw className="h-4 w-4 text-brand-amber shrink-0" />
-          ) : (
-            <CheckCircle2 className="h-4 w-4 text-brand-emerald shrink-0" />
-          )}
+    <div className="relative inline-block text-left select-none font-mono">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold transition-all cursor-pointer ${pillBg}`}
+        title="Click to view offline storage and outbox status"
+      >
+        <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+        <Icon className={`w-3.5 h-3.5 shrink-0 ${status.state === 'syncing' || isManualSyncing ? 'animate-spin' : ''}`} />
+        <span>{label}</span>
+        <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />
+      </button>
 
-          <div>
-            <div className="font-display text-xs font-semibold">
-              {!isOnline
-                ? 'Working Offline'
-                : isSyncing
-                ? 'Syncing offline changes...'
-                : hasFailed
-                ? 'Sync items require attention'
-                : hasPending
-                ? `${summary.totalPending} pending change(s) to sync`
-                : 'All changes synced'}
+      {/* Popover Details */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-72 p-3.5 rounded-[9px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] text-[var(--text-primary)] shadow-paper-md z-50 space-y-3">
+          <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-2">
+            <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+              <HardDrive className="w-4 h-4 text-[#FFC400]" /> Offline Sync Manager
+            </span>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-secondary)]">Network Status:</span>
+              <span className="font-bold uppercase flex items-center gap-1">
+                {status.state === 'offline' ? (
+                  <span className="text-amber-500">Offline</span>
+                ) : (
+                  <span className="text-emerald-500">Connected</span>
+                )}
+              </span>
             </div>
-            <p className="font-mono text-[10px] text-muted">
-              {!isOnline
-                ? `${summary.totalPending} change(s) stored locally in IndexedDB outbox`
-                : isSyncing
-                ? 'Sending queued operations to Firestore & Azure'
-                : hasPending
-                ? 'Will sync automatically in background'
-                : 'Connected to Firebase & Azure Blob Cloud'}
-            </p>
+
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-secondary)]">Queued Outbox Ops:</span>
+              <span className="font-bold">{status.pendingCount} pending</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-secondary)]">Resource Storage Used:</span>
+              <span className="font-bold">
+                {formatMb(storageBytes)} MB / {formatMb(MAX_RESOURCE_STORAGE_BYTES)} MB
+              </span>
+            </div>
+
+            {status.lastError && (
+              <div className="p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-500 text-[10px] leading-tight">
+                <strong>Sync Error:</strong> {status.lastError}
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="pt-2 flex flex-col gap-1.5 border-t border-[var(--border-main)]">
+            <button
+              type="button"
+              onClick={handleManualRetry}
+              disabled={isManualSyncing || status.state === 'offline'}
+              className="w-full py-1.5 px-3 rounded bg-[#FFC400] text-[#111111] font-bold text-xs uppercase border border-[var(--border-main)] shadow-paper-sm hover:bg-[#ffe066] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin' : ''}`} />
+              <span>{isManualSyncing ? 'Syncing Outbox...' : 'Sync Outbox Now'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClearCache}
+              className="w-full py-1 px-3 rounded bg-[var(--bg-main)] text-[var(--text-secondary)] hover:text-rose-500 font-bold text-[10px] uppercase border border-[var(--border-main)] cursor-pointer flex items-center justify-center gap-1"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>Clear Offline Caches</span>
+            </button>
           </div>
         </div>
-
-        {isOnline && (hasPending || hasFailed) && (
-          <button
-            onClick={handleRetry}
-            disabled={isSyncing}
-            className="flex items-center gap-1 rounded-lg border border-brand-cyan/40 bg-brand-cyan/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-brand-cyan hover:bg-brand-cyan/20 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>Sync</span>
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 }

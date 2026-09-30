@@ -1,88 +1,66 @@
-# Kuma AI: Transforming Academic Learning with Intelligent Workspaces
+# Kuma Capacity Connect: Intelligent Organizational Capacity Building Platform
 
-## 🚀 Project Vision
-Kuma AI is a next-generation academic learning workspace designed to bridge the gap between raw educational content and deep conceptual mastery. By leveraging advanced AI, it transforms lectures, documents, and web resources into structured, personalized study materials, while providing educators with real-time diagnostic insights.
+## 🚀 Vision & Executive Overview
+**Kuma Capacity Connect** (SIH26075 Prototype) is an AI-enhanced, competency-driven organizational capacity building platform designed for public sector and enterprise workforce development.
 
----
-
-## 💡 The Problem
-Students today are overwhelmed by information but underserved by structured learning tools.
-- **Information Overload:** Lectures, PDFs, and videos are often passive and unorganized.
-- **One-Size-Fits-All:** Learning materials don't adapt to individual student needs.
-- **Feedback Gap:** Faculty lack granular visibility into where students are struggling until it's too late (exams).
-- **Accessibility:** Academic language can be intimidating and difficult to grasp.
+It bridges the gap between organizational designation requirements and individual employee skill baselines through continuous gap detection, explained trainer matching, adaptive course delivery, low-stakes module practice, and cryptographically verifiable HMAC-SHA256 certification.
 
 ---
 
-## ✨ The Solution: Kuma AI
-An integrated ecosystem consisting of a **Student Knowledge Studio** and a **Faculty Command Center**.
+## 💡 Key Challenges Addressed
+- **Unidentified Skill Gaps:** Organizations lack real-time visibility into employee competency gaps against designation benchmarks.
+- **Unaligned Training Assignments:** Course assignments are often generic rather than tailored to specific skill deficits.
+- **Lack of Practice & Retention Tools:** Passive training completion lacks immediate, low-stakes feedback and spaced flashcard review.
+- **Offline & Connectivity Constraints:** Field employees require uninterrupted access to course structures, resources, and progress tracking when offline.
+- **Verification & Oversight:** Administrators require verifiable training certificates and live organizational capacity analytics.
 
-### 🎓 Student Workspace
-- **Multi-Source Ingestion:** Seamlessly import PDFs, DOCX, PPTX, YouTube transcripts, and even live audio recordings.
-- **AI-Powered Synthesis:** Generate high-quality notes, summaries, flashcards, and interactive mind maps in seconds.
-- **Adaptive Practice:** Quizzes and revision tools that evolve based on student performance.
-- **Research Hub:** Source-grounded AI chat for deep academic exploration without "hallucinations."
-- **Bhai Lang:** A unique feature that explains complex topics in friendly "Hinglish," making learning more relatable.
-- **Engagement:** Gamified experience with streaks, XP, and weekend challenges to build consistent study habits.
+---
 
-### 👩🏫 Faculty Workspace
-- **Cohort Score Matrix:** A bird's-eye view of class-wide mastery across all subjects and topics.
-- **Weak Topic Diagnostic:** AI identifies exactly where the class is struggling, linking weaknesses to specific student doubts.
-- **Real-time Doubt Management:** Directly respond to student queries tied to specific lectures or concepts.
-- **Learning Analytics:** Data-driven insights to help faculty tailor their teaching strategies.
+## ✨ System Architecture & Key Capabilities
+
+### 🎓 Trainee Workspace (Discover ➔ Learn ➔ Practice ➔ Assess ➔ Improve)
+- **Trainee Home Dashboard (`TraineeHome`):** Immediate "What should I learn next?" guidance with resume CTAs and recommended courses.
+- **Competency Gap Engine (`SkillGapView`):** Calculates skill level deltas (1–4) against organizational designation targets.
+- **Explained Trainer Match (`DiscoverView`):** Multi-factor weighted match score computed via `trainerMatching.ts` based on competency alignment, domain expertise, and experience.
+- **Unified Course Player (`LearnView`):** Supports video, PDF, slides, and markdown resource viewers with throttled progress tracking and private notes.
+- **Low-Stakes Practice (`PracticeView`):** Non-scoring, retryable module practice questions and spaced flashcards.
+- **Growth & Certification (`GrowthView` & `CertificatesView`):** Visualizes skill growth over time and issues HMAC-SHA256 cryptographically signed certificates with QR code verification.
+
+### 👨‍🏫 Trainer Portal (`TeacherPortalApp`)
+- **Course & Syllabus Management:** Create and publish courses with structured module resource references.
+- **Module Practice Authoring:** Attach non-assessment practice questions and explanations to course modules.
+- **Trainee Performance Monitoring:** Track live module completion rates, doubt queries, and assessment outcomes.
+
+### 👑 Admin Portal (`AdminPortalApp`)
+- **Organization & Requirement Config:** Manage organizations (`Acme Digital Services`), departments, designations, and required competencies.
+- **Trainer Approvals & RBAC:** Approve trainer registrations and assign custom admin claims via Firebase Admin SDK.
+- **Bulk User Provisioning:** Parse CSV spreadsheets and provision Auth users with password reset invitation links via `POST /api/admin/users/bulk`.
+- **Capacity Analytics (`AdminAnalyticsView`):** Real-time department competency coverage, top skill gap urgency scores, and course completion funnels.
 
 ---
 
 ## 🛠️ Technology Stack
-- **Frontend:** React 19, Vite, Tailwind CSS 4, Motion (Animations), Lucide React.
-- **Backend:** Node.js, Express, TypeScript (tsx).
-- **Database & Auth:** Firebase Authentication, Cloud Firestore.
-- **Mobile:** Capacitor (Native Android support).
-- **AI Engine:**
-    - **Model Agnostic:** Supports multiple AI providers (Gemini, etc.) via **BYOK (Bring Your Own Key)**.
-    - **Security:** Keys are encrypted with **AES-256-GCM** and stored in a server-side vault.
-- **Parsing & Extraction:** `pdf-parse`, `mammoth`, `officeparser`, `cheerio`, `youtube-transcript`.
-- **Infrastructure:** Render (API), Vercel (Web), Firebase Cloud Messaging.
+- **Frontend:** React 19, TypeScript 5.8, Vite 6, Tailwind CSS v4, Vanilla CSS Custom Properties (`src/index.css`), Lucide Icons.
+- **Backend API:** Node.js, Express 5 REST API (`server/index.js`), Firebase Admin SDK.
+- **Database & Auth:** Firebase Authentication (Email/Password, OAuth, Custom Tokens), Cloud Firestore (`firestore.rules`).
+- **Cloud Storage:** Azure Blob Storage (`@azure/storage-blob`) for SAS URL resource uploads (`POST /api/storage/upload-url`).
+- **Offline Engine:** IndexedDB (`src/offline/`) with size-capped LRU resource caching (100MB cap), outbox operation queue with `clientOpId` deduplication, and persistent connection status UI.
+- **Verification:** HMAC-SHA256 cryptographic certificate signature generation and public verification (`certificateUtils.ts`).
 
 ---
 
-## 🧠 Educational Innovation: The Bloom Engine
-Unlike basic note-takers, Kuma AI uses an internal **Bloom's Taxonomy Engine** to map student mastery across six cognitive levels:
-1. **Remember:** Recalling facts and basic concepts.
-2. **Understand:** Explaining ideas or concepts.
-3. **Apply:** Using information in new situations.
-4. **Analyze:** Drawing connections among ideas.
-5. **Evaluate:** Justifying a stand or decision.
-6. **Create:** Producing new or original work.
+## 🔄 Core Capacity Building Loop
 
-The system analyzes quiz telemetry to build a **Bloom Profile** for each student, highlighting dominant weaknesses and recommending targeted focus areas.
+```
+1. Admin Org Requirements ➔ 2. Baseline Gap Detection ➔ 3. Explained Trainer Match ➔
+4. Course Player & Notes ➔ 5. Practice & Flashcards ➔ 6. Post-Training Assessment ➔
+7. Competency Growth Update ➔ 8. HMAC Certificate Verification ➔ 9. Admin Capacity Analytics
+```
 
 ---
 
-## 🔄 Main Workflow
-1. **Onboarding:** Secure sign-in and AI provider setup (BYOK).
-2. **Capture:** Student records a lecture or uploads a document.
-3. **Process:** API extracts text/audio and normalizes it into a canonical format.
-4. **Synthesize:** AI generates structured learning assets (Notes, Quizzes, Cards).
-5. **Learn:** Student studies in the **Knowledge Studio** and practices via **Practice Blitz**.
-6. **Analyze:** Faculty reviews the **Cohort Diagnostic** and addresses doubts.
-
----
-
-## 🛡️ Security & Scalability
-- **Privacy-First:** User-provided AI keys never touch browser storage.
-- **Rate Limiting:** Sophisticated per-user daily quotas and per-minute limits protect resources.
-- **Canonicalization:** Ensures consistent subject and topic identification across the entire platform.
-- **Production Ready:** Designed for deployment on Render and Vercel with robust error sanitization and health monitoring.
-
----
-
-## 🚀 Future Roadmap
-- **Institutional Integration:** Direct LMS (Canvas/Moodle) sync.
-- **Peer Learning:** Collaborative study rooms and peer-to-peer doubt resolution.
-- **Offline Mode:** Enhanced mobile caching for learning without internet.
-- **Advanced Whiteboard:** AI-assisted diagramming and mathematical proofs.
-
----
-
-**Kuma AI** – *Not just taking notes, but making sense of them.*
+## 🛡️ Security & Reliability
+- **Custom Claim RBAC:** Administrative access is enforced exclusively by Firebase custom claims (`{ admin: true }`).
+- **Idempotent Offline Sync:** Client operations use deterministic `clientOpId` UUIDs to ensure exact-once execution upon reconnect.
+- **Cryptographic Verification:** Certificates feature HMAC-SHA256 signatures for tamper-proof validation.
+- **Clean Fallbacks:** Offline actions gracefully queue outbox ops; restricted actions (Assessments, Certificate Issuance) display clear online guards.
