@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Quiz, QuizAttemptRecord, CatalogCompetency, SkillProficiencyLevel } from '../types';
-import { calculateAssessedProficiency } from '../utils/competencyUtils';
-import { Modal, Button, Badge } from './bauhaus';
-import { CheckCircle2, XCircle, Award, Target, HelpCircle, ArrowRight, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Quiz, QuizAttemptRecord, CatalogCompetency } from '../types';
+import { Modal, Button } from './bauhaus';
+import { CheckCircle2, XCircle, Award, ArrowRight, RotateCcw, Clock, AlertTriangle } from 'lucide-react';
+import { startAssessment, submitAssessment, SubmitAssessmentResponse } from '../services/assessmentService';
 
 interface AssessmentTakingModalProps {
   isOpen: boolean;
@@ -30,20 +30,111 @@ export default function AssessmentTakingModal({
 }: AssessmentTakingModalProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<{ [questionId: string]: number }>({});
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitResult, setSubmitResult] = useState<SubmitAssessmentResponse | null>(null);
   const [latestAttempt, setLatestAttempt] = useState<QuizAttemptRecord | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number | null>(null);
+  const [sanitizedQuestions, setSanitizedQuestions] = useState<Array<{ id: string; type?: string; question: string; options: string[] }>>([]);
+
+  // Handle session start when modal opens
+  useEffect(() => {
+    if (!isOpen || !quiz) {
+      handleResetState();
+      return;
+    }
+
+    let isMounted = true;
+    async function initAssessment() {
+      setIsStarting(true);
+      setStartError(null);
+      handleResetState();
+
+      try {
+        const startRes = await startAssessment(quiz!.id);
+        if (!isMounted) return;
+
+        setAttemptId(startRes.attemptId);
+        setSanitizedQuestions(startRes.assessment.questions);
+
+        // Setup timer countdown
+        const timeLimitMin = startRes.assessment.timeLimitMinutes || 15;
+        const totalSec = timeLimitMin * 60;
+        const elapsedSec = Math.floor((Date.now() - new Date(startRes.startedAt).getTime()) / 1000);
+        const remaining = Math.max(0, totalSec - elapsedSec);
+        setTimeRemainingSeconds(remaining);
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('[AssessmentModal] Failed to start server session, falling back to local session:', err);
+        // Fallback for offline / static mode
+        setAttemptId(`att_${Date.now()}`);
+        setSanitizedQuestions(quiz!.questions.map(q => ({
+          id: q.id,
+          type: q.type || 'mcq',
+          question: q.question,
+          options: q.options
+        })));
+        const timeLimitMin = Number((quiz!.estimatedTime || '15').replace(/\D/g, '')) || 15;
+        setTimeRemainingSeconds(timeLimitMin * 60);
+        if (err instanceof Error && err.message.includes('Maximum attempts')) {
+          setStartError(err.message);
+        }
+      } finally {
+        if (isMounted) setIsStarting(false);
+      }
+    }
+
+    initAssessment();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, quiz?.id]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (timeRemainingSeconds === null || isSubmitted || !isOpen || startError) return;
+
+    if (timeRemainingSeconds <= 0) {
+      // Auto-submit on timer expiry
+      if (!isSubmitting && attemptId) {
+        handleSubmit();
+      }
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeRemainingSeconds(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeRemainingSeconds, isSubmitted, isOpen, startError, attemptId]);
+
+  function handleResetState() {
+    setCurrentQuestionIndex(0);
+    setUserAnswers({});
+    setAttemptId(null);
+    setIsSubmitted(false);
+    setSubmitResult(null);
+    setLatestAttempt(null);
+    setSubmitError(null);
+    setTimeRemainingSeconds(null);
+  }
 
   if (!isOpen || !quiz) return null;
 
-  const totalQuestions = quiz.questions.length;
-  const currentQuestion = quiz.questions[currentQuestionIndex];
+  const questionsList = sanitizedQuestions.length > 0 ? sanitizedQuestions : quiz.questions;
+  const totalQuestions = questionsList.length;
+  const currentQuestion = questionsList[currentQuestionIndex];
   const competencyName = quiz.competencyName || catalog.find(c => c.id === quiz.competencyId)?.name || 'General Competency';
   const passingScore = quiz.passingScore || 60;
 
   const handleSelectOption = (optionIndex: number) => {
-    if (isSubmitted) return;
+    if (isSubmitted || !currentQuestion) return;
     setUserAnswers(prev => ({
       ...prev,
       [currentQuestion.id]: optionIndex
@@ -67,63 +158,61 @@ export default function AssessmentTakingModal({
       setSubmitError('Your Firebase profile is unavailable. Sign in again before submitting.');
       return;
     }
+    if (!attemptId) {
+      setSubmitError('Session not properly initialized. Close and re-open assessment.');
+      return;
+    }
+
     setSubmitError(null);
-    let correctCount = 0;
-    quiz.questions.forEach(q => {
-      if (userAnswers[q.id] === q.correctAnswerIndex) {
-        correctCount++;
-      }
-    });
-
-    const percentage = Math.round((correctCount / Math.max(1, totalQuestions)) * 100);
-    const passed = percentage >= passingScore;
-    const { level: assessedLevel, numericLevel: assessedNumericLevel } = calculateAssessedProficiency(percentage);
-
-    const attemptRecord: QuizAttemptRecord = {
-      id: `attempt-${Date.now()}`,
-      userId,
-      trainerId: quiz.trainerId,
-      assignmentId: quiz.assignmentId,
-      trainingProgramId: quiz.trainingProgramId,
-      userName: userName || 'Trainee Learner',
-      quizId: quiz.id,
-      quizTitle: quiz.title,
-      subject: quiz.courseName || quiz.courseCode || 'Training Program',
-      topic: quiz.topic,
-      competencyId: quiz.competencyId || 'cat-comp-2',
-      competencyName,
-      score: correctCount,
-      totalQuestions,
-      scorePercentage: percentage,
-      accuracy: percentage,
-      passed,
-      assessedLevel,
-      assessedNumericLevel,
-      completedAt: new Date().toISOString()
-    };
-
     setIsSubmitting(true);
+
     try {
+      // Server-side scoring submission
+      const res = await submitAssessment(quiz.id, attemptId, userAnswers);
+
+      setSubmitResult(res);
+
+      const attemptRecord: QuizAttemptRecord = {
+        id: res.attemptId,
+        userId,
+        trainerId: quiz.trainerId,
+        assignmentId: quiz.assignmentId,
+        trainingProgramId: quiz.trainingProgramId,
+        userName: userName || 'Trainee Learner',
+        quizId: quiz.id,
+        quizTitle: quiz.title,
+        subject: quiz.courseName || quiz.courseCode || 'Training Program',
+        topic: quiz.topic,
+        competencyId: quiz.competencyId || 'cat-comp-2',
+        competencyName,
+        score: res.score,
+        totalQuestions: res.totalQuestions,
+        scorePercentage: res.scorePercentage,
+        accuracy: res.scorePercentage,
+        passed: res.passed,
+        assessedLevel: res.level,
+        assessedNumericLevel: res.numericLevel,
+        completedAt: res.completedAt
+      };
+
       await onCompleteAttempt(attemptRecord);
       setLatestAttempt(attemptRecord);
       setIsSubmitted(true);
     } catch (error) {
-      console.error('[Assessment] Submission failed:', error);
+      console.error('[Assessment] Server submission failed:', error);
       setSubmitError(error instanceof Error ? error.message : 'Unable to submit assessment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleReset = () => {
-    setCurrentQuestionIndex(0);
-    setUserAnswers({});
-    setIsSubmitted(false);
-    setLatestAttempt(null);
-    setSubmitError(null);
-  };
-
   const answeredCount = Object.keys(userAnswers).length;
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <Modal
@@ -151,12 +240,41 @@ export default function AssessmentTakingModal({
           </div>
           <div className="text-right font-mono text-xs text-[var(--text-secondary)]">
             <div>Questions: {totalQuestions}</div>
-            <div>Time Est: {quiz.estimatedTime || '15 mins'}</div>
+            {timeRemainingSeconds !== null && !isSubmitted && (
+              <div className={`flex items-center gap-1 justify-end font-extrabold ${timeRemainingSeconds < 120 ? 'text-red-500 animate-pulse' : 'text-[#FFC400]'}`}>
+                <Clock className="h-3.5 w-3.5" />
+                <span>Timer: {formatTimer(timeRemainingSeconds)}</span>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* START ERROR / ATTEMPT LIMIT ALERT */}
+        {startError && (
+          <div className="rounded-[6px] border-2 border-red-500 bg-red-500/10 p-4 text-xs font-mono font-bold text-red-600 dark:text-red-400 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-heading font-black uppercase">
+              <AlertTriangle className="h-5 w-5" />
+              <span>Assessment Blocked</span>
+            </div>
+            <p>{startError}</p>
+            <div className="pt-2">
+              <Button variant="tertiary" size="sm" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* LOADING SESSION */}
+        {isStarting && !startError && (
+          <div className="p-8 text-center space-y-3 font-mono text-xs font-bold text-[var(--text-secondary)]">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-[#FFC400] border-r-transparent" />
+            <div>Initializing server assessment session…</div>
+          </div>
+        )}
+
         {/* NOT SUBMITTED: QUESTION VIEW */}
-        {!isSubmitted && (
+        {!isStarting && !startError && !isSubmitted && currentQuestion && (
           <div className="space-y-6">
             {submitError && (
               <div role="alert" className="rounded-md border-2 border-red-500 bg-red-500/10 p-3 text-xs font-bold text-red-600 dark:text-red-300">
@@ -241,14 +359,14 @@ export default function AssessmentTakingModal({
                   icon={<ArrowRight className="h-4 w-4" />}
                   className="bg-[#19B56B] text-white border-2 border-[#111111]"
                 >
-                  {isSubmitting ? 'Saving assessment…' : 'Submit Assessment'}
+                  {isSubmitting ? 'Scoring on server…' : 'Submit Assessment'}
                 </Button>
               )}
             </div>
           </div>
         )}
 
-        {/* SUBMITTED: RESULT VIEW */}
+        {/* SUBMITTED: REVIEW DISPLAY WITH EXPLANATIONS */}
         {isSubmitted && latestAttempt && (
           <div className="space-y-6 animate-fade-in">
 
@@ -265,7 +383,7 @@ export default function AssessmentTakingModal({
 
               <div>
                 <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-[var(--text-secondary)]">
-                  ASSESSMENT COMPLETED
+                  SERVER AUDITED RESULT
                 </span>
                 <h3 className="font-heading font-black text-2xl text-[var(--text-primary)] uppercase mt-0.5">
                   {latestAttempt.passed ? 'ASSESSMENT PASSED' : 'ASSESSMENT NOT PASSED'}
@@ -275,7 +393,7 @@ export default function AssessmentTakingModal({
               {/* Score & Assessed Level Display */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 max-w-xl mx-auto">
                 <div className="p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)]">
-                  <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">Score</div>
+                  <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">Server Score</div>
                   <div className="font-heading font-black text-xl text-[var(--text-primary)] mt-0.5">
                     {latestAttempt.scorePercentage}%
                   </div>
@@ -285,7 +403,7 @@ export default function AssessmentTakingModal({
                 </div>
 
                 <div className="p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)]">
-                  <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">Assessed Competency</div>
+                  <div className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)]">Target Competency</div>
                   <div className="font-heading font-bold text-xs text-[var(--text-primary)] truncate mt-1" title={latestAttempt.competencyName}>
                     {latestAttempt.competencyName}
                   </div>
@@ -304,15 +422,19 @@ export default function AssessmentTakingModal({
               </div>
             </div>
 
-            {/* Answer Breakdown */}
+            {/* Answer Review & Server-Provided Explanations */}
             <div className="space-y-3">
               <h4 className="font-heading font-bold text-xs uppercase text-[var(--text-primary)] tracking-wider">
-                ANSWER REVIEW & EXPLANATIONS
+                SERVER REVIEW & ANSWER EXPLANATIONS
               </h4>
-              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                {quiz.questions.map((q, idx) => {
+              <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
+                {questionsList.map((q, idx) => {
                   const userAns = userAnswers[q.id];
-                  const isCorrect = userAns === q.correctAnswerIndex;
+                  const qResult = submitResult?.perQuestion?.[q.id];
+                  const isCorrect = qResult ? qResult.isCorrect : false;
+                  const correctOptIndex = qResult ? Number(qResult.correctAnswer) : undefined;
+                  const explanationText = qResult ? qResult.explanation : '';
+
                   return (
                     <div
                       key={q.id}
@@ -332,17 +454,17 @@ export default function AssessmentTakingModal({
                       </div>
 
                       <div className="text-[11px] text-[var(--text-secondary)]">
-                        Your Choice: <span className="font-bold">{q.options[userAns] || 'Not answered'}</span>
-                        {!isCorrect && (
+                        Your Choice: <span className="font-bold">{userAns !== undefined ? q.options[userAns] : 'Not answered'}</span>
+                        {!isCorrect && correctOptIndex !== undefined && (
                           <span className="ml-3 text-[#19B56B] font-bold">
-                            Correct Answer: {q.options[q.correctAnswerIndex]}
+                            Correct Answer: {q.options[correctOptIndex] || `Option ${correctOptIndex + 1}`}
                           </span>
                         )}
                       </div>
 
-                      {q.explanation && (
-                        <div className="text-[10px] italic text-[var(--text-secondary)] border-l-2 border-current pl-2 mt-1">
-                          {q.explanation}
+                      {explanationText && (
+                        <div className="text-[10px] italic text-[var(--text-secondary)] border-l-2 border-[#19B56B] pl-2 mt-1">
+                          {explanationText}
                         </div>
                       )}
                     </div>
@@ -356,7 +478,7 @@ export default function AssessmentTakingModal({
               <Button
                 variant="tertiary"
                 size="sm"
-                onClick={handleReset}
+                onClick={handleResetState}
                 icon={<RotateCcw className="h-3.5 w-3.5" />}
               >
                 Retake Assessment

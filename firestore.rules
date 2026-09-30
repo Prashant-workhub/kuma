@@ -383,6 +383,11 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid);
     }
 
+    // assessmentKeys is server-only (firebase-admin). Clients can NEVER read or write.
+    match /assessmentKeys/{assessmentId} {
+      allow read, write: if false;
+    }
+
     match /assessmentAssignments/{assignmentId} {
       allow read: if isAdmin() || (signedIn() &&
         (resource.data.traineeId == request.auth.uid || resource.data.trainerId == request.auth.uid));
@@ -409,14 +414,8 @@ service cloud.firestore {
     match /assessmentAttempts/{attemptId} {
       allow read: if isAdmin() || (signedIn() &&
         (resource.data.userId == request.auth.uid || resource.data.trainerId == request.auth.uid));
-      allow create: if signedIn() && validAssessmentAttempt(request.auth.uid) &&
-        exists(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)) &&
-        getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.traineeId == request.auth.uid &&
-        getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.assessmentId == request.resource.data.quizId &&
-        getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.status == 'submitted' &&
-        getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.attemptId == attemptId &&
-        request.resource.data.trainerId == getAfter(/databases/$(database)/documents/assessmentAssignments/$(request.resource.data.assignmentId)).data.trainerId;
-      allow update, delete: if false;
+      // Assessment attempts are server-written only via backend API / firebase-admin
+      allow create, update, delete: if isAdmin();
     }
 
     function validPrivateCertificate(uid, certificateId) {
@@ -499,8 +498,7 @@ service cloud.firestore {
 
     match /attempts/{attemptId} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     match /competencyRecords/{recordId} {

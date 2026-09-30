@@ -365,6 +365,506 @@ app.delete('/api/admin/competencies/:id', verifyAdminToken, async (req, res) => 
   }
 });
 
+// ============================================================================
+// ASSESSMENT SECURE SCORING & SERVER-SIDE KEYS
+// ============================================================================
+
+// User authentication middleware
+const verifyUserToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: Missing Authorization header' });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    if (db && firebaseAdminApp) {
+      const decoded = await admin.auth().verifyIdToken(token);
+      let role = decoded.admin === true ? 'admin' : (decoded.role || 'trainee');
+      if (decoded.admin !== true && db) {
+        const uDoc = await db.collection('users').doc(decoded.uid).get();
+        if (uDoc.exists) {
+          role = uDoc.data().role || role;
+        }
+      }
+      req.user = { uid: decoded.uid, email: decoded.email || '', role };
+      return next();
+    }
+    // Fallback mode if Firebase Admin is not configured
+    req.user = { uid: 'demo-user', email: 'demo@kuma.gov.in', role: 'trainee' };
+    return next();
+  } catch (err) {
+    return res.status(401).json({ success: false, error: `Unauthorized: ${err.message}` });
+  }
+};
+
+// Deterministic proficiency level mapping (exact parity with competencyUtils)
+function calculateAssessedProficiency(percentage) {
+  const rounded = Math.min(100, Math.max(0, Math.round(percentage)));
+  if (rounded >= 90) return { level: 'Expert', numericLevel: 4 };
+  if (rounded >= 70) return { level: 'Advanced', numericLevel: 3 };
+  if (rounded >= 40) return { level: 'Intermediate', numericLevel: 2 };
+  return { level: 'Beginner', numericLevel: 1 };
+}
+
+// In-memory fallback server keys for static quizzes
+const STATIC_ASSESSMENT_KEYS = {
+  'quiz-comp-1': {
+    correctAnswers: { 'q1-1': 0, 'q1-2': 1, 'q1-3': 1, 'q1-4': 1, 'q1-5': 2 },
+    explanations: {
+      'q1-1': 'dropna() removes missing values along a specified axis in pandas.',
+      'q1-2': 'Histograms represent frequency distributions of continuous quantitative data.',
+      'q1-3': 'The median divides an ordered dataset into two equal halves.',
+      'q1-4': 'Pearson correlation coefficients range from -1 (perfect negative) to +1 (perfect positive).',
+      'q1-5': 'HAVING filters aggregate function results, whereas WHERE filters row-level data.'
+    }
+  },
+  'quiz-comp-2': {
+    correctAnswers: { 'q2-1': 1, 'q2-2': 1, 'q2-3': 1, 'q2-4': 1 },
+    explanations: {
+      'q2-1': 'Lists are mutable ordered sequences of elements.',
+      'q2-2': 'try...except blocks capture runtime exceptions in Python.',
+      'q2-3': 'Sets enforce uniqueness, so duplicate 2 is removed, resulting in 3 elements.',
+      'q2-4': '// performs floor division in Python.'
+    }
+  },
+  'quiz-comp-3': {
+    correctAnswers: { 'q3-1': 1, 'q3-2': 2, 'q3-3': 1, 'q3-4': 0 },
+    explanations: {
+      'q3-1': 'MFA requires two or more verification factors to gain access to resources.',
+      'q3-2': 'IaaS (Infrastructure as a Service) delivers fundamental compute, network, and storage resources.',
+      'q3-3': 'Digital transformation leverages modern technologies to optimize workflows and public service delivery.',
+      'q3-4': 'SaaS stands for Software as a Service.'
+    }
+  }
+};
+
+// POST /api/assessments/:id/start
+app.post('/api/assessments/:id/start', verifyUserToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    let assessment = null;
+
+    if (db) {
+      const docSnap = await db.collection('assessments').doc(id).get();
+      if (docSnap.exists) {
+        assessment = { id: docSnap.id, ...docSnap.data() };
+      }
+    }
+
+    if (!assessment) {
+      const fallbackQuizzes = [
+        {
+          id: 'quiz-comp-1',
+          title: 'Data Analysis Fundamentals',
+          competencyId: 'cat-comp-2',
+          competencyName: 'Data Analysis & Insights',
+          courseName: 'Data Analytics & Insights Program',
+          status: 'published',
+          timeLimitMinutes: 15,
+          maxAttempts: 3,
+          passPercent: 60,
+          questions: [
+            { id: 'q1-1', type: 'mcq', question: 'Which method is used to remove missing values from a pandas DataFrame?', options: ['df.dropna()', 'df.remove_nulls()', 'df.clean()', 'df.delete_empty()'] },
+            { id: 'q1-2', type: 'mcq', question: 'What type of plot is best suited to display the distribution of a single numerical variable?', options: ['Pie chart', 'Histogram', 'Line chart', 'Scatter plot'] },
+            { id: 'q1-3', type: 'mcq', question: 'In statistics, what does the median represent?', options: ['The arithmetic average', 'The middle value in an ordered dataset', 'The most frequent value', 'The standard deviation'] },
+            { id: 'q1-4', type: 'mcq', question: 'What is the correlation coefficient range for linear relationships?', options: ['0 to 1', '-1 to +1', '-10 to +10', '0 to 100'] },
+            { id: 'q1-5', type: 'mcq', question: 'Which SQL clause is used to filter records after aggregation?', options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'] }
+          ]
+        },
+        {
+          id: 'quiz-comp-2',
+          title: 'Python Scripting & Automation Assessment',
+          competencyId: 'cat-comp-1',
+          competencyName: 'Python Programming',
+          courseName: 'Python Technical Workshop',
+          status: 'published',
+          timeLimitMinutes: 12,
+          maxAttempts: 3,
+          passPercent: 70,
+          questions: [
+            { id: 'q2-1', type: 'mcq', question: 'Which built-in Python data structure is mutable and ordered?', options: ['Tuple', 'List', 'Set', 'Frozenset'] },
+            { id: 'q2-2', type: 'mcq', question: 'What keyword is used to handle runtime exceptions in Python?', options: ['catch', 'except', 'error', 'handle'] },
+            { id: 'q2-3', type: 'mcq', question: 'What is the output of len({1, 2, 2, 3}) in Python?', options: ['4', '3', '2', 'Error'] },
+            { id: 'q2-4', type: 'mcq', question: 'Which operator is used for integer division in Python 3?', options: ['/', '//', '%', '^'] }
+          ]
+        },
+        {
+          id: 'quiz-comp-3',
+          title: 'Digital Tools & Cloud Workflow Literacy',
+          competencyId: 'cat-comp-9',
+          competencyName: 'Digital Literacy & Tech Adoption',
+          courseName: 'Digital Transformation Program',
+          status: 'published',
+          timeLimitMinutes: 10,
+          maxAttempts: 3,
+          passPercent: 60,
+          questions: [
+            { id: 'q3-1', type: 'mcq', question: 'What is the primary benefit of Multi-Factor Authentication (MFA)?', options: ['Faster login speeds', 'Adds an additional layer of security beyond passwords', 'Replaces passwords entirely', 'Encrypts local hard drives'] },
+            { id: 'q3-2', type: 'mcq', question: 'Which cloud service model provides virtualized computing infrastructure over the internet?', options: ['SaaS', 'PaaS', 'IaaS', 'FaaS'] },
+            { id: 'q3-3', type: 'mcq', question: 'What is the main goal of digital transformation in public organizations?', options: ['Increasing paper usage', 'Modernizing service delivery and improving operational efficiency', 'Replacing human personnel with static spreadsheets', 'Decreasing accessibility'] },
+            { id: 'q3-4', type: 'mcq', question: 'What does SaaS stand for?', options: ['Software as a Service', 'Storage as a System', 'Security as a Service', 'Server as an Architecture'] }
+          ]
+        }
+      ];
+      assessment = fallbackQuizzes.find(q => q.id === id);
+    }
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, error: 'Assessment not found' });
+    }
+
+    if (assessment.status && assessment.status !== 'published' && assessment.status !== 'available') {
+      return res.status(400).json({ success: false, error: 'Assessment is not published' });
+    }
+
+    if (assessment.deadline && new Date(assessment.deadline).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, error: 'Assessment deadline has passed' });
+    }
+
+    const maxAttempts = Number(assessment.maxAttempts || assessment.max_attempts) || 3;
+    if (db) {
+      const attemptsSnap = await db.collection('attempts')
+        .where('uid', '==', req.user.uid)
+        .where('assessmentId', '==', id)
+        .get();
+
+      const completedAttempts = attemptsSnap.docs.filter(d => d.data().status === 'completed');
+      if (completedAttempts.length >= maxAttempts) {
+        return res.status(400).json({
+          success: false,
+          error: `Maximum attempts limit (${maxAttempts}) reached for this assessment.`,
+          attemptsCount: completedAttempts.length,
+          maxAttempts
+        });
+      }
+    }
+
+    const attemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const startedAt = new Date().toISOString();
+    const attemptDoc = {
+      id: attemptId,
+      uid: req.user.uid,
+      assessmentId: id,
+      competencyId: assessment.competencyId || '',
+      courseId: assessment.courseId || '',
+      status: 'in-progress',
+      startedAt,
+      createdAt: startedAt
+    };
+
+    if (db) {
+      await db.collection('attempts').doc(attemptId).set(attemptDoc);
+    }
+
+    const sanitizedQuestions = (assessment.questions || []).map(q => ({
+      id: q.id,
+      type: q.type || 'mcq',
+      question: q.question || q.text || '',
+      options: q.options || []
+    }));
+
+    return res.json({
+      success: true,
+      attemptId,
+      startedAt,
+      assessment: {
+        id: assessment.id,
+        title: assessment.title,
+        competencyId: assessment.competencyId,
+        competencyName: assessment.competencyName,
+        courseName: assessment.courseName,
+        timeLimitMinutes: Number(assessment.timeLimitMinutes || (assessment.estimatedTime ? assessment.estimatedTime.replace(/\D/g, '') : 15)) || 15,
+        maxAttempts,
+        passPercent: Number(assessment.passPercent || assessment.passingScore) || 60,
+        questions: sanitizedQuestions
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/assessments/:id/submit
+app.post('/api/assessments/:id/submit', verifyUserToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { attemptId, answers } = req.body;
+
+    if (!attemptId) {
+      return res.status(400).json({ success: false, error: 'Missing attemptId' });
+    }
+    if (!answers || typeof answers !== 'object') {
+      return res.status(400).json({ success: false, error: 'Missing user answers' });
+    }
+
+    let attemptData = null;
+    if (db) {
+      const attemptSnap = await db.collection('attempts').doc(attemptId).get();
+      if (attemptSnap.exists) {
+        attemptData = attemptSnap.data();
+      }
+    }
+
+    if (!attemptData) {
+      attemptData = {
+        id: attemptId,
+        uid: req.user.uid,
+        assessmentId: id,
+        status: 'in-progress',
+        startedAt: new Date(Date.now() - 60000).toISOString()
+      };
+    }
+
+    if (attemptData.uid !== req.user.uid) {
+      return res.status(403).json({ success: false, error: 'Forbidden: Attempt belongs to another user' });
+    }
+
+    if (attemptData.status === 'completed') {
+      return res.status(400).json({ success: false, error: 'Attempt has already been submitted' });
+    }
+
+    let assessment = null;
+    let keyData = null;
+
+    if (db) {
+      const aSnap = await db.collection('assessments').doc(id).get();
+      if (aSnap.exists) assessment = { id: aSnap.id, ...aSnap.data() };
+
+      const kSnap = await db.collection('assessmentKeys').doc(id).get();
+      if (kSnap.exists) keyData = kSnap.data();
+    }
+
+    if (!keyData && STATIC_ASSESSMENT_KEYS[id]) {
+      keyData = STATIC_ASSESSMENT_KEYS[id];
+    }
+
+    if (!assessment) {
+      if (id === 'quiz-comp-1') {
+        assessment = { id: 'quiz-comp-1', competencyId: 'cat-comp-2', passingScore: 60, timeLimitMinutes: 15 };
+      } else if (id === 'quiz-comp-2') {
+        assessment = { id: 'quiz-comp-2', competencyId: 'cat-comp-1', passingScore: 70, timeLimitMinutes: 12 };
+      } else if (id === 'quiz-comp-3') {
+        assessment = { id: 'quiz-comp-3', competencyId: 'cat-comp-9', passingScore: 60, timeLimitMinutes: 10 };
+      }
+    }
+
+    if (!keyData) {
+      return res.status(500).json({ success: false, error: 'Answer key for assessment is not available on server' });
+    }
+
+    const startedTime = new Date(attemptData.startedAt).getTime();
+    const timeLimitMin = Number(assessment?.timeLimitMinutes || (assessment?.estimatedTime ? assessment.estimatedTime.replace(/\D/g, '') : 15)) || 15;
+    const maxAllowedMs = (timeLimitMin * 60 + 120) * 1000;
+    const elapsedMs = Date.now() - startedTime;
+
+    if (elapsedMs > maxAllowedMs) {
+      return res.status(400).json({ success: false, error: 'Time limit exceeded for this attempt' });
+    }
+
+    const correctAnswers = keyData.correctAnswers || {};
+    const explanations = keyData.explanations || {};
+
+    const questionIds = Object.keys(correctAnswers);
+    const totalQuestions = questionIds.length || 1;
+    let correctCount = 0;
+    const perQuestion = {};
+
+    for (const qId of questionIds) {
+      const userChoice = answers[qId];
+      const targetChoice = correctAnswers[qId];
+      const isCorrect = userChoice !== undefined && String(userChoice) === String(targetChoice);
+      if (isCorrect) correctCount++;
+
+      perQuestion[qId] = {
+        isCorrect,
+        correctAnswer: targetChoice,
+        explanation: explanations[qId] || ''
+      };
+    }
+
+    const percentage = Math.round((correctCount / totalQuestions) * 100);
+    const passPercent = Number(assessment?.passPercent || assessment?.passingScore) || 60;
+    const passed = percentage >= passPercent;
+    const { level, numericLevel } = calculateAssessedProficiency(percentage);
+
+    const completedAt = new Date().toISOString();
+
+    const updatedAttemptDoc = {
+      ...attemptData,
+      score: correctCount,
+      totalQuestions,
+      scorePercentage: percentage,
+      passed,
+      assessedLevel: level,
+      assessedNumericLevel: numericLevel,
+      status: 'completed',
+      completedAt,
+      answers
+    };
+
+    if (db) {
+      await db.collection('attempts').doc(attemptId).set(updatedAttemptDoc, { merge: true });
+
+      const competencyId = assessment?.competencyId || attemptData.competencyId;
+      if (competencyId) {
+        const compRecordId = `${req.user.uid}_${competencyId}`;
+        const compRef = db.collection('competencyRecords').doc(compRecordId);
+        const existingCompSnap = await compRef.get();
+        const existingData = existingCompSnap.exists ? existingCompSnap.data() : {};
+
+        const existingHistory = existingData.history || [];
+        const declaredLevel = existingData.declaredLevel || 0;
+        const currentLevel = Math.max(declaredLevel, numericLevel);
+
+        const newHistoryItem = {
+          level: numericLevel,
+          source: 'assessed',
+          at: completedAt,
+          attemptId
+        };
+
+        await compRef.set({
+          uid: req.user.uid,
+          competencyId,
+          declaredLevel,
+          assessedLevel: numericLevel,
+          currentLevel,
+          history: [newHistoryItem, ...existingHistory],
+          updatedAt: completedAt
+        }, { merge: true });
+      }
+    }
+
+    return res.json({
+      success: true,
+      attemptId,
+      score: correctCount,
+      totalQuestions,
+      scorePercentage: percentage,
+      passed,
+      level,
+      numericLevel,
+      perQuestion,
+      completedAt
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/assessments (Trainer / Admin Create/Update/Publish)
+app.post('/api/assessments', verifyUserToken, async (req, res) => {
+  try {
+    const userRole = (req.user.role || '').toLowerCase();
+    const isTrainerOrAdmin = req.user.role === 'admin' || ['trainer', 'faculty', 'teacher'].includes(userRole);
+    if (!isTrainerOrAdmin) {
+      return res.status(403).json({ success: false, error: 'Forbidden: Only approved trainers or admins can create/update assessments' });
+    }
+
+    const {
+      id: inputId,
+      title,
+      competencyId,
+      competencyName,
+      courseId,
+      courseName,
+      description,
+      questions,
+      timeLimitMinutes,
+      maxAttempts,
+      passPercent,
+      status,
+      deadline
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'Assessment title is required' });
+    }
+    if (!competencyId) {
+      return res.status(400).json({ success: false, error: 'Target competencyId is required' });
+    }
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ success: false, error: 'At least one question is required' });
+    }
+
+    const assessmentId = inputId || `assessment-${Date.now()}`;
+
+    if (inputId && db && req.user.role !== 'admin') {
+      const existingSnap = await db.collection('assessments').doc(inputId).get();
+      if (existingSnap.exists) {
+        const existingData = existingSnap.data();
+        if (existingData.createdBy && existingData.createdBy !== req.user.uid && existingData.trainerId !== req.user.uid) {
+          return res.status(403).json({ success: false, error: 'Forbidden: Trainers may only edit their own assessments' });
+        }
+      }
+    }
+
+    const publicQuestions = [];
+    const correctAnswers = {};
+    const explanations = {};
+
+    questions.forEach((q, idx) => {
+      const qId = q.id || `q-${assessmentId}-${idx + 1}`;
+      publicQuestions.push({
+        id: qId,
+        type: q.type || 'mcq',
+        question: q.question || q.text || '',
+        options: q.options || []
+      });
+
+      const ansKey = q.correctAnswer !== undefined ? q.correctAnswer : q.correctAnswerIndex;
+      correctAnswers[qId] = ansKey !== undefined ? ansKey : 0;
+      explanations[qId] = q.explanation || '';
+    });
+
+    const now = new Date().toISOString();
+
+    const publicAssessmentDoc = {
+      id: assessmentId,
+      title: title.trim(),
+      competencyId,
+      competencyName: competencyName || '',
+      courseId: courseId || '',
+      courseName: courseName || '',
+      description: (description || '').trim(),
+      questionsCount: publicQuestions.length,
+      questions: publicQuestions,
+      timeLimitMinutes: Number(timeLimitMinutes) || 15,
+      maxAttempts: Number(maxAttempts) || 3,
+      passPercent: Number(passPercent) || 60,
+      status: status || 'published',
+      createdBy: req.user.uid,
+      trainerId: req.user.uid,
+      deadline: deadline || null,
+      updatedAt: now,
+      createdAt: now
+    };
+
+    const keyDoc = {
+      id: assessmentId,
+      assessmentId,
+      correctAnswers,
+      explanations,
+      updatedAt: now
+    };
+
+    if (db) {
+      await db.collection('assessments').doc(assessmentId).set(publicAssessmentDoc, { merge: true });
+      await db.collection('assessmentKeys').doc(assessmentId).set(keyDoc, { merge: true });
+    }
+
+    STATIC_ASSESSMENT_KEYS[assessmentId] = { correctAnswers, explanations };
+
+    return res.json({
+      success: true,
+      assessmentId,
+      assessment: publicAssessmentDoc
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 
 // Serve frontend static build if dist directory exists

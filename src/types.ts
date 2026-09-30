@@ -173,7 +173,7 @@ export interface QuizQuestion {
   type?: 'mcq' | 'true_false' | 'fill_blank' | 'match_following' | 'assertion_reason' | 'scenario_based';
   question: string;
   options: string[];
-  correctAnswerIndex: number;
+  correctAnswerIndex?: number;
   reason?: string;
   scenario?: string;
   matchLeft?: string[];

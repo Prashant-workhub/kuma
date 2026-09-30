@@ -31,41 +31,31 @@ export const INITIAL_QUIZZES: Quiz[] = [
         id: 'q1-1',
         type: 'mcq',
         question: 'Which method is used to remove missing values from a pandas DataFrame?',
-        options: ['df.dropna()', 'df.remove_nulls()', 'df.clean()', 'df.delete_empty()'],
-        correctAnswerIndex: 0,
-        explanation: 'dropna() removes missing values along a specified axis in pandas.'
+        options: ['df.dropna()', 'df.remove_nulls()', 'df.clean()', 'df.delete_empty()']
       },
       {
         id: 'q1-2',
         type: 'mcq',
         question: 'What type of plot is best suited to display the distribution of a single numerical variable?',
-        options: ['Pie chart', 'Histogram', 'Line chart', 'Scatter plot'],
-        correctAnswerIndex: 1,
-        explanation: 'Histograms represent frequency distributions of continuous quantitative data.'
+        options: ['Pie chart', 'Histogram', 'Line chart', 'Scatter plot']
       },
       {
         id: 'q1-3',
         type: 'mcq',
         question: 'In statistics, what does the median represent?',
-        options: ['The arithmetic average', 'The middle value in an ordered dataset', 'The most frequent value', 'The standard deviation'],
-        correctAnswerIndex: 1,
-        explanation: 'The median divides an ordered dataset into two equal halves.'
+        options: ['The arithmetic average', 'The middle value in an ordered dataset', 'The most frequent value', 'The standard deviation']
       },
       {
         id: 'q1-4',
         type: 'mcq',
         question: 'What is the correlation coefficient range for linear relationships?',
-        options: ['0 to 1', '-1 to +1', '-10 to +10', '0 to 100'],
-        correctAnswerIndex: 1,
-        explanation: 'Pearson correlation coefficients range from -1 (perfect negative) to +1 (perfect positive).'
+        options: ['0 to 1', '-1 to +1', '-10 to +10', '0 to 100']
       },
       {
         id: 'q1-5',
         type: 'mcq',
         question: 'Which SQL clause is used to filter records after aggregation?',
-        options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'],
-        correctAnswerIndex: 2,
-        explanation: 'HAVING filters aggregate function results, whereas WHERE filters row-level data.'
+        options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY']
       }
     ]
   },
@@ -90,33 +80,25 @@ export const INITIAL_QUIZZES: Quiz[] = [
         id: 'q2-1',
         type: 'mcq',
         question: 'Which built-in Python data structure is mutable and ordered?',
-        options: ['Tuple', 'List', 'Set', 'Frozenset'],
-        correctAnswerIndex: 1,
-        explanation: 'Lists are mutable ordered sequences of elements.'
+        options: ['Tuple', 'List', 'Set', 'Frozenset']
       },
       {
         id: 'q2-2',
         type: 'mcq',
         question: 'What keyword is used to handle runtime exceptions in Python?',
-        options: ['catch', 'except', 'error', 'handle'],
-        correctAnswerIndex: 1,
-        explanation: 'try...except blocks capture runtime exceptions in Python.'
+        options: ['catch', 'except', 'error', 'handle']
       },
       {
         id: 'q2-3',
         type: 'mcq',
         question: 'What is the output of len({1, 2, 2, 3}) in Python?',
-        options: ['4', '3', '2', 'Error'],
-        correctAnswerIndex: 1,
-        explanation: 'Sets enforce uniqueness, so duplicate 2 is removed, resulting in 3 elements.'
+        options: ['4', '3', '2', 'Error']
       },
       {
         id: 'q2-4',
         type: 'mcq',
         question: 'Which operator is used for integer division in Python 3?',
-        options: ['/', '//', '%', '^'],
-        correctAnswerIndex: 1,
-        explanation: '// performs floor division in Python.'
+        options: ['/', '//', '%', '^']
       }
     ]
   },
@@ -141,33 +123,25 @@ export const INITIAL_QUIZZES: Quiz[] = [
         id: 'q3-1',
         type: 'mcq',
         question: 'What is the primary benefit of Multi-Factor Authentication (MFA)?',
-        options: ['Faster login speeds', 'Adds an additional layer of security beyond passwords', 'Replaces passwords entirely', 'Encrypts local hard drives'],
-        correctAnswerIndex: 1,
-        explanation: 'MFA requires two or more verification factors to gain access to resources.'
+        options: ['Faster login speeds', 'Adds an additional layer of security beyond passwords', 'Replaces passwords entirely', 'Encrypts local hard drives']
       },
       {
         id: 'q3-2',
         type: 'mcq',
         question: 'Which cloud service model provides virtualized computing infrastructure over the internet?',
-        options: ['SaaS', 'PaaS', 'IaaS', 'FaaS'],
-        correctAnswerIndex: 2,
-        explanation: 'IaaS (Infrastructure as a Service) delivers fundamental compute, network, and storage resources.'
+        options: ['SaaS', 'PaaS', 'IaaS', 'FaaS']
       },
       {
         id: 'q3-3',
         type: 'mcq',
         question: 'What is the main goal of digital transformation in public organizations?',
-        options: ['Increasing paper usage', 'Modernizing service delivery and improving operational efficiency', 'Replacing human personnel with static spreadsheets', 'Decreasing accessibility'],
-        correctAnswerIndex: 1,
-        explanation: 'Digital transformation leverages modern technologies to optimize workflows and public service delivery.'
+        options: ['Increasing paper usage', 'Modernizing service delivery and improving operational efficiency', 'Replacing human personnel with static spreadsheets', 'Decreasing accessibility']
       },
       {
         id: 'q3-4',
         type: 'mcq',
         question: 'What does SaaS stand for?',
-        options: ['Software as a Service', 'Storage as a System', 'Security as a Service', 'Server as an Architecture'],
-        correctAnswerIndex: 0,
-        explanation: 'SaaS stands for Software as a Service.'
+        options: ['Software as a Service', 'Storage as a System', 'Security as a Service', 'Server as an Architecture']
       }
     ]
   }

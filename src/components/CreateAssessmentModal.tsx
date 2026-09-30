@@ -8,6 +8,7 @@ import { Quiz, QuizQuestion, CatalogCompetency } from '../types';
 import { isActiveCatalogCompetency, isValidCatalogCompetency } from '../utils/competencyUtils';
 import { Modal, Button, Input } from './bauhaus';
 import { Plus, Trash2, AlertCircle, ClipboardCheck } from 'lucide-react';
+import { createOrUpdateAssessment } from '../services/assessmentService';
 
 interface CreateAssessmentModalProps {
   isOpen: boolean;
@@ -157,6 +158,11 @@ export default function CreateAssessmentModal({
 
     setSaving(true);
     try {
+      try {
+        await createOrUpdateAssessment(newQuiz);
+      } catch (apiErr) {
+        console.warn('[CreateAssessment] Server persistence warning (continuing with local state):', apiErr);
+      }
       await onCreateQuiz(newQuiz);
       onClose();
     } catch (saveError) {
