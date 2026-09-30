@@ -1,8 +1,3 @@
-/**
- * Project Kuma - Dedicated Trainer / Faculty Registration Flow (SIH26075 Capacity Connect)
- * Clean, 6-Step Trainer Registration with Organization Mapping, Competency Delivery Declaration & Training Preferences.
- */
-
 import React, { useState } from 'react';
 import {
   createUserWithEmailAndPassword,
@@ -12,35 +7,28 @@ import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { normalizeProfileFields } from '../models/firestoreModels';
 import {
-  User,
-  Mail,
-  Lock,
-  Phone,
-  Building2,
-  Briefcase,
-  GraduationCap,
-  Award,
-  Sparkles,
   CheckCircle2,
-  AlertCircle,
   ArrowRight,
   ArrowLeft,
-  Plus,
   X,
   Eye,
   EyeOff,
-  ShieldCheck,
-  BookOpen,
-  Target,
-  Video,
-  MapPin,
-  Globe,
-  Camera,
   Check
 } from 'lucide-react';
-import AILogo from './AILogo';
 import { INITIAL_COMPETENCY_CATALOG } from '../data';
 import { SkillProficiencyLevel, CompetencyCategory } from '../types';
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  Input,
+  Select,
+  FormField,
+  InlineAlert,
+} from './ui';
 
 interface TrainerRegistrationViewProps {
   onLoginSuccess: (userData: { fullName: string; emailAddress: string; role: string }) => void;
@@ -105,7 +93,7 @@ export default function TrainerRegistrationView({
 }: TrainerRegistrationViewProps) {
   const [step, setStep] = useState<number>(1);
 
-  // STEP 1 — Account Details
+  // STEP 1 â€” Account Details
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -113,7 +101,7 @@ export default function TrainerRegistrationView({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // STEP 2 — Organization & Professional Details
+  // STEP 2 â€” Organization & Professional Details
   const [organization, setOrganization] = useState(DEFAULT_ORGANIZATIONS[0]);
   const [customOrg, setCustomOrg] = useState('');
   const [department, setDepartment] = useState(DEFAULT_DEPARTMENTS[0]);
@@ -123,7 +111,7 @@ export default function TrainerRegistrationView({
   const [experienceYears, setExperienceYears] = useState<number>(5);
   const [qualification, setQualification] = useState("Doctorate / Ph.D.");
 
-  // STEP 3 — Trainer Profile
+  // STEP 3 â€” Trainer Profile
   const [bio, setBio] = useState('');
   const [areaOfExpertise, setAreaOfExpertise] = useState('Computer Science & Artificial Intelligence');
   const [specialization, setSpecialization] = useState('Distributed Systems & Machine Learning');
@@ -132,7 +120,7 @@ export default function TrainerRegistrationView({
   const [teachingExperience, setTeachingExperience] = useState('7+ Years in Academic & Corporate Technical Training');
   const [photoUrl, setPhotoUrl] = useState('');
 
-  // STEP 4 — Competencies & Delivery Expertise
+  // STEP 4 â€” Competencies & Delivery Expertise
   const [selectedCompetencies, setSelectedCompetencies] = useState<Record<string, SelectedTrainerCompetency>>({
     'comp-java': {
       id: 'comp-java',
@@ -164,7 +152,7 @@ export default function TrainerRegistrationView({
   const [customCompLevel, setCustomCompLevel] = useState<SkillProficiencyLevel>('Advanced');
   const [customCompCanTrain, setCustomCompCanTrain] = useState<boolean>(true);
 
-  // STEP 5 — Training Information & Preferences
+  // STEP 5 â€” Training Information & Preferences
   const [trainingPrograms, setTrainingPrograms] = useState<string[]>([
     'Enterprise Cloud & DevOps Architecture',
     'Data Science & Applied Machine Learning'
@@ -544,981 +532,657 @@ export default function TrainerRegistrationView({
     c.category.toLowerCase().includes(competencySearch.toLowerCase())
   );
 
+  const TOTAL_STEPS = 4;
+
+  // Map old 6-step model into 4-step UX:
+  // Step 1 = Account (same)
+  // Step 2 = Professional details (same as old 2)
+  // Step 3 = Expertise (merges old 3 trainer profile + 4 competencies + 5 training info)
+  // Step 4 = Review (same as old 6)
+  // We need to intercept handleNextStep for the condensed step flow.
+  // NOTE: We reuse the existing step state and validation functions directly.
+
+  const stepsMeta = [
+    { num: 1, label: 'Account' },
+    { num: 2, label: 'Professional details' },
+    { num: 3, label: 'Expertise' },
+    { num: 4, label: 'Review' },
+  ];
+
+  // Map UI step 3 to old steps 3+4+5 validation chain
+  const handleNext = () => {
+    setFormError(null);
+    let valid = false;
+    if (step === 1) valid = validateStep1();
+    else if (step === 2) valid = validateStep2();
+    else if (step === 3) {
+      // Validate all expertise sub-sections
+      valid = validateStep3() && validateStep4() && validateStep5();
+    }
+    if (valid && step < TOTAL_STEPS) setStep(step + 1);
+  };
+
+  const handlePrev = () => {
+    if (step > 1) { setFormError(null); setStep(step - 1); }
+  };
+
+  // Tag input helpers
+  const TagInput = ({
+    value, onChange, onAdd, placeholder, id
+  }: { value: string; onChange: (v: string) => void; onAdd: (v: string) => void; placeholder: string; id: string }) => (
+    <div className="flex gap-2">
+      <Input
+        id={id}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAdd(value); } }}
+        placeholder={placeholder}
+        sizeVariant="sm"
+        className="flex-1"
+      />
+      <Button variant="secondary" size="sm" type="button" onClick={() => onAdd(value)}>Add</Button>
+    </div>
+  );
+
+  const TagList = ({ items, onRemove }: { items: string[]; onRemove: (v: string) => void }) => (
+    <div className="flex flex-wrap gap-1.5 pt-1" role="list">
+      {items.map(item => (
+        <span
+          key={item}
+          role="listitem"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-control bg-primary-subtle text-primary text-xs font-medium border border-primary/20"
+        >
+          {item}
+          <button
+            type="button"
+            onClick={() => onRemove(item)}
+            className="rounded-sm text-primary/60 hover:text-danger transition-colors"
+            aria-label={`Remove ${item}`}
+          >
+            <X className="h-3 w-3" aria-hidden="true" />
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-[#030610] text-slate-900 dark:text-slate-100 font-sans select-none flex flex-col justify-between p-4 md:p-8">
+    <div className="min-h-screen w-full bg-page flex flex-col items-center justify-center p-4 font-sans text-text-primary">
+      <div className="w-full max-w-2xl space-y-6">
 
-      {/* Top Header Navigation */}
-      <header className="max-w-4xl mx-auto w-full flex items-center justify-between py-4 border-b border-purple-100 dark:border-slate-800">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={onNavigateToLogin}>
-          <div className="p-2 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-            <AILogo size={24} theme="light" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-lg text-slate-900 dark:text-white leading-none">KUMA</span>
-              <span className="bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200/50 dark:border-blue-800/50">FACULTY & TRAINER PORTAL</span>
-            </div>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-medium tracking-wide">SIH26075 Capacity Connect</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 text-xs">
+        {/* Top navigation */}
+        <div className="flex items-center justify-between pb-2 border-b border-border">
           <button
             onClick={onNavigateToLogin}
-            className="text-slate-600 dark:text-slate-300 hover:text-[#992e9d] dark:hover:text-purple-300 font-medium transition-colors"
+            className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 font-medium"
           >
-            Already have an account? <span className="underline font-semibold">Login</span>
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <span>Back to sign in</span>
           </button>
           <button
             onClick={onNavigateToTraineeSignup}
-            className="px-3.5 py-1.5 rounded-full border border-purple-200 dark:border-purple-800 text-[#992e9d] dark:text-purple-300 bg-purple-50/60 dark:bg-purple-950/40 hover:bg-purple-100 font-medium text-xs transition-colors"
+            className="text-xs text-primary hover:underline font-medium"
           >
-            Register as Trainee
+            Register as trainee instead
           </button>
         </div>
-      </header>
 
-      {/* Main Card Container */}
-      <main className="max-w-3xl mx-auto w-full my-8 bg-white dark:bg-[#0C1220] rounded-[11px] border border-slate-200/80 dark:border-slate-800 p-6 md:p-8 shadow-xl space-y-6">
+        {/* Main card */}
+        <Card className="w-full border border-border shadow-sm p-6 bg-surface">
+          <CardHeader className="p-0 mb-6 space-y-1">
+            <CardTitle className="text-xl font-bold tracking-tight text-text-primary">
+              Trainer registration
+            </CardTitle>
+            <CardDescription className="text-xs text-text-secondary">
+              Create your trainer profile and declare your area of expertise. Your account will be reviewed by an administrator before activation.
+            </CardDescription>
+          </CardHeader>
 
-        {/* Title & Role Indicator */}
-        <div className="space-y-2 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs font-semibold border border-blue-200/60 dark:border-blue-800/60">
-            <GraduationCap className="w-3.5 h-3.5" /> Trainer & Faculty Onboarding
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-            Register as Trainer
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
-            Establish your trainer profile, teaching competencies, delivery capacity, and training programs in Capacity Connect.
-          </p>
-        </div>
-
-        {/* 6-Step Progress Indicator */}
-        <div className="grid grid-cols-6 gap-1.5 py-2 border-y border-slate-100 dark:border-slate-800/80">
-          {[
-            { s: 1, label: 'Account' },
-            { s: 2, label: 'Org & Details' },
-            { s: 3, label: 'Profile' },
-            { s: 4, label: 'Competencies' },
-            { s: 5, label: 'Training Info' },
-            { s: 6, label: 'Review' }
-          ].map((item) => (
-            <div
-              key={item.s}
-              onClick={() => {
-                if (item.s < step) setStep(item.s);
-              }}
-              className={`flex flex-col items-center gap-1 py-1.5 px-1 rounded-full text-center transition-all ${item.s < step ? 'cursor-pointer' : ''
-                }`}
-            >
-              <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === item.s
-                    ? 'bg-[#992e9d] text-white shadow-sm'
-                    : item.s < step
-                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                  }`}
-              >
-                {item.s < step ? '✓' : item.s}
-              </div>
-              <span className={`text-[10px] font-medium truncate ${step === item.s
-                  ? 'text-[#992e9d] dark:text-purple-300 font-semibold'
-                  : 'text-slate-400'
-                }`}>
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Error Banner */}
-        {formError && (
-          <div className="p-4 rounded-[11px] bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-            <div className="flex-1">{formError}</div>
-          </div>
-        )}
-
-        {/* STEP 1: Account Details */}
-        {step === 1 && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-              <User className="w-4 h-4 text-[#992e9d]" /> Step 1: Account Details
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Full Name *</label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Dr. Alex Rivera"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                </div>
-                {errors.fullName && <p className="text-[11px] text-rose-500 mt-0.5">{errors.fullName}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Email Address *</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="trainer@institution.edu.in"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                </div>
-                {errors.email && <p className="text-[11px] text-rose-500 mt-0.5">{errors.email}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Phone Number *</label>
-                <div className="relative">
-                  <Phone className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                </div>
-                {errors.phone && <p className="text-[11px] text-rose-500 mt-0.5">{errors.phone}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Password *</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
-                    className="w-full pl-10 pr-10 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {errors.password && <p className="text-[11px] text-rose-500 mt-0.5">{errors.password}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Confirm Password *</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter password"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                </div>
-                {errors.confirmPassword && <p className="text-[11px] text-rose-500 mt-0.5">{errors.confirmPassword}</p>}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: Organization & Professional Details */}
-        {step === 2 && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-              <Building2 className="w-4 h-4 text-[#992e9d]" /> Step 2: Organization & Professional Details
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Organization *</label>
-                <select
-                  value={organization}
-                  onChange={(e) => setOrganization(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                >
-                  {DEFAULT_ORGANIZATIONS.map(org => (
-                    <option key={org} value={org}>{org}</option>
-                  ))}
-                  <option value="Other">+ Enter Custom Organization</option>
-                </select>
-                {organization === 'Other' && (
-                  <input
-                    type="text"
-                    value={customOrg}
-                    onChange={(e) => setCustomOrg(e.target.value)}
-                    placeholder="Type Organization Name..."
-                    className="w-full mt-2 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] text-xs text-slate-900 dark:text-white outline-none"
-                  />
-                )}
-                {errors.organization && <p className="text-[11px] text-rose-500 mt-0.5">{errors.organization}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Department *</label>
-                <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                >
-                  {DEFAULT_DEPARTMENTS.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                  <option value="Other">+ Enter Custom Department</option>
-                </select>
-                {department === 'Other' && (
-                  <input
-                    type="text"
-                    value={customDept}
-                    onChange={(e) => setCustomDept(e.target.value)}
-                    placeholder="Type Department Name..."
-                    className="w-full mt-2 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] text-xs text-slate-900 dark:text-white outline-none"
-                  />
-                )}
-                {errors.department && <p className="text-[11px] text-rose-500 mt-0.5">{errors.department}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Designation / Job Title *</label>
-                <select
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                >
-                  {DEFAULT_DESIGNATIONS.map(desig => (
-                    <option key={desig} value={desig}>{desig}</option>
-                  ))}
-                  <option value="Other">+ Enter Custom Designation</option>
-                </select>
-                {designation === 'Other' && (
-                  <input
-                    type="text"
-                    value={customDesig}
-                    onChange={(e) => setCustomDesig(e.target.value)}
-                    placeholder="Type Designation Title..."
-                    className="w-full mt-2 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] text-xs text-slate-900 dark:text-white outline-none"
-                  />
-                )}
-                {errors.designation && <p className="text-[11px] text-rose-500 mt-0.5">{errors.designation}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Years of Experience</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="60"
-                  value={experienceYears}
-                  onChange={(e) => setExperienceYears(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                />
-              </div>
-
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Highest Qualification *</label>
-                <select
-                  value={qualification}
-                  onChange={(e) => setQualification(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                >
-                  <option value="Doctorate / Ph.D.">Doctorate / Ph.D.</option>
-                  <option value="Master's Degree">Master's Degree (M.Tech / M.Sc / M.E / MBA)</option>
-                  <option value="Bachelor's Degree">Bachelor's Degree (B.Tech / B.Sc / B.E)</option>
-                  <option value="Professional Certification Master">Professional Master Certification</option>
-                </select>
-                {errors.qualification && <p className="text-[11px] text-rose-500 mt-0.5">{errors.qualification}</p>}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: Trainer Profile */}
-        {step === 3 && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-              <Briefcase className="w-4 h-4 text-[#992e9d]" /> Step 3: Trainer Profile & Specialization
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Area of Expertise *</label>
-                <input
-                  type="text"
-                  value={areaOfExpertise}
-                  onChange={(e) => setAreaOfExpertise(e.target.value)}
-                  placeholder="e.g. Computer Science, Cloud Architecture"
-                  className="w-full px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                />
-                {errors.areaOfExpertise && <p className="text-[11px] text-rose-500 mt-0.5">{errors.areaOfExpertise}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Specialization *</label>
-                <input
-                  type="text"
-                  value={specialization}
-                  onChange={(e) => setSpecialization(e.target.value)}
-                  placeholder="e.g. Artificial Intelligence, Distributed Systems"
-                  className="w-full px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                />
-                {errors.specialization && <p className="text-[11px] text-rose-500 mt-0.5">{errors.specialization}</p>}
-              </div>
-
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Professional Bio</label>
-                <textarea
-                  rows={2}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Summary of academic background, research work, and teaching philosophy..."
-                  className="w-full px-4 py-2.5 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                />
-              </div>
-
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Trainer / Teaching Experience Summary</label>
-                <input
-                  type="text"
-                  value={teachingExperience}
-                  onChange={(e) => setTeachingExperience(e.target.value)}
-                  placeholder="e.g. 8+ Years Senior Faculty & Corporate Technical Specialist"
-                  className="w-full px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                />
-              </div>
-
-              {/* Multi-skill tag manager */}
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Trainer Skills & Competencies *</label>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={skillInput}
-                    onChange={(e) => setSkillInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddSkill(skillInput);
-                      }
-                    }}
-                    placeholder="Add technical or domain skill and press Enter..."
-                    className="flex-1 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleAddSkill(skillInput)}
-                    className="px-4 py-2 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300 text-xs font-semibold border border-purple-200 hover:bg-purple-100"
-                  >
-                    + Add Skill
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {skills.map((sk) => (
-                    <span
-                      key={sk}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-semibold border border-blue-200/60 dark:border-blue-800/60"
-                    >
-                      <span>{sk}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSkill(sk)}
-                        className="hover:text-rose-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-
-                <div className="pt-1 text-[11px] text-slate-400">
-                  <span className="font-medium mr-2">Quick Add:</span>
-                  {SUGGESTED_SKILLS.filter(s => !skills.includes(s)).slice(0, 5).map(s => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => handleAddSkill(s)}
-                      className="mr-1.5 underline hover:text-[#992e9d]"
-                    >
-                      +{s}
-                    </button>
-                  ))}
-                </div>
-                {errors.skills && <p className="text-[11px] text-rose-500 mt-0.5">{errors.skills}</p>}
-              </div>
-
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Profile Photo URL (Optional)</label>
-                <div className="relative">
-                  <Camera className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type="url"
-                    value={photoUrl}
-                    onChange={(e) => setPhotoUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/photo-..."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: Competencies & Expertise */}
-        {step === 4 && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 gap-2">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <Target className="w-4 h-4 text-[#992e9d]" /> Step 4: Competency Catalog & Delivery Ability
-              </h3>
-              <input
-                type="text"
-                value={competencySearch}
-                onChange={(e) => setCompetencySearch(e.target.value)}
-                placeholder="Search catalog competencies..."
-                className="px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none w-full sm:w-56"
-              />
-            </div>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Select competencies from the catalog. For each competency, declare your proficiency level and specify whether you can <strong>TRAIN / DELIVER</strong> learning content.
-            </p>
-
-            {errors.competencies && <p className="text-xs text-rose-500 font-medium">{errors.competencies}</p>}
-
-            {/* Catalog Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-56 overflow-y-auto p-1 border border-slate-100 dark:border-slate-800/80 rounded-[11px]">
-              {catalogFiltered.map((c) => {
-                const isSelected = !!selectedCompetencies[c.id];
+          {/* Stepper */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between border-b border-border pb-3" role="list" aria-label="Registration steps">
+              {stepsMeta.map(item => {
+                const isActive = step === item.num;
+                const isDone = item.num < step;
                 return (
-                  <div
-                    key={c.id}
-                    onClick={() => handleToggleCompetency(c)}
-                    className={`p-3 rounded-[9px] border transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${isSelected
-                        ? 'border-[#992e9d] bg-purple-50/50 dark:bg-purple-950/20'
-                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 hover:border-purple-300'
-                      }`}
+                  <button
+                    key={item.num}
+                    role="listitem"
+                    type="button"
+                    onClick={() => { if (isDone) setStep(item.num); }}
+                    disabled={!isDone}
+                    aria-current={isActive ? 'step' : undefined}
+                    className={`flex items-center gap-2 text-xs font-medium transition-colors ${
+                      isActive ? 'text-primary font-semibold'
+                      : isDone ? 'text-text-primary hover:underline cursor-pointer'
+                      : 'text-text-tertiary cursor-not-allowed'
+                    }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-semibold text-xs text-slate-900 dark:text-white">{c.name}</div>
-                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">{c.category}</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${isSelected ? 'bg-[#992e9d] text-white' : 'border border-slate-300 text-transparent'
-                        }`}>
-                        ✓
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">{c.description}</p>
-                  </div>
+                    <span
+                      className={`h-6 w-6 rounded-full flex items-center justify-center text-xs ${
+                        isActive ? 'bg-primary text-white'
+                        : isDone ? 'bg-success text-white'
+                        : 'bg-surface-muted text-text-tertiary border border-border'
+                      }`}
+                    >
+                      {isDone ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : item.num}
+                    </span>
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </button>
                 );
               })}
             </div>
+          </div>
 
-            {/* Custom Competency Adder */}
-            <div className="p-3 rounded-[11px] border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-[#080D1A]/40 space-y-2">
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Add Custom Competency</span>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                <input
-                  type="text"
-                  value={customCompName}
-                  onChange={(e) => setCustomCompName(e.target.value)}
-                  placeholder="Competency Title..."
-                  className="sm:col-span-2 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] text-xs font-medium text-slate-900 dark:text-white outline-none"
-                />
-                <select
-                  value={customCompLevel}
-                  onChange={(e) => setCustomCompLevel(e.target.value as SkillProficiencyLevel)}
-                  className="px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0C1220] text-xs font-medium text-slate-900 dark:text-white outline-none"
-                >
-                  <option value="Beginner">Beginner</option>
-                  <option value="Intermediate">Intermediate</option>
-                  <option value="Advanced">Advanced</option>
-                  <option value="Expert">Expert</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={handleAddCustomCompetency}
-                  className="px-3 py-1.5 rounded-full bg-[#992e9d] text-white text-xs font-medium hover:bg-purple-700"
-                >
-                  + Add Custom
-                </button>
-              </div>
-            </div>
+          <CardContent className="p-0 space-y-5">
+            {formError && (
+              <InlineAlert variant="danger" title="Registration failed">
+                <div className="space-y-2">
+                  <p>{formError}</p>
+                  <Button variant="secondary" size="sm" onClick={handleSubmitRegistration} isLoading={isSubmitting}>
+                    Retry
+                  </Button>
+                </div>
+              </InlineAlert>
+            )}
 
-            {/* Selected Competencies Delivery Declaration Cards */}
-            <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
-                Declared Competencies ({Object.keys(selectedCompetencies).length})
-              </h4>
+            {/* STEP 1: Account */}
+            {step === 1 && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-text-primary">Account information</h3>
 
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {Object.values(selectedCompetencies).map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3.5 rounded-[10px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#080D1A] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm"
-                  >
-                    <div className="space-y-0.5 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-slate-900 dark:text-white">{item.name}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 font-medium">
-                          {item.category}
-                        </span>
-                      </div>
-                      {item.description && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.description}</p>
-                      )}
-                    </div>
+                <FormField label="Full name" required errorText={errors.fullName}>
+                  <Input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    onBlur={() => { if (!fullName.trim()) setErrors(p => ({ ...p, fullName: 'Full name is required.' })); }}
+                    placeholder="First and last name"
+                    autoComplete="name"
+                  />
+                </FormField>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      {/* Proficiency Level Selector */}
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] text-slate-400 font-medium block">Proficiency Level</span>
-                        <select
-                          value={item.level}
-                          onChange={(e) => handleCompetencyLevelChange(item.id, e.target.value as SkillProficiencyLevel)}
-                          className="px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0C1220] text-xs font-semibold text-slate-900 dark:text-white outline-none"
-                        >
-                          <option value="Beginner">Beginner</option>
-                          <option value="Intermediate">Intermediate</option>
-                          <option value="Advanced">Advanced</option>
-                          <option value="Expert">Expert</option>
-                        </select>
-                      </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Email address" required errorText={errors.email}>
+                    <Input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      onBlur={() => {
+                        if (!email.trim()) setErrors(p => ({ ...p, email: 'Email address is required.' }));
+                        else if (!/\S+@\S+\.\S+/.test(email.trim())) setErrors(p => ({ ...p, email: 'Please enter a valid email address.' }));
+                      }}
+                      placeholder="name@organization.com"
+                      autoComplete="email"
+                    />
+                  </FormField>
 
-                      {/* Can Train Toggle */}
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] text-slate-400 font-medium block">Can Train?</span>
-                        <button
-                          type="button"
-                          onClick={() => handleCompetencyCanTrainChange(item.id, !item.canTrain)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-colors border ${item.canTrain
-                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-300 dark:border-slate-700'
-                            }`}
-                        >
-                          {item.canTrain ? '✓ Yes (Train)' : '✕ No'}
-                        </button>
-                      </div>
+                  <FormField label="Phone number" required errorText={errors.phone}>
+                    <Input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      onBlur={() => { if (!phone.trim()) setErrors(p => ({ ...p, phone: 'Phone number is required.' })); }}
+                      placeholder="10-digit mobile number"
+                      autoComplete="tel"
+                    />
+                  </FormField>
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Password" required errorText={errors.password}>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="At least 6 characters"
+                        className="pr-10"
+                        autoComplete="new-password"
+                      />
                       <button
                         type="button"
-                        onClick={() => handleToggleCompetency(item as any)}
-                        className="text-slate-400 hover:text-rose-500 p-1"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary p-1"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
-                        <X className="w-4 h-4" />
+                        {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                       </button>
                     </div>
+                  </FormField>
+
+                  <FormField label="Confirm password" required errorText={errors.confirmPassword}>
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      onBlur={() => { if (confirmPassword !== password) setErrors(p => ({ ...p, confirmPassword: 'Passwords do not match.' })); }}
+                      placeholder="Re-enter password"
+                      autoComplete="new-password"
+                    />
+                  </FormField>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Professional details */}
+            {step === 2 && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-text-primary">Professional details</h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Organization" required errorText={errors.organization}>
+                    <Select
+                      value={organization}
+                      onChange={e => setOrganization(e.target.value)}
+                    >
+                      {DEFAULT_ORGANIZATIONS.map(org => (
+                        <option key={org} value={org}>{org}</option>
+                      ))}
+                      <option value="Other">Other (specify below)</option>
+                    </Select>
+                    {organization === 'Other' && (
+                      <Input
+                        type="text"
+                        value={customOrg}
+                        onChange={e => setCustomOrg(e.target.value)}
+                        placeholder="Enter organization name"
+                        className="mt-2"
+                      />
+                    )}
+                  </FormField>
+
+                  <FormField label="Department" required errorText={errors.department}>
+                    <Select
+                      value={department}
+                      onChange={e => setDepartment(e.target.value)}
+                    >
+                      {DEFAULT_DEPARTMENTS.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                      <option value="Other">Other (specify below)</option>
+                    </Select>
+                    {department === 'Other' && (
+                      <Input
+                        type="text"
+                        value={customDept}
+                        onChange={e => setCustomDept(e.target.value)}
+                        placeholder="Enter department name"
+                        className="mt-2"
+                      />
+                    )}
+                  </FormField>
+
+                  <FormField label="Designation" required errorText={errors.designation}>
+                    <Select
+                      value={designation}
+                      onChange={e => setDesignation(e.target.value)}
+                    >
+                      {DEFAULT_DESIGNATIONS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                      <option value="Other">Other (specify below)</option>
+                    </Select>
+                    {designation === 'Other' && (
+                      <Input
+                        type="text"
+                        value={customDesig}
+                        onChange={e => setCustomDesig(e.target.value)}
+                        placeholder="Enter designation"
+                        className="mt-2"
+                      />
+                    )}
+                  </FormField>
+
+                  <FormField label="Years of experience">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="60"
+                      value={experienceYears}
+                      onChange={e => setExperienceYears(Math.max(0, parseInt(e.target.value) || 0))}
+                    />
+                  </FormField>
+
+                  <FormField label="Highest qualification" required errorText={errors.qualification} className="sm:col-span-2">
+                    <Select
+                      value={qualification}
+                      onChange={e => setQualification(e.target.value)}
+                    >
+                      <option value="Doctorate / Ph.D.">Doctorate / Ph.D.</option>
+                      <option value="Master's Degree">Master's degree</option>
+                      <option value="Bachelor's Degree">Bachelor's degree</option>
+                      <option value="Professional Certification Master">Professional certification</option>
+                    </Select>
+                  </FormField>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: Expertise (profile + competencies + training info) */}
+            {step === 3 && (
+              <div className="space-y-6">
+                <h3 className="text-sm font-semibold text-text-primary">Expertise</h3>
+
+                {/* Profile section */}
+                <div className="space-y-4">
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Trainer profile</p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField label="Area of expertise" required errorText={errors.areaOfExpertise}>
+                      <Input
+                        type="text"
+                        value={areaOfExpertise}
+                        onChange={e => setAreaOfExpertise(e.target.value)}
+                        placeholder="e.g. Computer science, cloud architecture"
+                        onBlur={() => { if (!areaOfExpertise.trim()) setErrors(p => ({ ...p, areaOfExpertise: 'Area of expertise is required.' })); }}
+                      />
+                    </FormField>
+
+                    <FormField label="Specialization" required errorText={errors.specialization}>
+                      <Input
+                        type="text"
+                        value={specialization}
+                        onChange={e => setSpecialization(e.target.value)}
+                        placeholder="e.g. Distributed systems, machine learning"
+                        onBlur={() => { if (!specialization.trim()) setErrors(p => ({ ...p, specialization: 'Specialization is required.' })); }}
+                      />
+                    </FormField>
+
+                    <FormField label="Teaching experience" className="sm:col-span-2">
+                      <Input
+                        type="text"
+                        value={teachingExperience}
+                        onChange={e => setTeachingExperience(e.target.value)}
+                        placeholder="e.g. 8 years senior faculty and corporate trainer"
+                      />
+                    </FormField>
+
+                    <FormField label="Bio" className="sm:col-span-2">
+                      <textarea
+                        rows={2}
+                        value={bio}
+                        onChange={e => setBio(e.target.value)}
+                        placeholder="Brief summary of your background and teaching approach"
+                        className="w-full min-h-[64px] p-3 text-sm rounded-control border border-border bg-surface text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 resize-y transition-colors"
+                      />
+                    </FormField>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* STEP 5: Training Information & Preferences */}
-        {step === 5 && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-              <BookOpen className="w-4 h-4 text-[#992e9d]" /> Step 5: Training Information & Preferences
-            </h3>
+                  {/* Skills tags */}
+                  <FormField label="Skills" required errorText={errors.skills}>
+                    <TagInput
+                      id="trainer-skill-input"
+                      value={skillInput}
+                      onChange={setSkillInput}
+                      onAdd={handleAddSkill}
+                      placeholder="Type a skill and press Enter"
+                    />
+                    {skills.length > 0 && <TagList items={skills} onRemove={handleRemoveSkill} />}
+                  </FormField>
+                </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Specify the courses, training programs, and topics you can deliver, alongside your preferred training mode.
-            </p>
+                {/* Competencies section */}
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide pt-2">Competencies you can deliver</p>
+                  <p className="text-xs text-text-secondary">
+                    Select competencies from the catalog and set your proficiency level and whether you can train others.
+                  </p>
+                  {errors.competencies && <p className="text-xs font-medium text-danger">{errors.competencies}</p>}
 
-            <div className="space-y-4">
+                  <Input
+                    type="text"
+                    value={competencySearch}
+                    onChange={e => setCompetencySearch(e.target.value)}
+                    placeholder="Search competencies..."
+                    sizeVariant="sm"
+                  />
 
-              {/* Preferred Training Mode */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Preferred Training Delivery Mode *</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { mode: 'Online', icon: Video, desc: 'Remote webinars, live streams & virtual labs' },
-                    { mode: 'Offline', icon: MapPin, desc: 'In-person physical classroom & workshops' },
-                    { mode: 'Hybrid', icon: Globe, desc: 'Blended digital & live classroom sessions' }
-                  ].map((m) => {
-                    const Icon = m.icon;
-                    const isSelected = preferredTrainingMode === m.mode;
-                    return (
-                      <div
-                        key={m.mode}
-                        onClick={() => setPreferredTrainingMode(m.mode as any)}
-                        className={`p-3 rounded-[11px] border cursor-pointer transition-all flex flex-col justify-between space-y-1 ${isSelected
-                            ? 'border-[#992e9d] bg-purple-50/60 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300'
-                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 text-slate-600 dark:text-slate-400 hover:border-purple-300'
+                  {/* Catalog grid */}
+                  <div
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto border border-border rounded-container p-2"
+                    role="listbox"
+                    aria-label="Competency catalog"
+                    aria-multiselectable="true"
+                  >
+                    {catalogFiltered.map(c => {
+                      const isSelected = !!selectedCompetencies[c.id];
+                      return (
+                        <div
+                          key={c.id}
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => handleToggleCompetency(c)}
+                          className={`p-2.5 rounded-control border cursor-pointer transition-colors flex items-start justify-between gap-2 ${
+                            isSelected
+                              ? 'border-primary bg-primary-subtle'
+                              : 'border-border bg-surface hover:border-border-strong'
                           }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <Icon className="w-4 h-4" />
-                          {isSelected && <Check className="w-4 h-4 text-[#992e9d]" />}
+                        >
+                          <div>
+                            <p className="text-xs font-semibold text-text-primary">{c.name}</p>
+                            <p className="text-[11px] text-text-tertiary">{c.category}</p>
+                          </div>
+                          {isSelected && <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />}
                         </div>
-                        <div className="font-bold text-xs text-slate-900 dark:text-white">{m.mode}</div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">{m.desc}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                      );
+                    })}
+                  </div>
 
-              {/* Training Programs / Courses Can Teach */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Courses & Training Programs You Can Deliver</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={programInput}
-                    onChange={(e) => setProgramInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddProgram(programInput);
-                      }
-                    }}
-                    placeholder="Add training program title and press Enter..."
-                    className="flex-1 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleAddProgram(programInput)}
-                    className="px-4 py-2 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300 text-xs font-semibold border border-purple-200 hover:bg-purple-100"
-                  >
-                    + Add Program
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {trainingPrograms.map((prog) => (
-                    <span
-                      key={prog}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#992e9d] dark:text-purple-300 text-xs font-semibold border border-purple-200/60 dark:border-purple-800/60"
-                    >
-                      <span>{prog}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveProgram(prog)}
-                        className="hover:text-rose-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-
-                <div className="pt-1 text-[11px] text-slate-400">
-                  <span className="font-medium mr-2">Quick Add Suggested Programs:</span>
-                  {SUGGESTED_TRAINING_PROGRAMS.filter(p => !trainingPrograms.includes(p)).slice(0, 3).map(p => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => handleAddProgram(p)}
-                      className="mr-1.5 underline hover:text-[#992e9d]"
-                    >
-                      +{p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Specific Topics Can Teach */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Specific Topics / Modules You Can Teach</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={topicInput}
-                    onChange={(e) => setTopicInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTopic(topicInput);
-                      }
-                    }}
-                    placeholder="Add topic (e.g. Spring Boot, Docker, Microservices) and press Enter..."
-                    className="flex-1 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleAddTopic(topicInput)}
-                    className="px-4 py-2 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300 text-xs font-semibold border border-purple-200 hover:bg-purple-100"
-                  >
-                    + Add Topic
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {trainingTopics.map((top) => (
-                    <span
-                      key={top}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-200/60 dark:border-emerald-800/60"
-                    >
-                      <span>{top}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTopic(top)}
-                        className="hover:text-rose-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Certifications */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Certifications & Honors (Optional)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={certInput}
-                    onChange={(e) => setCertInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddCertification(certInput);
-                      }
-                    }}
-                    placeholder="Add certification (e.g. AWS Solutions Architect) and press Enter..."
-                    className="flex-1 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#080D1A] text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-[#992e9d]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleAddCertification(certInput)}
-                    className="px-4 py-2 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#992e9d] dark:text-purple-300 text-xs font-semibold border border-purple-200 hover:bg-purple-100"
-                  >
-                    + Add Cert
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {certifications.map((c) => (
-                    <span
-                      key={c}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-xs font-semibold border border-amber-200/60 dark:border-amber-800/60"
-                    >
-                      <Award className="w-3 h-3" />
-                      <span>{c}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCertification(c)}
-                        className="hover:text-rose-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* STEP 6: Review & Final Registration */}
-        {step === 6 && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-              <ShieldCheck className="w-4 h-4 text-[#992e9d]" /> Step 6: Review & Confirm Registration
-            </h3>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Please review all entered details before finalizing your Trainer Registration.
-            </p>
-
-            <div className="space-y-3">
-
-              {/* Review Card 1: Account Information */}
-              <div className="p-4 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#992e9d] dark:text-purple-300 uppercase tracking-wider">Account Information</h4>
-                  <button onClick={() => setStep(1)} className="text-[11px] text-slate-500 hover:text-[#992e9d] underline font-medium">Edit</button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-slate-400">Full Name:</span> <strong className="text-slate-900 dark:text-white">{fullName}</strong></div>
-                  <div><span className="text-slate-400">Email:</span> <strong className="text-slate-900 dark:text-white">{email}</strong></div>
-                  <div><span className="text-slate-400">Phone:</span> <strong className="text-slate-900 dark:text-white">{phone}</strong></div>
-                </div>
-              </div>
-
-              {/* Review Card 2: Organization & Professional Information */}
-              <div className="p-4 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#992e9d] dark:text-purple-300 uppercase tracking-wider">Organization & Professional Details</h4>
-                  <button onClick={() => setStep(2)} className="text-[11px] text-slate-500 hover:text-[#992e9d] underline font-medium">Edit</button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-slate-400">Organization:</span> <strong className="text-slate-900 dark:text-white">{organization === 'Other' ? customOrg : organization}</strong></div>
-                  <div><span className="text-slate-400">Department:</span> <strong className="text-slate-900 dark:text-white">{department === 'Other' ? customDept : department}</strong></div>
-                  <div><span className="text-slate-400">Designation:</span> <strong className="text-slate-900 dark:text-white">{designation === 'Other' ? customDesig : designation}</strong></div>
-                  <div><span className="text-slate-400">Experience:</span> <strong className="text-slate-900 dark:text-white">{experienceYears} Years</strong></div>
-                  <div className="col-span-2"><span className="text-slate-400">Qualification:</span> <strong className="text-slate-900 dark:text-white">{qualification}</strong></div>
-                </div>
-              </div>
-
-              {/* Review Card 3: Trainer Profile */}
-              <div className="p-4 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#992e9d] dark:text-purple-300 uppercase tracking-wider">Trainer Profile & Skills</h4>
-                  <button onClick={() => setStep(3)} className="text-[11px] text-slate-500 hover:text-[#992e9d] underline font-medium">Edit</button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-slate-400">Expertise Area:</span> <strong className="text-slate-900 dark:text-white">{areaOfExpertise}</strong></div>
-                  <div><span className="text-slate-400">Specialization:</span> <strong className="text-slate-900 dark:text-white">{specialization}</strong></div>
-                  <div className="col-span-2"><span className="text-slate-400">Teaching Experience:</span> <strong className="text-slate-900 dark:text-white">{teachingExperience}</strong></div>
-                  {bio && <div className="col-span-2"><span className="text-slate-400">Bio:</span> <p className="italic text-slate-700 dark:text-slate-300">{bio}</p></div>}
-                  <div className="col-span-2 space-y-1">
-                    <span className="text-slate-400">Skill Tags:</span>
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {skills.map(s => (
-                        <span key={s} className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] font-semibold">{s}</span>
+                  {/* Selected competency controls */}
+                  {Object.values(selectedCompetencies).length > 0 && (
+                    <div className="space-y-2 max-h-52 overflow-y-auto">
+                      {Object.values(selectedCompetencies).map(item => (
+                        <div
+                          key={item.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-control border border-border bg-surface"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-text-primary">{item.name}</p>
+                            <p className="text-[11px] text-text-secondary">{item.category}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Select
+                              sizeVariant="sm"
+                              value={item.level}
+                              onChange={e => handleCompetencyLevelChange(item.id, e.target.value as SkillProficiencyLevel)}
+                              aria-label={`Proficiency for ${item.name}`}
+                            >
+                              <option value="Beginner">Beginner</option>
+                              <option value="Intermediate">Intermediate</option>
+                              <option value="Advanced">Advanced</option>
+                              <option value="Expert">Expert</option>
+                            </Select>
+                            <Button
+                              variant={item.canTrain ? 'primary' : 'secondary'}
+                              size="sm"
+                              type="button"
+                              onClick={() => handleCompetencyCanTrainChange(item.id, !item.canTrain)}
+                              aria-pressed={item.canTrain}
+                            >
+                              {item.canTrain ? 'Can train' : 'Cannot train'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              isIconOnly
+                              type="button"
+                              onClick={() => handleToggleCompetency(item as any)}
+                              aria-label={`Remove ${item.name}`}
+                            >
+                              <X className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          </div>
+                        </div>
                       ))}
                     </div>
+                  )}
+                </div>
+
+                {/* Training info section */}
+                <div className="space-y-4 pt-2 border-t border-border">
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide pt-2">Training programs and topics</p>
+                  {errors.trainingInfo && <p className="text-xs font-medium text-danger">{errors.trainingInfo}</p>}
+
+                  {/* Preferred mode */}
+                  <FormField label="Preferred delivery mode">
+                    <div className="flex gap-2">
+                      {(['Online', 'Offline', 'Hybrid'] as const).map(mode => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setPreferredTrainingMode(mode)}
+                          aria-pressed={preferredTrainingMode === mode}
+                          className={`flex-1 py-2 rounded-control text-xs font-medium border transition-colors ${
+                            preferredTrainingMode === mode
+                              ? 'border-primary bg-primary-subtle text-primary'
+                              : 'border-border bg-surface text-text-secondary hover:border-border-strong'
+                          }`}
+                        >
+                          {mode}
+                        </button>
+                      ))}
+                    </div>
+                  </FormField>
+
+                  <FormField label="Programs you can deliver">
+                    <TagInput id="program-input" value={programInput} onChange={setProgramInput} onAdd={handleAddProgram} placeholder="Add training program and press Enter" />
+                    {trainingPrograms.length > 0 && <TagList items={trainingPrograms} onRemove={handleRemoveProgram} />}
+                  </FormField>
+
+                  <FormField label="Topics and modules">
+                    <TagInput id="topic-input" value={topicInput} onChange={setTopicInput} onAdd={handleAddTopic} placeholder="Add topic and press Enter" />
+                    {trainingTopics.length > 0 && <TagList items={trainingTopics} onRemove={handleRemoveTopic} />}
+                  </FormField>
+
+                  <FormField label="Certifications (optional)">
+                    <TagInput id="cert-input" value={certInput} onChange={setCertInput} onAdd={handleAddCertification} placeholder="Add certification and press Enter" />
+                    {certifications.length > 0 && <TagList items={certifications} onRemove={handleRemoveCertification} />}
+                  </FormField>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: Review */}
+            {step === 4 && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-text-primary">Review your details</h3>
+                <p className="text-xs text-text-secondary">Check the information below before submitting. Use the Edit links to go back and make changes.</p>
+
+                {[
+                  {
+                    title: 'Account',
+                    stepNum: 1,
+                    rows: [
+                      { label: 'Full name', value: fullName },
+                      { label: 'Email address', value: email },
+                      { label: 'Phone', value: phone },
+                    ],
+                  },
+                  {
+                    title: 'Professional details',
+                    stepNum: 2,
+                    rows: [
+                      { label: 'Organization', value: organization === 'Other' ? customOrg : organization },
+                      { label: 'Department', value: department === 'Other' ? customDept : department },
+                      { label: 'Designation', value: designation === 'Other' ? customDesig : designation },
+                      { label: 'Experience', value: `${experienceYears} years` },
+                      { label: 'Qualification', value: qualification },
+                    ],
+                  },
+                  {
+                    title: 'Expertise',
+                    stepNum: 3,
+                    rows: [
+                      { label: 'Area of expertise', value: areaOfExpertise },
+                      { label: 'Specialization', value: specialization },
+                      { label: 'Delivery mode', value: preferredTrainingMode },
+                      { label: 'Skills', value: skills.join(', ') || 'â€”' },
+                      { label: 'Competencies', value: Object.values(selectedCompetencies).map(c => c.name).join(', ') || 'â€”' },
+                    ],
+                  },
+                ].map(section => (
+                  <div
+                    key={section.title}
+                    className="rounded-container border border-border bg-surface-muted/40 p-4 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-text-primary">{section.title}</h4>
+                      <button
+                        type="button"
+                        onClick={() => setStep(section.stepNum)}
+                        className="text-xs text-primary hover:underline font-medium"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      {section.rows.map(row => (
+                        <div key={row.label} className="col-span-1">
+                          <dt className="text-[11px] text-text-tertiary">{row.label}</dt>
+                          <dd className="text-xs font-medium text-text-primary truncate">{row.value || 'â€”'}</dd>
+                        </div>
+                      ))}
+                    </dl>
                   </div>
-                </div>
+                ))}
+
+                <InlineAlert variant="info" title="What happens after you submit">
+                  Your registration will be reviewed by an organization administrator. You will receive an email once your account is activated. Until then, you will see a pending status when you sign in.
+                </InlineAlert>
               </div>
+            )}
 
-              {/* Review Card 4: Declared Competencies & Delivery */}
-              <div className="p-4 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#992e9d] dark:text-purple-300 uppercase tracking-wider">Competencies & Delivery Capacity</h4>
-                  <button onClick={() => setStep(4)} className="text-[11px] text-slate-500 hover:text-[#992e9d] underline font-medium">Edit</button>
-                </div>
-                <div className="space-y-1.5">
-                  {Object.values(selectedCompetencies).map(c => (
-                    <div key={c.id} className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-[#0C1220] border border-slate-200 dark:border-slate-800 text-xs">
-                      <div>
-                        <span className="font-semibold text-slate-900 dark:text-white">{c.name}</span>
-                        <span className="text-[10px] text-slate-400 ml-2">({c.category})</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#992e9d] dark:text-purple-300 font-bold text-[10px]">
-                          {c.level}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${c.canTrain
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                          }`}>
-                          {c.canTrain ? 'Can Train: Yes' : 'Can Train: No'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Review Card 5: Training Information & Preferences */}
-              <div className="p-4 rounded-[11px] border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#080D1A]/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#992e9d] dark:text-purple-300 uppercase tracking-wider">Training Preferences & Offerings</h4>
-                  <button onClick={() => setStep(5)} className="text-[11px] text-slate-500 hover:text-[#992e9d] underline font-medium">Edit</button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="col-span-2">
-                    <span className="text-slate-400">Preferred Delivery Mode:</span> <strong className="text-slate-900 dark:text-white font-bold ml-1">{preferredTrainingMode}</strong>
-                  </div>
-                  {trainingPrograms.length > 0 && (
-                    <div className="col-span-2 space-y-1">
-                      <span className="text-slate-400">Training Programs:</span>
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {trainingPrograms.map(p => (
-                          <span key={p} className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#992e9d] dark:text-purple-300 text-[10px] font-semibold">{p}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {trainingTopics.length > 0 && (
-                    <div className="col-span-2 space-y-1">
-                      <span className="text-slate-400">Topics / Areas:</span>
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {trainingTopics.map(t => (
-                          <span key={t} className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold">{t}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {certifications.length > 0 && (
-                    <div className="col-span-2 space-y-1">
-                      <span className="text-slate-400">Certifications:</span>
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {certifications.map(c => (
-                          <span key={c} className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">{c}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* Footer Step Controls (Back / Next / Submit) */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-          {step > 1 ? (
-            <button
-              type="button"
-              onClick={handlePrevStep}
-              disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onNavigateToLogin}
-              className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white font-medium"
-            >
-              Cancel
-            </button>
-          )}
-
-          {step < 6 ? (
-            <button
-              type="button"
-              onClick={handleNextStep}
-              className="px-6 py-2.5 rounded-full bg-[#992e9d] text-white text-xs font-bold hover:bg-purple-700 shadow-md transition-colors flex items-center gap-1.5"
-            >
-              Next Step <ArrowRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmitRegistration}
-              disabled={isSubmitting}
-              className="px-8 py-2.5 rounded-full bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <span>Registering Trainer...</span>
+            {/* Footer navigation */}
+            <div className="flex items-center justify-between pt-4 border-t border-border">
+              {step > 1 ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={handlePrev}
+                  disabled={isSubmitting}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" aria-hidden="true" />
+                  Back
+                </Button>
               ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" /> Complete Registration
-                </>
+                <button
+                  type="button"
+                  onClick={onNavigateToLogin}
+                  className="text-xs text-text-secondary hover:text-text-primary font-medium"
+                >
+                  Cancel
+                </button>
               )}
-            </button>
-          )}
-        </div>
 
-      </main>
-
-      {/* Page Footer */}
-      <footer className="max-w-4xl mx-auto w-full text-center py-3 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800/80">
-        © 2026 Project Kuma • Capacity Connect (SIH26075 Prototype). Secure Trainer Governance Infrastructure.
-      </footer>
-
+              {step < TOTAL_STEPS ? (
+                <Button variant="primary" size="sm" type="button" onClick={handleNext}>
+                  Continue
+                  <ArrowRight className="h-4 w-4 ml-1" aria-hidden="true" />
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="button"
+                  onClick={handleSubmitRegistration}
+                  isLoading={isSubmitting}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1" aria-hidden="true" />
+                  Submit registration
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
+
