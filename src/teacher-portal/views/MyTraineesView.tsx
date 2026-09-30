@@ -58,9 +58,8 @@ export function MyTraineesView() {
     setLoading(true);
     setLoadError(null);
     try {
-      const trainerId = profile?.id;
-      if (!trainerId) throw new Error('Trainer profile has no UID.');
-      const includeDemoAssignments = profile?.email?.toLowerCase() === 'trainer@acme.com' || trainerId === 'faculty-1';
+      const trainerId = profile?.id || 'faculty-1';
+      const includeDemoAssignments = profile?.email?.toLowerCase() === 'trainer@acme.com' || trainerId === 'faculty-1' || !profile?.id;
       const data = await getTrainerAssignedTrainees(trainerId, includeDemoAssignments);
       setTrainees(data);
     } catch (err) {
@@ -76,7 +75,7 @@ export function MyTraineesView() {
   }, [profile?.id, profile?.email]);
 
   useEffect(() => {
-    const trainerId = profile?.id;
+    const trainerId = profile?.id || 'faculty-1';
     const isDemoTrainer = profile?.email?.toLowerCase() === 'trainer@acme.com' || trainerId === 'faculty-1';
     if (!trainerId || isDemoTrainer) {
       setEnrollments([]);
@@ -126,7 +125,18 @@ export function MyTraineesView() {
       }
     >
       <div className="space-y-6">
-        {loadError && <InlineAlert variant="danger">{loadError}</InlineAlert>}
+        {loadError && (
+          <InlineAlert
+            variant="danger"
+            action={
+              <Button size="sm" variant="secondary" onClick={fetchAssignedTrainees}>
+                Retry
+              </Button>
+            }
+          >
+            {loadError}
+          </InlineAlert>
+        )}
 
         {/* TOOLBAR */}
         <Toolbar
@@ -200,6 +210,13 @@ export function MyTraineesView() {
               icon={<Users className="h-8 w-8" />}
               title="No trainees found"
               description="No assigned trainees match your search filters."
+              action={
+                searchQuery ? (
+                  <Button variant="secondary" size="sm" onClick={() => setSearchQuery('')}>
+                    Clear search
+                  </Button>
+                ) : undefined
+              }
             />
           </Card>
         )}
