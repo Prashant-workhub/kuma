@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import admin from 'firebase-admin';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -859,6 +860,299 @@ app.post('/api/assessments', verifyUserToken, async (req, res) => {
       success: true,
       assessmentId,
       assessment: publicAssessmentDoc
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// SERVER-ISSUED VERIFIABLE CERTIFICATE ENDPOINTS (HMAC-SHA256)
+// ============================================================================
+
+const CERT_SIGNING_SECRET = process.env.CERT_SIGNING_SECRET || 'kuma-secret-signing-key-dev-mode';
+const STATIC_CERTIFICATES = new Map();
+
+export function computeCertificateSignature(certData) {
+  const canonicalString = [
+    certData.certId || certData.id || '',
+    certData.uid || '',
+    certData.courseId || '',
+    certData.traineeName || '',
+    certData.orgId || certData.organization || '',
+    certData.issuedAt || certData.issueDate || ''
+  ].join('|');
+  return crypto.createHmac('sha256', CERT_SIGNING_SECRET).update(canonicalString).digest('hex');
+}
+
+// Seed default demo certificate in standalone mode
+(() => {
+  const demoCert = {
+    certId: 'KUMA-2026-DA10199X',
+    uid: 'user-demo-1',
+    courseId: 'c-da101',
+    courseTitle: 'Advanced Data Analytics & Insights',
+    traineeName: 'Trainee Learner',
+    orgId: 'Ministry of Skill Development & Entrepreneurship',
+    issuedAt: '2026-09-25T00:00:00.000Z',
+    completionEnrollmentId: 'enr-c-da101',
+    attemptId: 'att-da101',
+    competencyGains: [{ competencyId: 'cat-comp-2', fromLevel: 1, toLevel: 3 }],
+    status: 'valid'
+  };
+  demoCert.signature = computeCertificateSignature(demoCert);
+  STATIC_CERTIFICATES.set(demoCert.certId, demoCert);
+})();
+
+// POST /api/certificates/issue (Auth required)
+app.post('/api/certificates/issue', verifyUserToken, async (req, res) => {
+  try {
+    const { enrollmentId, attemptId, courseId, courseTitle, traineeName, orgId, competencyGains } = req.body;
+    const uid = req.user.uid;
+
+    if (!enrollmentId && !courseId) {
+      return res.status(400).json({ success: false, error: 'Missing enrollmentId or courseId' });
+    }
+
+    const actualEnrollmentId = enrollmentId || `enr_${uid}_${courseId}`;
+
+    let enrollmentData = null;
+    let attemptData = null;
+
+    if (db) {
+      // (a) Verify enrollment
+      const enrDoc = await db.collection('enrollments').doc(actualEnrollmentId).get();
+      if (!enrDoc.exists) {
+        const altEnr = await db.collection('trainingEnrollments').doc(actualEnrollmentId).get();
+        if (altEnr.exists) enrollmentData = altEnr.data();
+      } else {
+        enrollmentData = enrDoc.data();
+      }
+
+      if (!enrollmentData && courseId) {
+        const snap = await db.collection('enrollments')
+          .where('uid', '==', uid)
+          .where('courseId', '==', courseId)
+          .get();
+        if (!snap.empty) enrollmentData = snap.docs[0].data();
+      }
+
+      const isCompleted = enrollmentData && (
+        enrollmentData.status === 'completed' ||
+        enrollmentData.percent === 100 ||
+        enrollmentData.completionRate === 100
+      );
+
+      if (!isCompleted) {
+        return res.status(403).json({
+          success: false,
+          error: 'Enrollment completion requirements not met. All required modules must be completed.'
+        });
+      }
+
+      // (b) Verify passing attempt exists
+      if (attemptId) {
+        const attDoc = await db.collection('attempts').doc(attemptId).get();
+        if (attDoc.exists) {
+          attemptData = attDoc.data();
+        } else {
+          const altAtt = await db.collection('assessmentAttempts').doc(attemptId).get();
+          if (altAtt.exists) attemptData = altAtt.data();
+        }
+      }
+
+      if (!attemptData && (enrollmentData?.assessmentAttemptId || courseId)) {
+        const targetAttId = enrollmentData?.assessmentAttemptId;
+        if (targetAttId) {
+          const attDoc = await db.collection('attempts').doc(targetAttId).get();
+          if (attDoc.exists) attemptData = attDoc.data();
+        }
+      }
+
+      const isAttemptPassed = attemptData && (
+        attemptData.passed === true ||
+        (attemptData.scorePercentage !== undefined && attemptData.scorePercentage >= 60) ||
+        (attemptData.score !== undefined && attemptData.score >= 60)
+      );
+
+      if (!isAttemptPassed && !enrollmentData?.quizPassed) {
+        return res.status(403).json({
+          success: false,
+          error: 'Passing assessment attempt required before certificate issuance.'
+        });
+      }
+
+      // (c) Check existing certificate (idempotency)
+      const existingCertSnap = await db.collection('certificates')
+        .where('completionEnrollmentId', '==', actualEnrollmentId)
+        .get();
+
+      if (!existingCertSnap.empty) {
+        const existingCert = existingCertSnap.docs[0].data();
+        return res.json({ success: true, certificate: existingCert, message: 'Existing certificate retrieved' });
+      }
+    } else {
+      // Standalone mode fallback check
+      for (const [id, cert] of STATIC_CERTIFICATES.entries()) {
+        if (cert.uid === uid && (cert.completionEnrollmentId === actualEnrollmentId || cert.courseId === courseId)) {
+          return res.json({ success: true, certificate: cert, message: 'Existing certificate retrieved' });
+        }
+      }
+    }
+
+    const randomHex = crypto.randomBytes(6).toString('hex').toUpperCase();
+    const certId = `KUMA-CERT-${Date.now()}-${randomHex}`;
+    const issuedAt = new Date().toISOString();
+
+    const finalTraineeName = traineeName || (req.user.email ? req.user.email.split('@')[0] : 'Trainee Learner');
+    const finalCourseTitle = courseTitle || enrollmentData?.courseName || enrollmentData?.courseTitle || 'Capacity Building Program';
+    const finalOrgId = orgId || enrollmentData?.organizationId || 'Kuma Portal';
+    const finalCourseId = courseId || enrollmentData?.courseId || 'c-gen';
+    const finalAttemptId = attemptId || attemptData?.id || enrollmentData?.assessmentAttemptId || `att-${Date.now()}`;
+    const finalGains = competencyGains || (attemptData?.competencyId ? [{ competencyId: attemptData.competencyId, fromLevel: 1, toLevel: 2 }] : []);
+
+    const certPayload = {
+      certId,
+      uid,
+      courseId: finalCourseId,
+      courseTitle: finalCourseTitle,
+      traineeName: finalTraineeName,
+      orgId: finalOrgId,
+      issuedAt,
+      completionEnrollmentId: actualEnrollmentId,
+      attemptId: finalAttemptId,
+      competencyGains: finalGains,
+      status: 'valid'
+    };
+
+    certPayload.signature = computeCertificateSignature(certPayload);
+
+    if (db) {
+      await db.collection('certificates').doc(certId).set(certPayload);
+    }
+    STATIC_CERTIFICATES.set(certId, certPayload);
+
+    return res.json({ success: true, certificate: certPayload });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Simple rate-limiting for public verify endpoint
+const verifyRateLimitMap = new Map();
+function rateLimitVerifyRequest(req, res, next) {
+  const ip = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  let record = verifyRateLimitMap.get(ip);
+  if (!record || now - record.startTime > windowMs) {
+    record = { startTime: now, count: 1 };
+  } else {
+    record.count++;
+  }
+  verifyRateLimitMap.set(ip, record);
+  if (record.count > 50) {
+    return res.status(429).json({ status: 'error', error: 'Too many verification requests' });
+  }
+  next();
+}
+
+// GET /api/certificates/verify/:certId (Public, rate limited, no PII returned)
+app.get('/api/certificates/verify/:certId', rateLimitVerifyRequest, async (req, res) => {
+  try {
+    const { certId } = req.params;
+    if (!certId || !certId.trim()) {
+      return res.status(400).json({ status: 'not_found', message: 'Invalid certificate ID' });
+    }
+
+    let certDoc = null;
+    if (db) {
+      const snap = await db.collection('certificates').doc(certId.trim()).get();
+      if (snap.exists) {
+        certDoc = snap.data();
+      }
+    }
+
+    if (!certDoc) {
+      certDoc = STATIC_CERTIFICATES.get(certId.trim()) || null;
+    }
+
+    if (!certDoc) {
+      return res.json({ status: 'not_found', message: 'Certificate not found' });
+    }
+
+    const expectedSig = computeCertificateSignature(certDoc);
+    const isSignatureValid = certDoc.signature === expectedSig;
+
+    if (!isSignatureValid) {
+      return res.json({
+        status: 'invalid',
+        message: 'Digital signature verification failed. Certificate content may have been modified or tampered with.'
+      });
+    }
+
+    if (certDoc.status === 'revoked') {
+      return res.json({
+        status: 'revoked',
+        certId: certDoc.certId || certDoc.id,
+        traineeName: certDoc.traineeName,
+        courseTitle: certDoc.courseTitle,
+        issuedAt: certDoc.issuedAt,
+        orgName: certDoc.orgId || certDoc.orgName || 'Kuma Platform',
+        revokedAt: certDoc.revokedAt,
+        competencyGains: certDoc.competencyGains || []
+      });
+    }
+
+    return res.json({
+      status: 'valid',
+      certId: certDoc.certId || certDoc.id,
+      traineeName: certDoc.traineeName,
+      courseTitle: certDoc.courseTitle,
+      issuedAt: certDoc.issuedAt,
+      orgName: certDoc.orgId || certDoc.orgName || 'Kuma Platform',
+      competencyGains: certDoc.competencyGains || []
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+
+// POST /api/admin/certificates/:certId/revoke (Admin auth required)
+app.post('/api/admin/certificates/:certId/revoke', verifyAdminToken, async (req, res) => {
+  try {
+    const { certId } = req.params;
+    const revokedAt = new Date().toISOString();
+
+    let found = false;
+    if (db) {
+      const snap = await db.collection('certificates').doc(certId).get();
+      if (snap.exists) {
+        await db.collection('certificates').doc(certId).update({
+          status: 'revoked',
+          revokedAt
+        });
+        found = true;
+      }
+    }
+
+    if (STATIC_CERTIFICATES.has(certId)) {
+      const existing = STATIC_CERTIFICATES.get(certId);
+      existing.status = 'revoked';
+      existing.revokedAt = revokedAt;
+      STATIC_CERTIFICATES.set(certId, existing);
+      found = true;
+    }
+
+    if (!found) {
+      return res.status(404).json({ success: false, error: 'Certificate not found' });
+    }
+
+    return res.json({
+      success: true,
+      certId,
+      status: 'revoked',
+      revokedAt
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -108,7 +108,7 @@ test('auto-enrollment is not lost when progress is updated for a new trainee', (
   assert.equal(afterSecond.length, 1, 'no duplicate enrollment should be created');
 });
 
-test('reaching 100% with a passed quiz issues exactly one certificate', () => {
+test('reaching 100% with a passed quiz marks enrollment as completed', () => {
   reset();
   const { userId, profile: p, course: c } = fresh();
 
@@ -116,13 +116,11 @@ test('reaching 100% with a passed quiz issues exactly one certificate', () => {
 
   assert.equal(result.enrollment.status, 'completed');
   assert.equal(result.enrollment.completionRate, 100);
-  assert.ok(result.certificate, 'a certificate must be issued on completion');
-  assert.equal(result.enrollment.certificateId, result.certificate!.id);
   assert.ok(result.enrollment.completedAt, 'completedAt must be set');
 
-  // Re-running completion must return the SAME certificate (idempotent).
+  // Re-running completion remains idempotent
   const again = updateEnrollmentProgress(userId, p as never, c as never, 100, true);
-  assert.equal(again.certificate!.id, result.certificate!.id, 'certificate must not be re-issued');
+  assert.equal(again.enrollment.status, 'completed');
 });
 
 test('progress is clamped to the 0-100 range and rounded', () => {
@@ -139,15 +137,13 @@ test('progress is clamped to the 0-100 range and rounded', () => {
   assert.equal(rounded.enrollment.completionRate, 50);
 });
 
-test('100% progress with a failed quiz does not complete or issue a certificate', () => {
+test('100% progress with a failed quiz does not mark course as completed', () => {
   reset();
   const { userId, profile: p, course: c } = fresh();
 
   const result = updateEnrollmentProgress(userId, p as never, c as never, 100, false);
 
   assert.notEqual(result.enrollment.status, 'completed');
-  assert.equal(result.certificate, undefined);
-  assert.equal(result.enrollment.certificateId, undefined);
 });
 
 test('enrollInCourse is idempotent for the same trainee and course', () => {

@@ -8,7 +8,7 @@
 
 ## 1. PROJECT OVERVIEW
 
-**Kuma (Capacity Connect)** is an enterprise-grade Digital Capacity Building and Learning Management Portal engineered for Smart India Hackathon (SIH26075). It empowers government bodies, public enterprises, and private organizations to continuously build workforce competencies, quantitatively identify skill gaps, deliver targeted training programs, issue cryptographically verifiable digital certificates, and monitor organizational capacity in real time.
+**Kuma (Capacity Connect)** is an enterprise-grade Digital Capacity Building and Learning Management Portal engineered for Smart India Hackathon (SIH26075). It empowers government bodies, public enterprises, and private organizations to continuously build workforce competencies, quantitatively identify skill gaps, deliver targeted training programs, issue HMAC-signed server-verifiable digital certificates, and monitor organizational capacity in real time.
 
 ---
 
@@ -38,7 +38,7 @@ Kuma enforces strict role-based access control (RBAC) across three distinct orga
 - **Skill Gap Radar**: Dynamic gap visualization based on declared vs. assessed vs. target competency levels.
 - **Interactive Assessments**: Interactive quiz taking with immediate level qualification.
 - **Course Enrollment**: Enroll in recommended or catalog training programs; complete modules step-by-step.
-- **Digital Certificates**: View, download, print, and share verifiable cryptographic certificates (`/verify/certificate/:id`).
+- **Digital Certificates**: View, download, print, and share server-issued HMAC-signed verifiable certificates (`/verify-certificate?id=:id`).
 
 ### 2. Trainer (Instructor / Subject Matter Expert)
 - **Course Management**: Manage assigned training programs, upload lecture resources, and structure course modules.

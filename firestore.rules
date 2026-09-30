@@ -475,6 +475,11 @@ service cloud.firestore {
         getAfter(privatePath).data.organization == data.organization;
     }
 
+    match /certificates/{certId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false; // Server-written only via firebase-admin / REST API
+    }
+
     match /userCertificates/{certificateId} {
       allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
       allow create: if signedIn() && validPrivateCertificate(request.auth.uid, certificateId);

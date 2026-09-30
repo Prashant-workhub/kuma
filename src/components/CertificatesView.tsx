@@ -1,14 +1,13 @@
 /**
  * Project Kuma - Trainee Certificates Workspace View
- * Displays all earned certificates with preview, print, download, and verification links.
- * Enterprise Skills Intelligence Architecture.
+ * Displays user's server-issued HMAC certificates with preview, print, download, and public verification.
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserSettings, TrainingCertificate } from '../types';
+import { UserSettings } from '../types';
+import { getUserServerCertificates, ServerCertificate } from '../services/certificateService';
 import { getUserCertificates } from '../utils/certificateUtils';
 import { isDemoTraineeIdentity } from '../utils/demoDataSeeder';
-import { subscribeUserCertificates } from '../services/capacityConnectService';
 import CertificateModal from './CertificateModal';
 import {
   Award,
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 import {
   SectionHeading,
-  TraineeBadge,
   TraineeButton,
   TraineeCard,
   TraineeEmptyState,
@@ -37,53 +35,39 @@ interface CertificatesViewProps {
 }
 
 export default function CertificatesView({ settings, setActivePage }: CertificatesViewProps) {
-  const [selectedCert, setSelectedCert] = useState<TrainingCertificate | null>(null);
+  const [selectedCert, setSelectedCert] = useState<any | null>(null);
   const userId = settings.profile.uid || '';
   const isDemoTrainee = isDemoTraineeIdentity(userId, settings.profile.emailAddress);
-  const [userCerts, setUserCerts] = useState<TrainingCertificate[]>(() =>
-    isDemoTrainee ? getUserCertificates(settings.profile.emailAddress) : []
-  );
-  const [loading, setLoading] = useState(!isDemoTrainee);
+  const [userCerts, setUserCerts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isDemoTrainee) {
-      setUserCerts(getUserCertificates(settings.profile.emailAddress));
-      setLoading(false);
+    async function loadCertificates() {
+      setLoading(true);
       setLoadError(null);
-      return;
-    }
-    if (!userId) {
-      setUserCerts([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setLoadError(null);
-    let unsub: (() => void) | undefined;
-    try {
-      unsub = subscribeUserCertificates(
-        userId,
-        (certificates) => {
-          setUserCerts(certificates);
-          setLoading(false);
-        },
-        (error) => {
-          console.error('[Certificates] Certificate subscription failed:', error);
-          setLoadError('Unable to load your certificates. Check your connection and try again.');
-          setLoading(false);
+      try {
+        const serverCerts = await getUserServerCertificates(userId || settings.profile.emailAddress);
+        if (serverCerts.length > 0) {
+          setUserCerts(serverCerts);
+        } else if (isDemoTrainee) {
+          const localCerts = getUserCertificates(settings.profile.emailAddress);
+          setUserCerts(localCerts);
+        } else {
+          setUserCerts([]);
         }
-      );
-    } catch (err) {
-      console.warn('[Certificates] Subscription setup notice:', err);
-      setLoading(false);
+      } catch (err: any) {
+        console.error('[Certificates] Error loading user certificates:', err);
+        setLoadError('Unable to load your certificates. Check your connection and try again.');
+      } finally {
+        setLoading(false);
+      }
     }
-    return () => {
-      if (unsub) unsub();
-    };
+
+    void loadCertificates();
   }, [userId, settings.profile.emailAddress, isDemoTrainee]);
 
-  const verifiedCount = userCerts.filter((certificate) => certificate.verified).length;
+  const verifiedCount = userCerts.filter((c) => (c.status ? c.status === 'valid' : c.verified)).length;
 
   return (
     <div className="max-w-6xl mx-auto pb-16 space-y-8 p-4 md:p-8 select-none font-sans animate-fade-in">
@@ -105,7 +89,7 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
               Verified Career Credentials
             </h1>
             <p className="text-xs md:text-sm text-muted mt-1 leading-relaxed">
-              Authenticated capacity building completion records and cryptographic skills verification.
+              Authenticated capacity building completion records backed by HMAC-SHA256 server signatures.
             </p>
           </div>
 
@@ -130,7 +114,7 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
       <section className="space-y-4">
         <SectionHeading
           title="Issued Training Certificates"
-          subtitle="Publicly verifiable skills certificates backed by capacity connect governance"
+          subtitle="Publicly verifiable skills certificates issued by Kuma Capacity Connect backend"
           icon={<ShieldCheck className="h-5 w-5 text-brand-violet" />}
         />
 
@@ -158,76 +142,87 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {userCerts.map((cert) => (
-              <TraineeCard
-                key={cert.id}
-                className="flex flex-col justify-between space-y-5 border-t-2 border-t-brand-violet relative overflow-hidden group hover:scale-[1.01] transition-all duration-300"
-              >
-                <div className="space-y-3.5">
-                  {/* Top Badge Line */}
-                  <div className="flex items-center justify-between gap-2 font-mono text-xs">
-                    <span className="font-bold uppercase px-2.5 py-1 rounded bg-brand-violet/15 text-brand-violet border border-brand-violet/30">
-                      {cert.courseCode || 'KUMA-CERT'}
-                    </span>
-                    <span className="font-bold text-brand-emerald flex items-center gap-1 text-[11px]">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> CRYPTOGRAPHICALLY VERIFIED
-                    </span>
-                  </div>
+            {userCerts.map((cert) => {
+              const certId = cert.certId || cert.id;
+              const courseTitle = cert.courseTitle || cert.courseName || 'Capacity Building Course';
+              const orgName = cert.orgId || cert.organization || 'National Digital Capacity Building Framework';
+              const issueDateStr = cert.issuedAt
+                ? new Date(cert.issuedAt).toLocaleDateString()
+                : (cert.issueDate || cert.completionDate || 'N/A');
 
-                  {/* Title & Organization */}
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-lg text-ink group-hover:text-brand-violet transition-colors leading-snug">
-                      {cert.courseName}
-                    </h3>
-                    <p className="text-xs text-muted flex items-center gap-1.5">
-                      <Building className="h-3.5 w-3.5 text-faint" />
-                      <span>{cert.organization || 'National Digital Capacity Building Framework'}</span>
-                    </p>
-                  </div>
-
-                  {/* Competencies & Issue Date */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-line">
-                    <div className="flex items-center gap-1.5 text-muted">
-                      <Layers className="h-3.5 w-3.5 text-brand-cyan" />
-                      <span className="font-medium text-ink">{cert.competenciesAddressed?.join(', ') || 'Competency Mastery'}</span>
+              return (
+                <TraineeCard
+                  key={certId}
+                  className="flex flex-col justify-between space-y-5 border-t-2 border-t-brand-violet relative overflow-hidden group hover:scale-[1.01] transition-all duration-300"
+                >
+                  <div className="space-y-3.5">
+                    {/* Top Badge Line */}
+                    <div className="flex items-center justify-between gap-2 font-mono text-xs">
+                      <span className="font-bold uppercase px-2.5 py-1 rounded bg-brand-violet/15 text-brand-violet border border-brand-violet/30">
+                        {cert.courseCode || cert.courseId || 'KUMA-CERT'}
+                      </span>
+                      <span className="font-bold text-brand-emerald flex items-center gap-1 text-[11px]">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> HMAC-SIGNED VERIFIABLE
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-1 text-[11px] text-faint font-mono">
-                      <Calendar className="h-3 w-3" />
-                      <span>{cert.issueDate}</span>
+                    {/* Title & Organization */}
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-lg text-ink group-hover:text-brand-violet transition-colors leading-snug">
+                        {courseTitle}
+                      </h3>
+                      <p className="text-xs text-muted flex items-center gap-1.5">
+                        <Building className="h-3.5 w-3.5 text-faint" />
+                        <span>{orgName}</span>
+                      </p>
+                    </div>
+
+                    {/* Competencies & Issue Date */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-line">
+                      <div className="flex items-center gap-1.5 text-muted">
+                        <Layers className="h-3.5 w-3.5 text-brand-cyan" />
+                        <span className="font-medium text-ink">
+                          {cert.competenciesAddressed?.join(', ') || (cert.competencyGains || []).map((cg: any) => cg.competencyId).join(', ') || 'Competency Mastery'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-[11px] text-faint font-mono">
+                        <Calendar className="h-3 w-3" />
+                        <span>{issueDateStr}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Bottom Actions */}
-                <div className="pt-3 border-t border-line flex items-center justify-between gap-2">
-                  <div className="text-[10px] font-mono text-faint truncate max-w-[140px]">
-                    ID: {cert.id}
+                  {/* Bottom Actions */}
+                  <div className="pt-3 border-t border-line flex items-center justify-between gap-2">
+                    <div className="text-[10px] font-mono text-faint truncate max-w-[140px]">
+                      ID: {certId}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <TraineeButton
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setActivePage('verify-certificate')}
+                        iconLeft={<ExternalLink className="h-3.5 w-3.5" />}
+                      >
+                        Verify
+                      </TraineeButton>
+
+                      <TraineeButton
+                        size="sm"
+                        variant="accent"
+                        onClick={() => setSelectedCert(cert)}
+                        iconLeft={<Award className="h-3.5 w-3.5" />}
+                      >
+                        Credential
+                      </TraineeButton>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <TraineeButton
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setActivePage('verify-certificate')}
-                      iconLeft={<ExternalLink className="h-3.5 w-3.5" />}
-                    >
-                      Verify
-                    </TraineeButton>
-
-                    <TraineeButton
-                      size="sm"
-                      variant="accent"
-                      onClick={() => setSelectedCert(cert)}
-                      iconLeft={<Award className="h-3.5 w-3.5" />}
-                    >
-                      Credential
-                    </TraineeButton>
-                  </div>
-                </div>
-
-              </TraineeCard>
-            ))}
+                </TraineeCard>
+              );
+            })}
           </div>
         )}
       </section>

@@ -175,7 +175,6 @@ export function updateEnrollmentProgress(
   const isQuizPassed = quizPassed || enrollment.quizPassed === true;
 
   let newStatus: 'enrolled' | 'in_progress' | 'completed' = enrollment.status;
-  let cert: TrainingCertificate | undefined = undefined;
   let completedDate = enrollment.completedAt;
 
   // Completion requires BOTH module completion (100%) and passing assessment attempt if required
@@ -184,8 +183,6 @@ export function updateEnrollmentProgress(
     if (!completedDate) {
       completedDate = new Date().toISOString().split('T')[0];
     }
-    cert = issueCertificateForCompletion(userProfile, course, enrollment.id);
-    enrollment.certificateId = cert.id;
   } else if (roundedModuleProgress > 0) {
     newStatus = 'in_progress';
   }
@@ -195,8 +192,7 @@ export function updateEnrollmentProgress(
     completionRate: roundedModuleProgress,
     status: newStatus,
     quizPassed: isQuizPassed,
-    completedAt: completedDate,
-    certificateId: cert ? cert.id : enrollment.certificateId
+    completedAt: completedDate
   };
 
   const nextList = enrollments.map((e) => (e.id === updatedEnrollment.id ? updatedEnrollment : e));
@@ -205,7 +201,7 @@ export function updateEnrollmentProgress(
 
   syncEnrollmentToFirestore(updatedEnrollment);
 
-  return { enrollment: updatedEnrollment, certificate: cert };
+  return { enrollment: updatedEnrollment };
 }
 
 /**
@@ -251,21 +247,12 @@ export function updateEnrollmentModuleProgress(
     enrollment.quizPassed === true
   );
 
-  const fakeCourse: TeacherAssignment = {
-    id: courseId,
-    courseCode: enrollment.courseCode || 'TRN-2026',
-    courseName: enrollment.courseName || 'Training Program',
-    subject: enrollment.subject || 'Capacity Building'
-  };
-
-  let cert: TrainingCertificate | undefined = undefined;
   let completedDate = enrollment.completedAt;
 
   if (evaluation.isCourseCompleted) {
     if (!completedDate) {
       completedDate = new Date().toISOString().split('T')[0];
     }
-    cert = issueCertificateForCompletion(userProfile, fakeCourse, enrollment.id);
   }
 
   const updatedEnrollment: TrainingEnrollment = {
@@ -273,8 +260,7 @@ export function updateEnrollmentModuleProgress(
     moduleProgress: currentModuleProgress,
     completionRate: summary.percent,
     status: evaluation.status,
-    completedAt: completedDate,
-    certificateId: cert ? cert.id : enrollment.certificateId
+    completedAt: completedDate
   };
 
   const enrollments = getAllEnrollments();
@@ -284,6 +270,6 @@ export function updateEnrollmentModuleProgress(
 
   syncEnrollmentToFirestore(updatedEnrollment);
 
-  return { enrollment: updatedEnrollment, certificate: cert };
+  return { enrollment: updatedEnrollment };
 }
 
