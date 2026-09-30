@@ -178,8 +178,6 @@ export default function SkillGapView({
     const desigName = (settings.profile.designation || '').toLowerCase().trim();
     const deptName = (settings.profile.department || '').toLowerCase().trim();
 
-    if (!desigName && !deptName) return null;
-
     const matched = DEMO_ORG_DESIGNATIONS_FULL.find(
       (d) => (desigName && d.name.toLowerCase() === desigName) ||
         (deptName && d.departmentName.toLowerCase() === deptName)
@@ -187,7 +185,7 @@ export default function SkillGapView({
 
     if (matched) return matched;
 
-    // Return clean user designation without demo requirements
+    // Return clean user designation fallback (never return null)
     return {
       id: `custom-desig-${desigName || 'trainee'}`,
       name: settings.profile.designation || 'Trainee Designation',
@@ -330,8 +328,8 @@ export default function SkillGapView({
             <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-faint">
               Designation
             </span>
-            <span className="font-semibold text-brand-gold">{traineeDesignation.name}</span>
-            <span className="text-muted">({traineeDesignation.departmentName})</span>
+            <span className="font-semibold text-brand-gold">{traineeDesignation?.name || 'Trainee Designation'}</span>
+            <span className="text-muted">({traineeDesignation?.departmentName || 'Capacity Building Unit'})</span>
           </div>
           <span className="text-xs text-faint">
             Required competencies specified by organization
