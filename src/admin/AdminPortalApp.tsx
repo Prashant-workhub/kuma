@@ -38,6 +38,7 @@ import { getAllCertificates } from '../utils/certificateUtils';
 import { calculateDesignationSkillGaps } from '../utils/competencyUtils';
 import { LearningAnalytics } from '../teacher-portal/views/LearningAnalytics';
 import AdminAnalyticsView from './AdminAnalyticsView';
+import UserApprovalsManager from './UserApprovalsManager';
 import { COURSES } from '../teacher-portal/lib/mockData';
 import { TeacherAssignment } from '../teacher-portal/types';
 import {
@@ -522,6 +523,7 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
           <nav className="space-y-1 font-mono text-xs font-bold">
             {[
               { id: 'admin-dashboard', label: 'DASHBOARD', icon: BarChart3, activeColor: 'bg-amber-400 text-slate-950 border-amber-300 shadow-paper-yellow', iconColor: 'text-amber-400' },
+              { id: 'admin-users', label: 'USER APPROVALS & ROLES', icon: ShieldCheck, activeColor: 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-paper-sm', iconColor: 'text-emerald-400' },
               { id: 'admin-organization', label: 'ORGANIZATION', icon: Building, activeColor: 'bg-indigo-500 text-white border-indigo-400 shadow-paper-blue', iconColor: 'text-indigo-400' },
               { id: 'admin-trainees', label: 'TRAINEES', icon: Users, activeColor: 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-paper-sm', iconColor: 'text-emerald-400' },
               { id: 'admin-trainers', label: 'TRAINERS', icon: Briefcase, activeColor: 'bg-purple-500 text-white border-purple-400 shadow-paper-sm', iconColor: 'text-purple-400' },
@@ -622,6 +624,9 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
         {/* Dynamic View Switcher */}
         <main className="flex-1 overflow-y-auto p-6">
           
+          {/* USER APPROVALS & ROLES TAB */}
+          {currentTab === 'users' && <UserApprovalsManager />}
+
           {/* DASHBOARD TAB */}
           {currentTab === 'dashboard' && (
             <div className="space-y-6">

@@ -146,6 +146,377 @@ app.get('/api/admin/summary', verifyAdminToken, async (req, res) => {
   }
 });
 
+// ============================================================================
+// ADMIN APPROVAL WORKFLOW, ROLE MANAGEMENT & AUDIT LOG
+// ============================================================================
+
+const STATIC_USERS = new Map([
+  [
+    'user-demo-1',
+    {
+      uid: 'user-demo-1',
+      fullName: 'Trainee Learner',
+      email: 'trainee@organization.gov.in',
+      role: 'trainee',
+      approvalStatus: 'approved',
+      organization: 'Ministry of Skill Development & Entrepreneurship',
+      createdAt: '2026-09-01T00:00:00.000Z'
+    }
+  ],
+  [
+    'trainer-demo-1',
+    {
+      uid: 'trainer-demo-1',
+      fullName: 'Prof. Vikram Sen',
+      email: 'trainer@acme.com',
+      role: 'trainer',
+      approvalStatus: 'approved',
+      organization: 'Acme Digital Services',
+      createdAt: '2026-09-01T00:00:00.000Z'
+    }
+  ],
+  [
+    'trainer-pending-1',
+    {
+      uid: 'trainer-pending-1',
+      fullName: 'Dr. Anita Roy',
+      email: 'anita.roy@capacityconnect.in',
+      role: 'trainer',
+      approvalStatus: 'pending',
+      organization: 'National Capacity Building Council',
+      createdAt: '2026-09-28T10:00:00.000Z'
+    }
+  ]
+]);
+
+const STATIC_AUDIT_LOGS = [];
+const STATIC_NOTIFICATIONS = new Map();
+
+export async function logAuditEntry(entry) {
+  const logDoc = {
+    id: entry.id || `audit_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+    actorUid: entry.actorUid || 'system',
+    actorEmail: entry.actorEmail || 'system@kuma.gov.in',
+    targetUid: entry.targetUid || '',
+    action: entry.action,
+    details: entry.details || {},
+    timestamp: entry.timestamp || new Date().toISOString()
+  };
+
+  if (db) {
+    try {
+      await db.collection('auditLog').doc(logDoc.id).set(logDoc);
+    } catch (e) {
+      console.warn('[AuditLog] Firestore write warning:', e.message);
+    }
+  }
+  STATIC_AUDIT_LOGS.unshift(logDoc);
+  return logDoc;
+}
+
+export async function sendUserNotification(notif) {
+  const notifId = `notif_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const notifDoc = {
+    id: notifId,
+    uid: notif.uid,
+    title: notif.title,
+    message: notif.message,
+    type: notif.type || 'info',
+    read: false,
+    createdAt: new Date().toISOString()
+  };
+
+  if (db) {
+    try {
+      await db.collection('notifications').doc(notifId).set(notifDoc);
+    } catch (e) {
+      console.warn('[Notification] Firestore write warning:', e.message);
+    }
+  }
+
+  const userNotifs = STATIC_NOTIFICATIONS.get(notif.uid) || [];
+  userNotifs.unshift(notifDoc);
+  STATIC_NOTIFICATIONS.set(notif.uid, userNotifs);
+
+  return notifDoc;
+}
+
+// GET /api/admin/users?status=&role=
+app.get('/api/admin/users', verifyAdminToken, async (req, res) => {
+  try {
+    const { status, role } = req.query;
+    let users = [];
+
+    if (db) {
+      const snap = await db.collection('users').get();
+      users = snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+          uid: doc.id,
+          fullName: d.fullName || d.name || '',
+          email: d.email || '',
+          role: d.role || 'trainee',
+          approvalStatus: d.approvalStatus || (['faculty', 'teacher', 'trainer'].includes((d.role || '').toLowerCase()) ? 'pending' : 'approved'),
+          organization: d.organization || '',
+          department: d.department || '',
+          createdAt: d.createdAt || d.created_at || ''
+        };
+      });
+    } else {
+      users = Array.from(STATIC_USERS.values());
+    }
+
+    if (status) {
+      users = users.filter(u => (u.approvalStatus || '').toLowerCase() === String(status).toLowerCase());
+    }
+
+    if (role) {
+      users = users.filter(u => (u.role || '').toLowerCase() === String(role).toLowerCase());
+    }
+
+    return res.json({
+      success: true,
+      count: users.length,
+      users
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/users/:uid/approve
+app.post('/api/admin/users/:uid/approve', verifyAdminToken, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    let targetUser = null;
+    const now = new Date().toISOString();
+
+    if (db) {
+      const uRef = db.collection('users').doc(uid);
+      const uSnap = await uRef.get();
+      if (!uSnap.exists) {
+        return res.status(404).json({ success: false, error: 'User document not found' });
+      }
+      targetUser = { uid, ...uSnap.data() };
+      const prevStatus = targetUser.approvalStatus || 'pending';
+
+      await uRef.update({
+        approvalStatus: 'approved',
+        approvedAt: now,
+        approvedBy: req.user.uid
+      });
+
+      const isTrainerRole = ['faculty', 'teacher', 'trainer'].includes((targetUser.role || '').toLowerCase());
+      if (isTrainerRole) {
+        const tpRef = db.collection('trainerProfiles').doc(uid);
+        await tpRef.set({
+          uid,
+          fullName: targetUser.fullName || targetUser.name || 'Trainer',
+          organization: targetUser.organization || '',
+          department: targetUser.department || '',
+          designation: targetUser.designation || 'Instructor',
+          competencies: Array.isArray(targetUser.competencies) ? targetUser.competencies : [],
+          approvalStatus: 'approved',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+    } else {
+      targetUser = STATIC_USERS.get(uid);
+      if (!targetUser) {
+        targetUser = { uid, fullName: 'User', role: 'trainer', approvalStatus: 'pending' };
+      }
+      targetUser.approvalStatus = 'approved';
+      STATIC_USERS.set(uid, targetUser);
+    }
+
+    await sendUserNotification({
+      uid,
+      title: 'Account Registration Approved',
+      message: 'Your account registration has been approved by a platform administrator. You can now access all portal features.',
+      type: 'approval'
+    });
+
+    await logAuditEntry({
+      actorUid: req.user.uid,
+      actorEmail: req.user.email,
+      targetUid: uid,
+      action: 'approve_user',
+      details: { role: targetUser.role, previousStatus: targetUser.approvalStatus || 'pending', newStatus: 'approved' },
+      timestamp: now
+    });
+
+    return res.json({ success: true, uid, status: 'approved' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/users/:uid/reject
+app.post('/api/admin/users/:uid/reject', verifyAdminToken, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const { reason } = req.body || {};
+    const now = new Date().toISOString();
+    let targetUser = null;
+
+    if (db) {
+      const uRef = db.collection('users').doc(uid);
+      const uSnap = await uRef.get();
+      if (!uSnap.exists) {
+        return res.status(404).json({ success: false, error: 'User document not found' });
+      }
+      targetUser = { uid, ...uSnap.data() };
+      await uRef.update({
+        approvalStatus: 'rejected',
+        rejectedAt: now,
+        rejectedBy: req.user.uid,
+        rejectionReason: reason || 'Registration rejected by administrator'
+      });
+
+      const isTrainerRole = ['faculty', 'teacher', 'trainer'].includes((targetUser.role || '').toLowerCase());
+      if (isTrainerRole) {
+        await db.collection('trainerProfiles').doc(uid).delete().catch(() => {});
+      }
+    } else {
+      targetUser = STATIC_USERS.get(uid);
+      if (!targetUser) {
+        targetUser = { uid, fullName: 'User', role: 'trainer', approvalStatus: 'pending' };
+      }
+      targetUser.approvalStatus = 'rejected';
+      STATIC_USERS.set(uid, targetUser);
+    }
+
+    await sendUserNotification({
+      uid,
+      title: 'Account Registration Status',
+      message: reason ? `Your account registration was rejected: ${reason}` : 'Your account registration was rejected by a platform administrator.',
+      type: 'rejection'
+    });
+
+    await logAuditEntry({
+      actorUid: req.user.uid,
+      actorEmail: req.user.email,
+      targetUid: uid,
+      action: 'reject_user',
+      details: { role: targetUser.role, reason: reason || 'No reason provided' },
+      timestamp: now
+    });
+
+    return res.json({ success: true, uid, status: 'rejected' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/users/:uid/role
+app.post('/api/admin/users/:uid/role', verifyAdminToken, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const { role: newRole, confirmAdminGrant } = req.body;
+
+    if (!newRole || typeof newRole !== 'string') {
+      return res.status(400).json({ success: false, error: 'Target role is required' });
+    }
+
+    const normalizedRole = newRole.toLowerCase().trim();
+
+    if (normalizedRole === 'admin' && confirmAdminGrant !== true) {
+      return res.status(400).json({
+        success: false,
+        error: 'Explicit confirmation (confirmAdminGrant: true) is required to grant administrative access privileges.'
+      });
+    }
+
+    let targetUser = null;
+    const now = new Date().toISOString();
+
+    if (db && firebaseAdminApp) {
+      const uRef = db.collection('users').doc(uid);
+      const uSnap = await uRef.get();
+      if (!uSnap.exists) {
+        return res.status(404).json({ success: false, error: 'User document not found' });
+      }
+      targetUser = { uid, ...uSnap.data() };
+      const oldRole = targetUser.role;
+
+      await uRef.update({
+        role: normalizedRole,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      if (normalizedRole === 'admin') {
+        await admin.auth().setCustomUserClaims(uid, { admin: true });
+      } else if (oldRole === 'admin') {
+        await admin.auth().setCustomUserClaims(uid, { admin: false });
+      }
+    } else {
+      targetUser = STATIC_USERS.get(uid);
+      if (!targetUser) {
+        targetUser = { uid, fullName: 'User', role: 'trainee', approvalStatus: 'approved' };
+      }
+      targetUser.role = normalizedRole;
+      STATIC_USERS.set(uid, targetUser);
+    }
+
+    await sendUserNotification({
+      uid,
+      title: 'Account Role Updated',
+      message: `Your account role has been updated to ${normalizedRole}.`,
+      type: 'role_change'
+    });
+
+    await logAuditEntry({
+      actorUid: req.user.uid,
+      actorEmail: req.user.email,
+      targetUid: uid,
+      action: 'change_role',
+      details: { previousRole: targetUser?.role || 'unknown', newRole: normalizedRole, grantedAdmin: normalizedRole === 'admin' },
+      timestamp: now
+    });
+
+    return res.json({ success: true, uid, role: normalizedRole });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/audit-logs
+app.get('/api/admin/audit-logs', verifyAdminToken, async (req, res) => {
+  try {
+    let logs = [];
+    if (db) {
+      const snap = await db.collection('auditLog').orderBy('timestamp', 'desc').limit(100).get();
+      logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } else {
+      logs = STATIC_AUDIT_LOGS;
+    }
+    return res.json({ success: true, count: logs.length, logs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/notifications
+app.get('/api/notifications', verifyUserToken, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    let list = [];
+    if (db) {
+      const snap = await db.collection('notifications')
+        .where('uid', '==', uid)
+        .orderBy('createdAt', 'desc')
+        .limit(20)
+        .get();
+      list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } else {
+      list = STATIC_NOTIFICATIONS.get(uid) || [];
+    }
+    return res.json({ success: true, notifications: list });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Validation helper for designation requirements
 function validateDesignationRequirements(requiredCompetencies) {
   if (!Array.isArray(requiredCompetencies)) return null;

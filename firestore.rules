@@ -24,6 +24,11 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['faculty', 'teacher', 'trainer'];
     }
 
+    function isApprovedTrainer() {
+      return isTrainer() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approvalStatus == 'approved';
+    }
+
     function sameOrganization(organization) {
       return signedIn() && organization is string && organization.size() > 0 &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organization == organization;
@@ -285,9 +290,14 @@ service cloud.firestore {
       allow get: if isOwner(uid) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(uid) && validUser() &&
-        isSelfServiceRole(request.resource.data.role);
+        isSelfServiceRole(request.resource.data.role) &&
+        request.resource.data.role != 'admin' &&
+        ((!(request.resource.data.role in ['faculty', 'teacher', 'trainer'])) ||
+          (request.resource.data.approvalStatus == 'pending'));
       allow update: if validUser() && (isAdmin() ||
-        (isOwner(uid) && request.resource.data.role == resource.data.role));
+        (isOwner(uid) &&
+          (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+          (!('approvalStatus' in request.resource.data) || request.resource.data.approvalStatus == resource.data.approvalStatus)));
       allow delete: if isAdmin();
 
       match /{document=**} {
@@ -337,12 +347,12 @@ service cloud.firestore {
     match /trainingPrograms/{programId} {
       allow read: if signedIn() && (isAdmin() || resource.data.trainerId == request.auth.uid ||
         (resource.data.status == 'published' && sameOrganization(resource.data.organization)));
-      allow create: if isTrainer() && request.resource.data.trainerId == request.auth.uid &&
+      allow create: if isApprovedTrainer() && request.resource.data.trainerId == request.auth.uid &&
         sameOrganization(request.resource.data.organization) && validTrainingProgram();
-      allow update: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid &&
+      allow update: if isAdmin() || (isApprovedTrainer() && resource.data.trainerId == request.auth.uid &&
         request.resource.data.trainerId == resource.data.trainerId &&
         request.resource.data.organization == resource.data.organization && validTrainingProgram());
-      allow delete: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid);
+      allow delete: if isAdmin() || (isApprovedTrainer() && resource.data.trainerId == request.auth.uid);
     }
 
     match /trainingEnrollments/{enrollmentId} {
@@ -377,10 +387,10 @@ service cloud.firestore {
         (resource.data.trainerId == request.auth.uid ||
           exists(/databases/$(database)/documents/assessmentAssignments/$(request.auth.uid + '_' + assessmentId))));
       allow list: if isAdmin() || (signedIn() && resource.data.trainerId == request.auth.uid);
-      allow create: if isTrainer() && request.resource.data.trainerId == request.auth.uid && validAssessment();
-      allow update: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid &&
+      allow create: if isApprovedTrainer() && request.resource.data.trainerId == request.auth.uid && validAssessment();
+      allow update: if isAdmin() || (isApprovedTrainer() && resource.data.trainerId == request.auth.uid &&
         request.resource.data.trainerId == resource.data.trainerId && validAssessment());
-      allow delete: if isAdmin() || (isTrainer() && resource.data.trainerId == request.auth.uid);
+      allow delete: if isAdmin() || (isApprovedTrainer() && resource.data.trainerId == request.auth.uid);
     }
 
     // assessmentKeys is server-only (firebase-admin). Clients can NEVER read or write.
@@ -538,6 +548,16 @@ service cloud.firestore {
     match /competencies/{compId} {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin();
+    }
+
+    match /auditLog/{id} {
+      allow read: if isAdmin();
+      allow write: if false; // Server-only via firebase-admin / REST API
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow write: if false; // Server-only via firebase-admin / REST API
     }
 
     // Certificates, assessment attempts, organization data, announcements and

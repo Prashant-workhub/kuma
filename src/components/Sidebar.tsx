@@ -16,7 +16,10 @@ import {
   Award,
   ShieldCheck,
   UserCheck,
-  Users
+  Users,
+  Compass,
+  BookMarked,
+  ClipboardCheck
 } from 'lucide-react';
 import { PageId, UserSettings } from '../types';
 import AILogo from './AILogo';
@@ -46,18 +49,20 @@ export default function Sidebar({
   // Sidebar expand/collapse state for desktop
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Grouped Menu Navigation with Vibrant Accents
+  // Learner Journey Grouped Menu Navigation
   const workspaceItems: { id: PageId; label: string; icon: React.ElementType; accent: 'teal' | 'violet' | 'amber' | 'gold' | 'emerald' }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, accent: 'teal' },
-    { id: 'find-trainer', label: 'Find a Trainer', icon: Users, accent: 'violet' },
-    { id: 'skill-gap', label: 'Skill Gap Analysis', icon: Target, accent: 'amber' },
-    { id: 'certificates', label: 'My Certificates', icon: Award, accent: 'gold' },
+    { id: 'dashboard', label: 'Home', icon: LayoutDashboard, accent: 'teal' },
+    { id: 'find-trainer', label: 'Discover', icon: Compass, accent: 'violet' },
+    { id: 'my-learning', label: 'My Learning', icon: BookMarked, accent: 'amber' },
+    { id: 'assessments', label: 'Assessments', icon: ClipboardCheck, accent: 'emerald' },
+    { id: 'skill-gap', label: 'Growth', icon: Target, accent: 'gold' },
+    { id: 'certificates', label: 'Certificates', icon: Award, accent: 'gold' },
     { id: 'verify-certificate', label: 'Verify Certificate', icon: ShieldCheck, accent: 'emerald' }
   ];
 
   const accountItems: { id: PageId; label: string; icon: React.ElementType; indicator?: boolean; accent: 'rose' | 'cyan' | 'sky' }[] = [
     { id: 'notifications', label: 'Activity Center', icon: Bell, indicator: true, accent: 'rose' },
-    { id: 'profile', label: 'My Profile', icon: UserCheck, accent: 'cyan' },
+    { id: 'profile', label: 'Profile', icon: UserCheck, accent: 'cyan' },
     { id: 'settings', label: 'Settings', icon: Settings, accent: 'sky' }
   ];
 

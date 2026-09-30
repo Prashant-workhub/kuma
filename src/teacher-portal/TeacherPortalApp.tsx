@@ -18,6 +18,7 @@ import { Announcements } from './views/Announcements'
 import { ActivityCenter } from './views/ActivityCenter'
 import { ProfileSettings } from './views/ProfileSettings'
 import { DEMO_PROFILE } from './lib/mockData'
+import { Clock, XCircle, LogOut } from 'lucide-react'
 
 function ViewRouter({ active, onNavigate }: { active: ViewId; onNavigate: (id: ViewId) => void }) {
   switch (active) {
@@ -55,6 +56,7 @@ interface TeacherPortalAppProps {
     emailAddress: string
     teacherCode?: string
     institution?: string
+    approvalStatus?: 'pending' | 'approved' | 'rejected'
   }
   onSignOut: () => void
   theme?: 'light' | 'dark'
@@ -86,6 +88,77 @@ function TeacherPortalInner({ user, onSignOut }: TeacherPortalAppProps) {
     }
   }, [user, initProfile])
 
+  const status = user?.approvalStatus
+
+  if (status === 'pending') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/40">
+            <Clock className="h-8 w-8 animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight text-white">Awaiting Approval</h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Your registration as a trainer (<span className="font-semibold text-amber-300">{user.emailAddress}</span>) is currently pending review by an organization administrator.
+            </p>
+          </div>
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 space-y-1.5 text-left font-mono">
+            <div className="flex items-center justify-between">
+              <span>Directory Discovery:</span>
+              <span className="text-amber-400 font-bold">Hidden</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Course Publishing:</span>
+              <span className="text-amber-400 font-bold">Locked</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Assessment Authoring:</span>
+              <span className="text-amber-400 font-bold">Locked</span>
+            </div>
+          </div>
+          <div className="pt-2 flex items-center justify-between">
+            <span className="text-[11px] text-slate-500">Status: Pending Verification</span>
+            <button
+              onClick={onSignOut}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'rejected') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans">
+        <div className="max-w-md w-full bg-slate-900 border border-rose-900/60 rounded-2xl p-8 space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/40">
+            <XCircle className="h-8 w-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight text-white">Registration Rejected</h2>
+            <p className="text-xs text-rose-300 leading-relaxed">
+              Your request for trainer privileges (<span className="font-semibold">{user.emailAddress}</span>) was rejected by an administrator.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={onSignOut}
+              className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (stage === 'hero') {
     return <LandingHero />
   }
@@ -116,9 +189,6 @@ export default function TeacherPortalApp(props: TeacherPortalAppProps) {
   }
 
   return (
-    // The theme provider is mounted once at the app root (see `main.tsx`).
-    // Nesting a second one here would give the portal its own theme state,
-    // which is exactly the split this refactor removes.
     <ToastProvider>
       <AuthProvider initialProfile={initialProfile} onSignOut={props.onSignOut} initialStage="ready">
         <DataProvider>

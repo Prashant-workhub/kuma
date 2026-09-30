@@ -17,6 +17,8 @@ export const PAGE_TO_PATH_MAP: Record<PageId, string> = {
   certificates: '/certificates',
   'verify-certificate': '/verify/certificate',
   'find-trainer': '/trainee/trainers',
+  'my-learning': '/trainee/my-learning',
+  assessments: '/trainee/assessments',
   auth: '/auth',
   'faculty-login': '/faculty/login',
   'faculty-dashboard': '/faculty/dashboard',

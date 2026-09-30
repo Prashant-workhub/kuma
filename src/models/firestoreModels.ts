@@ -56,6 +56,11 @@ export interface UserProfileDocument {
   competencies: any[]; // TraineeCompetency[] or TrainerCompetencyItem[]
   certifications?: any[];
   status?: 'active' | 'suspended';
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
   primaryTrainerId?: string;
   onboarding_completed?: boolean;
   createdAt?: any; // Firestore Timestamp

@@ -15,6 +15,8 @@ export type PageId =
   | 'certificates'
   | 'verify-certificate'
   | 'find-trainer'
+  | 'my-learning'
+  | 'assessments'
   | 'auth'
   | 'faculty-login'
   | 'faculty-dashboard'
@@ -373,6 +375,7 @@ export interface UserSettings {
     countryCode?: string;
     phoneNumber?: string;
     uid?: string;
+    approvalStatus?: 'pending' | 'approved' | 'rejected';
     onboardingCompleted?: boolean;
     teacherCode?: string;
   };

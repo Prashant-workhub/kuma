@@ -925,6 +925,24 @@ export default function App() {
             theme={theme}
           />
         );
+      case 'my-learning':
+        return (
+          <FindTrainerDiscoveryView
+            settings={settings}
+            setActivePage={setActivePage}
+            theme={theme}
+          />
+        );
+      case 'assessments':
+        return (
+          <SkillGapView
+            settings={settings}
+            onUpdateSettings={handleUpdateSettings}
+            setActivePage={setActivePage}
+            theme={theme}
+            onTakeAssessment={(quizToTake) => setActiveAssessmentQuiz(quizToTake)}
+          />
+        );
       case 'certificates':
         return (
           <CertificatesView
