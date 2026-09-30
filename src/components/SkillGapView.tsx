@@ -118,29 +118,36 @@ export default function SkillGapView({
     const organization = settings.profile.organization || settings.profile.institution || '';
     setTrainingLoading(true);
     setTrainingError(null);
-    const unsubscribePrograms = subscribePublishedPrograms(
-      organization,
-      (programs) => {
-        setTrainingPrograms(programs);
-        setTrainingLoading(false);
-      },
-      (error) => {
-        console.error('[SkillGap] Published programs subscription failed:', error);
-        setTrainingError('Unable to load published training programs. Check your connection and try again.');
-        setTrainingLoading(false);
-      }
-    );
-    const unsubscribeEnrollments = subscribeTraineeEnrollments(
-      traineeId,
-      setEnrollments,
-      (error) => {
-        console.error('[SkillGap] Enrollment subscription failed:', error);
-        setTrainingError('Unable to load your enrollments. Check your connection and try again.');
-      }
-    );
+    let unsubProg: (() => void) | undefined;
+    let unsubEnr: (() => void) | undefined;
+    try {
+      unsubProg = subscribePublishedPrograms(
+        organization,
+        (programs) => {
+          setTrainingPrograms(programs);
+          setTrainingLoading(false);
+        },
+        (error) => {
+          console.error('[SkillGap] Published programs subscription failed:', error);
+          setTrainingError('Unable to load published training programs. Check your connection and try again.');
+          setTrainingLoading(false);
+        }
+      );
+      unsubEnr = subscribeTraineeEnrollments(
+        traineeId,
+        setEnrollments,
+        (error) => {
+          console.error('[SkillGap] Enrollment subscription failed:', error);
+          setTrainingError('Unable to load your enrollments. Check your connection and try again.');
+        }
+      );
+    } catch (err) {
+      console.warn('[SkillGap] Subscription setup notice:', err);
+      setTrainingLoading(false);
+    }
     return () => {
-      unsubscribePrograms();
-      unsubscribeEnrollments();
+      if (unsubProg) unsubProg();
+      if (unsubEnr) unsubEnr();
     };
   }, [traineeId, settings.profile.organization, settings.profile.institution, settings.profile.emailAddress, isDemoTrainee]);
 

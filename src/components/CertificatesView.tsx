@@ -60,18 +60,27 @@ export default function CertificatesView({ settings, setActivePage }: Certificat
     }
     setLoading(true);
     setLoadError(null);
-    return subscribeUserCertificates(
-      userId,
-      (certificates) => {
-        setUserCerts(certificates);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('[Certificates] Certificate subscription failed:', error);
-        setLoadError('Unable to load your certificates. Check your connection and try again.');
-        setLoading(false);
-      }
-    );
+    let unsub: (() => void) | undefined;
+    try {
+      unsub = subscribeUserCertificates(
+        userId,
+        (certificates) => {
+          setUserCerts(certificates);
+          setLoading(false);
+        },
+        (error) => {
+          console.error('[Certificates] Certificate subscription failed:', error);
+          setLoadError('Unable to load your certificates. Check your connection and try again.');
+          setLoading(false);
+        }
+      );
+    } catch (err) {
+      console.warn('[Certificates] Subscription setup notice:', err);
+      setLoading(false);
+    }
+    return () => {
+      if (unsub) unsub();
+    };
   }, [userId, settings.profile.emailAddress, isDemoTrainee]);
 
   const verifiedCount = userCerts.filter((certificate) => certificate.verified).length;

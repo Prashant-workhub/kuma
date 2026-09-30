@@ -69,18 +69,18 @@ import { startSyncManager } from './services/syncManager';
 import { normalizeProfileFields } from './models/firestoreModels';
 import { queueOperation } from './services/offlineOutbox';
 
-// Code Splitting (React.lazy dynamic imports for heavy portals and sub-views)
+import FindTrainerDiscoveryView from './components/FindTrainerDiscoveryView';
+import SkillGapView from './components/SkillGapView';
+import CertificatesView from './components/CertificatesView';
+import CertificateVerificationView from './components/CertificateVerificationView';
+import NotificationsView from './components/NotificationsView';
+import SettingsView from './components/SettingsView';
+import SupportView from './components/SupportView';
+import PricingView from './components/PricingView';
+
+// Code Splitting for heavy portals
 const TeacherPortalApp = lazy(() => import('./teacher-portal/TeacherPortalApp'));
 const AdminPortalApp = lazy(() => import('./admin/AdminPortalApp'));
-const FindTrainerDiscoveryView = lazy(() => import('./components/FindTrainerDiscoveryView'));
-const SkillGapView = lazy(() => import('./components/SkillGapView'));
-const CertificatesView = lazy(() => import('./components/CertificatesView'));
-const CertificateVerificationView = lazy(() => import('./components/CertificateVerificationView'));
-const NotificationsView = lazy(() => import('./components/NotificationsView'));
-const SettingsView = lazy(() => import('./components/SettingsView'));
-const SupportView = lazy(() => import('./components/SupportView'));
-const PricingView = lazy(() => import('./components/PricingView'));
-
 
 export default function App() {
   // Network connectivity state (critical for mobile users)
