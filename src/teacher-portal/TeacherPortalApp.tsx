@@ -1,3 +1,7 @@
+/**
+ * LIVE TRAINER SHELL — Primary live entry point for the Trainer/Faculty Portal.
+ * Mounted by src/App.tsx for trainer routing and management workflows.
+ */
 import React, { useState, useEffect } from 'react'
 import type { ViewId, FacultyProfile } from './types'
 import { ToastProvider } from './context/ToastContext'

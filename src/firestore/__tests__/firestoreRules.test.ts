@@ -494,3 +494,61 @@ test('certificate issuance requires completed enrollment and a passing attempt',
   assert.equal('userEmail' in (publicCertificate.data() || {}), false);
   await assertFails(getDoc(doc(publicDb, 'userCertificates', certificateId)));
 });
+
+test('Trainer A cannot read or edit Trainer B draft courses or doubts', async () => {
+  const trainerA = 'trainer-a-uid';
+  const trainerB = 'trainer-b-uid';
+  const traineeUid = 'trainee-c-uid';
+
+  const dbA = testEnvironment.authenticatedContext(trainerA).firestore();
+  const dbB = testEnvironment.authenticatedContext(trainerB).firestore();
+
+  await assertSucceeds(setDoc(doc(dbA, 'users', trainerA), {
+    uid: trainerA,
+    role: 'trainer',
+    approvalStatus: 'approved',
+    fullName: 'Trainer A',
+    organization: 'Org A'
+  }));
+
+  await assertSucceeds(setDoc(doc(dbB, 'users', trainerB), {
+    uid: trainerB,
+    role: 'trainer',
+    approvalStatus: 'approved',
+    fullName: 'Trainer B',
+    organization: 'Org B'
+  }));
+
+  // Trainer A creates draft course
+  const courseIdA = 'course-a-draft';
+  await assertSucceeds(setDoc(doc(dbA, 'courses', courseIdA), {
+    id: courseIdA,
+    ownerTrainerId: trainerA,
+    orgId: 'Org A',
+    title: 'Trainer A Secret Course',
+    description: 'Draft course',
+    status: 'draft',
+    competencyIds: [],
+    level: 'Intermediate'
+  }));
+
+  // Trainer B cannot read or write Trainer A's draft course
+  await assertFails(getDoc(doc(dbB, 'courses', courseIdA)));
+  await assertFails(updateDoc(doc(dbB, 'courses', courseIdA), { title: 'Hacked by B' }));
+
+  // Doubts isolation
+  const doubtIdB = 'doubt-belonging-to-b';
+  await assertSucceeds(setDoc(doc(dbB, 'doubts', doubtIdB), {
+    id: doubtIdB,
+    traineeUid,
+    trainerId: trainerB,
+    courseId: 'course-b',
+    question: 'Question for Trainer B',
+    status: 'pending'
+  }));
+
+  // Trainer A cannot read or update Trainer B's doubts
+  await assertFails(getDoc(doc(dbA, 'doubts', doubtIdB)));
+  await assertFails(updateDoc(doc(dbA, 'doubts', doubtIdB), { response: 'Answered by A' }));
+});
+

@@ -1,4 +1,6 @@
 /**
+ * STALE / LEGACY FACULTY SHELL — Retained for reference/compatibility.
+ * Active trainer portal is hosted at src/teacher-portal/TeacherPortalApp.tsx.
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */

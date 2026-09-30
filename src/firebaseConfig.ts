@@ -6,7 +6,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 // Read Firebase client config from environment variables (Vite / .env) with safe fallback to default project
 const DEFAULT_FIREBASE_CONFIG = {
@@ -58,14 +57,6 @@ try {
   dbInstance = {} as ReturnType<typeof getFirestore>;
 }
 
-let storageInstance: ReturnType<typeof getStorage>;
-try {
-  storageInstance = getStorage(appInstance);
-} catch (e) {
-  console.error('Firebase getStorage failed:', e);
-  storageInstance = {} as ReturnType<typeof getStorage>;
-}
-
 let googleProviderInstance: InstanceType<typeof GoogleAuthProvider>;
 try {
   googleProviderInstance = new GoogleAuthProvider();
@@ -77,7 +68,8 @@ try {
 export const app = appInstance;
 export const auth = authInstance;
 export const db = dbInstance;
-export const storage = storageInstance;
+/** @deprecated Azure Blob Storage is the sole storage backend for Project Kuma. Firebase Storage is removed. */
+export const storage = null as any;
 export const googleProvider = googleProviderInstance;
 
 export default app;

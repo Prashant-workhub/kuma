@@ -473,6 +473,72 @@ export default function AssessmentTakingModal({
               </div>
             </div>
 
+            {/* Competency Change Card */}
+            {(() => {
+              const oldLevel = Math.max(1, (latestAttempt.assessedNumericLevel || 2) - (latestAttempt.passed ? 1 : 0));
+              const newLevel = latestAttempt.assessedNumericLevel || 2;
+              const delta = newLevel - oldLevel;
+              const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'unchanged';
+
+              return (
+                <div className="p-4 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--card-bg)] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold uppercase text-[var(--text-secondary)]">Competency Change</span>
+                    <span className={`inline-flex items-center gap-1 text-xs font-bold font-mono px-2 py-0.5 rounded ${
+                      direction === 'up' ? 'bg-[#19B56B]/20 text-[#19B56B]' : direction === 'down' ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'
+                    }`}>
+                      {direction === 'up' ? '▴ Level Up (+1)' : direction === 'down' ? '▾ Level Down (-1)' : '▬ Level Unchanged (0)'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm font-heading font-bold text-[var(--text-primary)] border-t border-[var(--border-main)] pt-2">
+                    <span>{latestAttempt.competencyName || 'Target Competency'}</span>
+                    <span>
+                      Level {oldLevel} ➔ Level {newLevel} ({latestAttempt.assessedLevel})
+                    </span>
+                  </div>
+
+                  {direction === 'unchanged' && (
+                    <div className="p-3 rounded bg-panel border border-line text-xs text-[var(--text-secondary)] space-y-1">
+                      <div className="font-bold text-[var(--text-primary)]">What the Next Level Requires:</div>
+                      <p>To reach the next tier, maintain at least 80% accuracy across evaluation quizzes and complete all required course syllabus modules.</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* What Next Recommendation Card */}
+            <div className="p-4 rounded-[6px] border-2 border-[#9C27B0]/40 bg-[#9C27B0]/5 space-y-3">
+              <div className="text-xs font-mono font-bold uppercase text-[#9C27B0]">
+                What Next?
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* Option A: Retake if needed */}
+                {!latestAttempt.passed && (
+                  <div className="p-3 rounded border border-line bg-card space-y-1.5">
+                    <div className="font-bold text-[var(--text-primary)] flex items-center gap-1">
+                      <RotateCcw className="h-3.5 w-3.5 text-amber-500" /> Retake Assessment
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)]">Attempts remaining available. Review practice flashcards before retrying.</p>
+                  </div>
+                )}
+
+                {/* Option B: Next Recommended Course */}
+                <div className="p-3 rounded border border-line bg-card space-y-1.5">
+                  <div className="font-bold text-[var(--text-primary)] flex items-center gap-1">
+                    <Award className="h-3.5 w-3.5 text-brand-violet" /> Recommended Action
+                  </div>
+                  <p className="text-[11px] text-[var(--text-secondary)]">
+                    {latestAttempt.passed
+                      ? 'Course requirement satisfied! Claim your verifiable certificate.'
+                      : 'Bridge identified gaps by exploring targeted practice modules.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Modal Actions */}
             <div className="flex justify-between items-center pt-3 border-t-2 border-[var(--border-main)]">
               <Button

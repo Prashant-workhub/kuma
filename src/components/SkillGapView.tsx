@@ -17,6 +17,7 @@ import {
 } from '../utils/competencyUtils';
 import { DEMO_ORG_DESIGNATIONS_FULL, isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import { getTrainingRecommendations } from '../utils/recommendationUtils';
+import { computeCompetencyDelta, getCompetencyLevelRequirements } from '../utils/competencyDeltaUtils';
 import { enrollInCourse, updateEnrollmentProgress } from '../utils/enrollmentUtils';
 import { getAvailableCourses } from '../services/courseProvider';
 import { useRequiredCompetencies } from '../hooks/useRequiredCompetencies';
@@ -49,7 +50,9 @@ import {
   Clock,
   PlayCircle,
   Layers,
-  Info
+  Info,
+  Sparkles,
+  Award
 } from 'lucide-react';
 
 interface SkillGapViewProps {
@@ -95,6 +98,7 @@ export default function SkillGapView({
   const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>(() =>
     isDemoTrainee ? getUserEnrollments(settings.profile.emailAddress) : []
   );
+  const [activeTab, setActiveTab] = useState<'growth_timeline' | 'skill_gap_radar'>('growth_timeline');
   const [trainingLoading, setTrainingLoading] = useState(!isDemoTrainee);
   const [trainingError, setTrainingError] = useState<string | null>(null);
 
@@ -270,15 +274,190 @@ export default function SkillGapView({
           <span>Back to dashboard</span>
         </button>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-          <Target className="h-6 w-6 text-brand-gold" />
-          Skill gap analysis
+          <TrendingUp className="h-6 w-6 text-brand-gold" />
+          Growth & Competency Progress
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Deterministic gap analysis measuring current assessed/declared competency levels against target proficiency levels.
+          Track your competency progression timeline, evaluation history, completed courses, and designation skill gaps over time.
         </p>
       </div>
 
-      {/* GAP SUMMARY CARDS */}
+      {/* Tab Switcher Bar */}
+      <div className="flex border-b border-line bg-panel/20">
+        <button
+          onClick={() => setActiveTab('growth_timeline')}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors cursor-pointer ${
+            activeTab === 'growth_timeline'
+              ? 'border-brand-gold text-brand-gold bg-card'
+              : 'border-transparent text-muted hover:text-ink'
+          }`}
+        >
+          <TrendingUp size={15} /> Competency Timeline & Growth
+        </button>
+        <button
+          onClick={() => setActiveTab('skill_gap_radar')}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors cursor-pointer ${
+            activeTab === 'skill_gap_radar'
+              ? 'border-brand-gold text-brand-gold bg-card'
+              : 'border-transparent text-muted hover:text-ink'
+          }`}
+        >
+          <Target size={15} /> Skill Gap Matrix & Radar
+        </button>
+      </div>
+
+      {/* TAB 1: COMPETENCY TIMELINE & GROWTH VIEW */}
+      {activeTab === 'growth_timeline' && (
+        <div className="space-y-8 animate-fade-in">
+          {/* Competency Growth Timelines */}
+          <section className="space-y-4">
+            <SectionHeading
+              eyebrow="Progression history"
+              title="Competency Timeline & History"
+              icon={<TrendingUp size={18} />}
+              subtitle="Level changes over time from declared baselines and audited assessment evaluations."
+            />
+
+            {competencies.length > 0 ? (
+              <div className="space-y-4">
+                {competencies.map((comp) => {
+                  const history = (comp as any).history || [
+                    { level: comp.latestAssessedNumericLevel || comp.numericLevel || 1, source: 'declared', at: 'Baseline' }
+                  ];
+                  const deltaRes = computeCompetencyDelta(history);
+
+                  return (
+                    <TraineeCard key={comp.id} className="p-6 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <CategoryPill category={comp.category} />
+                            <h3 className="text-base font-bold text-ink">{comp.name}</h3>
+                          </div>
+                          <p className="text-xs text-muted">
+                            Current: <strong className="text-ink">{comp.level || 'Intermediate'}</strong> • Target: <span className="font-semibold text-brand-violet">{comp.targetNumericLevel ? `Level ${comp.targetNumericLevel}` : 'Level 3'}</span>
+                          </p>
+                        </div>
+
+                        {/* Delta Badge */}
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center gap-1 text-xs font-bold font-mono px-2.5 py-1 rounded-lg border ${
+                            deltaRes.direction === 'up'
+                              ? 'border-brand-emerald/30 bg-brand-emerald/10 text-brand-emerald'
+                              : deltaRes.direction === 'down'
+                              ? 'border-brand-rose/30 bg-brand-rose/10 text-brand-rose'
+                              : 'border-line bg-panel text-muted'
+                          }`}>
+                            {deltaRes.direction === 'up' ? '▴ Level Up' : deltaRes.direction === 'down' ? '▾ Level Down' : '▬ Level Unchanged'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Visual Timeline SVG / CSS Bar */}
+                      <div className="space-y-3">
+                        <div className="text-xs font-semibold text-muted flex items-center gap-1.5">
+                          <Clock size={13} /> Progression Markers ({history.length})
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 pt-1">
+                          {history.map((h: any, idx: number) => (
+                            <React.Fragment key={idx}>
+                              <div className="flex items-center gap-2 rounded-xl border border-line bg-panel px-3 py-2 text-xs">
+                                <span className={`h-2 w-2 rounded-full ${h.source === 'assessed' ? 'bg-brand-emerald' : 'bg-brand-violet'}`} />
+                                <div className="space-y-0.5">
+                                  <div className="font-semibold text-ink">Level {h.level}</div>
+                                  <div className="text-[10px] font-mono text-muted uppercase">
+                                    {h.source === 'assessed' ? 'Evaluated' : 'Declared'}
+                                  </div>
+                                </div>
+                              </div>
+                              {idx < history.length - 1 && (
+                                <span className="text-faint text-xs font-bold">➔</span>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Next Level Requirements explanation */}
+                      <div className="rounded-xl border border-line/60 bg-panel/40 p-3 text-xs text-muted space-y-1">
+                        <div className="font-semibold text-ink flex items-center gap-1">
+                          <Sparkles size={12} className="text-brand-gold" /> Requirement for Next Level
+                        </div>
+                        <p className="text-[11px] leading-relaxed">{deltaRes.requirementsForNextLevel}</p>
+                      </div>
+                    </TraineeCard>
+                  );
+                })}
+              </div>
+            ) : (
+              <TraineeCard className="p-8 text-center">
+                <TraineeEmptyState
+                  icon={<TrendingUp size={24} className="text-muted" />}
+                  title="No competency history entries yet"
+                  description="Complete learning modules and pass evaluations to build your progress timeline."
+                />
+              </TraineeCard>
+            )}
+          </section>
+
+          {/* Completed Courses & Baseline Gains */}
+          <section className="space-y-4">
+            <SectionHeading
+              eyebrow="Completed training"
+              title="Completed Courses & Effectiveness"
+              icon={<Award size={18} />}
+              subtitle="Audited before-and-after baseline gains achieved from completed training programs."
+            />
+
+            {enrollments.filter((e) => e.status === 'completed').length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {enrollments.filter((e) => e.status === 'completed').map((enrollment) => (
+                  <TraineeCard key={enrollment.id} className="p-5 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="rounded bg-panel px-2 py-0.5 font-mono text-[10px] font-bold text-muted border border-line">
+                          {enrollment.courseCode}
+                        </span>
+                        <h4 className="font-bold text-ink text-sm mt-1">{enrollment.courseName}</h4>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-emerald/10 px-2 py-0.5 text-[10px] font-bold text-brand-emerald">
+                        <CheckCircle2 size={11} /> Completed
+                      </span>
+                    </div>
+
+                    {/* Competency Gains */}
+                    <div className="space-y-1.5 border-t border-line pt-2 text-xs">
+                      <div className="font-semibold text-muted text-[11px]">Baseline Competency Gains:</div>
+                      {enrollment.competencyGains && enrollment.competencyGains.length > 0 ? (
+                        enrollment.competencyGains.map((gain, gIdx) => (
+                          <div key={gIdx} className="flex items-center justify-between font-mono text-[11px] bg-panel/60 p-2 rounded border border-line">
+                            <span className="text-ink">{gain.competencyId}</span>
+                            <span className="text-brand-emerald font-bold">
+                              L{gain.fromLevel} ➔ L{gain.toLevel} (+{gain.gain})
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-[11px] text-muted italic">Baseline established at enrollment time.</div>
+                      )}
+                    </div>
+                  </TraineeCard>
+                ))}
+              </div>
+            ) : (
+              <TraineeCard className="p-6 text-center text-xs text-muted">
+                No completed courses yet. Work through your enrolled programs to record competency gains.
+              </TraineeCard>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* TAB 2: SKILL GAP MATRIX & RADAR */}
+      {activeTab === 'skill_gap_radar' && (
+        <div className="space-y-8 animate-fade-in">
+          {/* GAP SUMMARY CARDS */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         <TraineeKpi
           label="Tracked"
@@ -679,6 +858,8 @@ export default function SkillGapView({
           </div>
         )}
       </section>
+        </div>
+      )}
 
       {/* TRAINING PROGRAM LIFECYCLE MODAL */}
       {showLifecycleModal && selectedCourseForLifecycle && (

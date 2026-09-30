@@ -4,7 +4,7 @@
  * skill gaps, training coverage, assessment outcomes, and digital certificate analytics.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   OrgDepartment,
   OrgDesignation,
@@ -18,7 +18,8 @@ import { calculateDesignationSkillGaps, LEVEL_TO_NUMERIC, NUMERIC_TO_LEVEL } fro
 import { getAllEnrollments } from '../utils/enrollmentUtils';
 import { getAllCertificates } from '../utils/certificateUtils';
 import { COURSES } from '../teacher-portal/lib/mockData';
-import { DEMO_TRAINEES, DEMO_TRAINERS } from '../utils/demoDataSeeder';
+import { DEMO_TRAINEES, DEMO_TRAINERS, isDemoTraineeIdentity } from '../utils/demoDataSeeder';
+import { getAdminAnalytics, AdminAnalyticsData } from '../services/adminUserService';
 import {
   BarChart3,
   Building,
@@ -61,9 +62,10 @@ export default function AdminAnalyticsView({
   const [selectedDesigId, setSelectedDesigId] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'year' | 'all'>('all');
 
-  // Load real enrollments and certificates
-  const allEnrollments = useMemo(() => getAllEnrollments(), []);
-  const allCertificates = useMemo(() => getAllCertificates(), []);
+  // Server aggregate analytics state
+  const [serverAnalytics, setServerAnalytics] = useState<AdminAnalyticsData | null>(null);
+  const [isLoadingServerAnalytics, setIsLoadingServerAnalytics] = useState<boolean>(false);
+  const [isServerCached, setIsServerCached] = useState<boolean>(false);
 
   // Department name lookup
   const selectedDeptObj = useMemo(() => {
@@ -76,6 +78,46 @@ export default function AdminAnalyticsView({
     if (selectedDesigId === 'all') return null;
     return designations.find(d => d.id === selectedDesigId) || null;
   }, [selectedDesigId, designations]);
+
+  // Fetch real aggregate analytics from backend /api/admin/analytics
+  useEffect(() => {
+    let isMounted = true;
+    async function loadServerAnalytics() {
+      setIsLoadingServerAnalytics(true);
+      const deptName = selectedDeptObj?.name;
+      const desigName = selectedDesigObj?.name;
+      let startDate: string | undefined = undefined;
+      if (timeRange === '7d') startDate = new Date(Date.now() - 7 * 86400000).toISOString();
+      else if (timeRange === '30d') startDate = new Date(Date.now() - 30 * 86400000).toISOString();
+      else if (timeRange === '90d') startDate = new Date(Date.now() - 90 * 86400000).toISOString();
+      else if (timeRange === 'year') startDate = new Date(new Date().getFullYear(), 0, 1).toISOString();
+
+      try {
+        const res = await getAdminAnalytics({
+          department: deptName,
+          designation: desigName,
+          startDate
+        });
+        if (isMounted) {
+          if (res.success && res.analytics) {
+            setServerAnalytics(res.analytics);
+            setIsServerCached(!!res.cached);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load server analytics:', err);
+      } finally {
+        if (isMounted) setIsLoadingServerAnalytics(false);
+      }
+    }
+
+    loadServerAnalytics();
+    return () => { isMounted = false; };
+  }, [selectedDeptId, selectedDesigId, timeRange, selectedDeptObj, selectedDesigObj]);
+
+  // Load real enrollments and certificates
+  const allEnrollments = useMemo(() => getAllEnrollments(), []);
+  const allCertificates = useMemo(() => getAllCertificates(), []);
 
   // 1. FILTER TRAINEES BY DEPARTMENT AND DESIGNATION
   const filteredTrainees = useMemo(() => {
@@ -168,6 +210,28 @@ export default function AdminAnalyticsView({
 
   // 4. ORGANIZATION KPI CALCULATIONS (REAL DATA ONLY)
   const kpis = useMemo(() => {
+    if (serverAnalytics) {
+      return {
+        totalTrainees: serverAnalytics.summary.totalTrainees,
+        totalTrainers: DEMO_TRAINERS.length,
+        totalDepts: departments.length,
+        totalDesigs: designations.length,
+        totalComps: competencies.length,
+        activeCourses: courses.filter(c => c.isActive !== false).length,
+        totalEnrollments: serverAnalytics.summary.totalEnrollments,
+        completedEnrollments: serverAnalytics.summary.completedEnrollments,
+        inProgressEnrollments: Math.max(0, serverAnalytics.summary.totalEnrollments - serverAnalytics.summary.completedEnrollments),
+        notStartedEnrollments: 0,
+        assessmentPendingEnrollments: 0,
+        completionRate: serverAnalytics.summary.completionRate,
+        certificatesCount: serverAnalytics.summary.totalCertificatesIssued,
+        active7DaysCount: serverAnalytics.summary.active7DaysCount,
+        active30DaysCount: serverAnalytics.summary.active30DaysCount,
+        avgTimeToCompleteHours: serverAnalytics.summary.avgTimeToCompleteHours,
+        assessmentPassRate: serverAnalytics.summary.assessmentPassRate
+      };
+    }
+
     const totalTrainees = filteredTrainees.length;
     const totalTrainers = DEMO_TRAINERS.length;
     const totalDepts = departments.length;
@@ -181,7 +245,6 @@ export default function AdminAnalyticsView({
     const notStartedEnrollments = filteredEnrollments.filter(e => e.status === 'enrolled' && e.completionRate === 0).length;
     const assessmentPendingEnrollments = filteredEnrollments.filter(e => e.completionRate === 100 && e.quizPassed !== true).length;
 
-    // Real Training Completion Rate formula = completed / total * 100
     const completionRate = totalEnrollments > 0 ? Math.round((completedEnrollments / totalEnrollments) * 100) : 0;
     const certificatesCount = filteredCertificates.length;
 
@@ -198,9 +261,13 @@ export default function AdminAnalyticsView({
       notStartedEnrollments,
       assessmentPendingEnrollments,
       completionRate,
-      certificatesCount
+      certificatesCount,
+      active7DaysCount: 0,
+      active30DaysCount: 0,
+      avgTimeToCompleteHours: 0,
+      assessmentPassRate: 0
     };
-  }, [filteredTrainees, departments, designations, competencies, courses, filteredEnrollments, filteredCertificates]);
+  }, [serverAnalytics, filteredTrainees, departments, designations, competencies, courses, filteredEnrollments, filteredCertificates]);
 
   // 5. SKILL GAP ENGINE INTEGRATION FOR FILTERED TRAINEES
   const skillGapAnalytics = useMemo(() => {

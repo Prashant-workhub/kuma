@@ -2,6 +2,7 @@ import { TrainingEnrollment, TeacherAssignment, UserSettings, TrainingCertificat
 import { issueCertificateForCompletion } from './certificateUtils';
 import { readJson, writeJson } from './safeStorage';
 import { saveEnrollmentToFirestore } from '../services/learningDataService';
+import { calculateCompetencyGains } from './competencyDeltaUtils';
 import {
   isModuleComplete,
   summarizeCourseModuleProgress,
@@ -123,6 +124,11 @@ export function enrollInCourse(
   }
 
   const today = new Date().toISOString().split('T')[0];
+  const beforeLevels: Record<string, number> = {};
+  (userProfile.competencies || []).forEach((c) => {
+    beforeLevels[c.id] = c.latestAssessedNumericLevel || c.numericLevel || 1;
+  });
+
   const newEnrollment: TrainingEnrollment = {
     id: `enr-${course.id}-${Date.now()}`,
     userId: userId,
@@ -135,7 +141,8 @@ export function enrollInCourse(
     enrolledAt: today,
     status: 'enrolled',
     completionRate: 0,
-    moduleProgress: {}
+    moduleProgress: {},
+    beforeCompetencyLevels: beforeLevels
   };
 
   const updated = [newEnrollment, ...enrollments];
@@ -187,12 +194,24 @@ export function updateEnrollmentProgress(
     newStatus = 'in_progress';
   }
 
+  const afterLevels: Record<string, number> = {};
+  (userProfile.competencies || []).forEach((c) => {
+    afterLevels[c.id] = c.latestAssessedNumericLevel || c.numericLevel || 1;
+  });
+
+  const gains = calculateCompetencyGains(
+    enrollment.beforeCompetencyLevels || {},
+    afterLevels
+  );
+
   const updatedEnrollment: TrainingEnrollment = {
     ...enrollment,
     completionRate: roundedModuleProgress,
     status: newStatus,
     quizPassed: isQuizPassed,
-    completedAt: completedDate
+    completedAt: completedDate,
+    beforeCompetencyLevels: enrollment.beforeCompetencyLevels || afterLevels,
+    competencyGains: newStatus === 'completed' ? gains : enrollment.competencyGains
   };
 
   const nextList = enrollments.map((e) => (e.id === updatedEnrollment.id ? updatedEnrollment : e));

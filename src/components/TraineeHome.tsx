@@ -22,6 +22,7 @@ import { isDemoTraineeIdentity } from '../utils/demoDataSeeder';
 import { COURSES } from '../teacher-portal/lib/mockData';
 import { getTrainingRecommendations } from '../utils/recommendationUtils';
 import { calculateDesignationSkillGaps } from '../utils/competencyUtils';
+import { getCoursePracticeReadiness } from '../services/practiceService';
 import { SectionHeading, TraineeAvatar, TraineeButton, TraineeCard, TraineeEmptyState } from './trainee/TraineeUI';
 
 interface TraineeHomeProps {
@@ -342,6 +343,21 @@ export default function TraineeHome({
                         />
                       </div>
                     </div>
+
+                    {/* Subtle Practice Readiness Signal */}
+                    {(() => {
+                      const readiness = getCoursePracticeReadiness(localRecordIdentity, enrollment.courseId);
+                      return (
+                        <div className="flex items-center justify-between text-[10px] text-muted border-t border-line/60 pt-1.5">
+                          <span className="flex items-center gap-1 font-medium">
+                            <Sparkles size={11} className="text-brand-violet" /> Practice Readiness:
+                          </span>
+                          <span className="font-semibold text-ink">
+                            {readiness.readinessPercent > 0 ? `${readiness.readinessPercent}% (${readiness.label})` : 'Not practiced'}
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     <TraineeButton
                       size="sm"

@@ -7,7 +7,7 @@ import type {
   TeacherAssignment,
 } from '../types'
 import { ACTIVITY, ANNOUNCEMENTS, COURSES, DOUBTS } from '../lib/mockData'
-import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, where, limit, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebaseConfig'
 import { updateDoubtResponse } from '../../services/teacherDoubtService'
 import { toEpochMs } from '../../utils/dateUtils'
@@ -78,139 +78,168 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [profile?.id, isDemoTrainer])
 
   useEffect(() => {
-    setAnnouncements(isDemoTrainer ? ANNOUNCEMENTS : [])
-    setActivity(isDemoTrainer ? ACTIVITY : [])
-  }, [isDemoTrainer])
-
-  // Real-time synchronization of student doubts from Firestore, localStorage, and window events
-  useEffect(() => {
-    if (!isDemoTrainer) {
-      setDoubts([])
+    if (isDemoTrainer) {
+      setAnnouncements(ANNOUNCEMENTS)
+      setActivity(ACTIVITY)
       return
     }
-    let unsubscribe = () => { };
-
-    const loadCombinedDoubts = (fsDoubts: DoubtItem[] = []) => {
-      // Check local storage for fallback doubts
-      let localDoubts: DoubtItem[] = [];
-      try {
-        const rawLocal = localStorage.getItem('kuma_local_doubts');
-        if (rawLocal) {
-          const parsed = JSON.parse(rawLocal);
-          if (Array.isArray(parsed)) {
-            localDoubts = parsed.map((d: any) => ({
-              id: d.id || uid('d'),
-              studentName: d.studentName || 'Student Scholar',
-              studentId: d.studentId || 'student_demo',
-              studentPhone: d.studentPhone || '919876543210',
-              courseCode: d.courseCode || (d.subjectName ? d.subjectName.substring(0, 6).toUpperCase() : 'CS301'),
-              subject: d.subjectName || d.subject || 'Data Structures',
-              topic: d.topic || 'General Topic',
-              question: d.question || '',
-              highlightedText: d.selectedText || d.highlightedText || '',
-              status: (d.status?.toLowerCase() === 'new' ? 'pending' : d.status?.toLowerCase() || 'pending') as DoubtStatus,
-              priority: d.priority || 'medium',
-              createdAt: d.createdAt || new Date().toISOString(),
-              response: d.response,
-              respondedAt: d.respondedAt,
-            }));
-          }
-        }
-      } catch (e) { }
-
-      // Deduplicate and combine (Firestore + Local + Demo)
-      const map = new Map<string, DoubtItem>();
-      [...fsDoubts, ...localDoubts, ...DOUBTS].forEach((item) => {
-        if (!map.has(item.id)) {
-          map.set(item.id, item);
-        }
-      });
-
-      const combined = Array.from(map.values());
-      combined.sort((a, b) => toEpochMs(b.createdAt) - toEpochMs(a.createdAt));
-
-      setDoubts(combined);
-    };
-
-    try {
-      // Query collection without orderBy to prevent Firestore index errors
-      const doubtsRef = collection(db, 'doubts');
-
-      unsubscribe = onSnapshot(
-        doubtsRef,
-        (snapshot) => {
-          let fsDoubts: DoubtItem[] = [];
-
-          if (!snapshot.empty) {
-            fsDoubts = snapshot.docs.map((docSnap) => {
-              const data = docSnap.data();
-
-              let rawStatus = (data.status || 'pending').toString().toLowerCase();
-              if (rawStatus === 'new') rawStatus = 'pending';
-              const validStatus: DoubtStatus = ['pending', 'answered', 'resolved', 'escalated'].includes(rawStatus)
-                ? (rawStatus as DoubtStatus)
-                : 'pending';
-
-              // toDate() can throw on malformed Firestore Timestamps; toEpochMs
-              // degrades to 0 rather than breaking the whole snapshot mapping.
-              const createdMs = toEpochMs(data.createdAt);
-              const createdIso = createdMs > 0 ? new Date(createdMs).toISOString() : new Date().toISOString();
-              const respondedMs = toEpochMs(data.respondedAt);
-
-              let attachmentObj = undefined;
-              if (data.attachmentName) {
-                attachmentObj = {
-                  name: data.attachmentName,
-                  sizeMb: data.attachmentSize ? Number((data.attachmentSize / (1024 * 1024)).toFixed(1)) : 1.0,
-                  kind: (data.attachmentType?.includes('image') ? 'image' : 'pdf') as any,
-                };
-              }
-
-              return {
-                id: docSnap.id,
-                studentName: data.studentName || 'Student Scholar',
-                studentId: data.studentId || 'student_demo',
-                studentPhone: data.studentPhone || '919876543210',
-                courseCode: data.courseCode || (data.subjectName ? data.subjectName.substring(0, 6).toUpperCase() : 'CS301'),
-                subject: data.subjectName || data.subject || 'Data Structures',
-                topic: data.topic || 'General Topic',
-                question: data.question || '',
-                highlightedText: data.selectedText || data.highlightedText || '',
-                attachment: attachmentObj,
-                status: validStatus,
-                priority: data.priority || 'medium',
-                createdAt: createdIso,
-                response: data.response || undefined,
-                respondedAt: respondedMs > 0 ? new Date(respondedMs).toISOString() : undefined,
-              };
-            });
-          }
-
-          loadCombinedDoubts(fsDoubts);
-        },
-        (err) => {
-          console.warn('Error reading real-time doubts from Firestore, fallback to local storage:', err);
-          loadCombinedDoubts([]);
-        }
-      );
-    } catch (err) {
-      console.warn('Firestore initialization fallback for doubts:', err);
-      loadCombinedDoubts([]);
+    if (!profile?.id) {
+      setAnnouncements([])
+      setActivity([])
+      return
     }
 
-    // Listen for custom doubt creation events within the same window
-    const handleDoubtCreated = () => {
-      loadCombinedDoubts([]);
-    };
-    window.addEventListener('kuma_doubt_created', handleDoubtCreated);
-    window.addEventListener('storage', handleDoubtCreated);
+    const qAnnouncements = query(
+      collection(db, 'announcements'),
+      where('trainerId', '==', profile.id),
+      limit(50)
+    )
+    const unsubAnnouncements = onSnapshot(
+      qAnnouncements,
+      (snap) => {
+        const list: Announcement[] = snap.docs.map((d) => {
+          const data = d.data()
+          return {
+            id: d.id,
+            title: data.title || '',
+            body: data.body || '',
+            audience: Array.isArray(data.audience) ? data.audience : [],
+            author: data.author || (profile ? `${profile.firstName} ${profile.surname}`.trim() : 'Trainer'),
+            postedAt: data.postedAt?.toDate ? data.postedAt.toDate().toISOString() : (data.postedAt || new Date().toISOString()),
+            pinned: !!data.pinned,
+            reach: data.reach || 0
+          }
+        })
+        setAnnouncements(list)
+      },
+      (err) => {
+        console.warn('Announcements subscription error:', err)
+      }
+    )
 
     return () => {
-      unsubscribe();
-      window.removeEventListener('kuma_doubt_created', handleDoubtCreated);
-      window.removeEventListener('storage', handleDoubtCreated);
-    };
-  }, [isDemoTrainer]);
+      unsubAnnouncements()
+    }
+  }, [isDemoTrainer, profile?.id, profile?.firstName, profile?.surname])
+
+  // Real-time synchronization of student doubts from Firestore via scoped queries
+  useEffect(() => {
+    if (isDemoTrainer) {
+      const loadCombinedDoubts = (fsDoubts: DoubtItem[] = []) => {
+        let localDoubts: DoubtItem[] = [];
+        try {
+          const rawLocal = localStorage.getItem('kuma_local_doubts');
+          if (rawLocal) {
+            const parsed = JSON.parse(rawLocal);
+            if (Array.isArray(parsed)) {
+              localDoubts = parsed.map((d: any) => ({
+                id: d.id || uid('d'),
+                studentName: d.studentName || 'Student Scholar',
+                studentId: d.studentId || 'student_demo',
+                studentPhone: d.studentPhone || '919876543210',
+                courseCode: d.courseCode || (d.subjectName ? d.subjectName.substring(0, 6).toUpperCase() : 'CS301'),
+                subject: d.subjectName || d.subject || 'Data Structures',
+                topic: d.topic || 'General Topic',
+                question: d.question || '',
+                highlightedText: d.selectedText || d.highlightedText || '',
+                status: (d.status?.toLowerCase() === 'new' ? 'pending' : d.status?.toLowerCase() || 'pending') as DoubtStatus,
+                priority: d.priority || 'medium',
+                createdAt: d.createdAt || new Date().toISOString(),
+                response: d.response,
+                respondedAt: d.respondedAt,
+              }));
+            }
+          }
+        } catch (e) {}
+
+        const map = new Map<string, DoubtItem>();
+        [...fsDoubts, ...localDoubts, ...DOUBTS].forEach((item) => {
+          if (!map.has(item.id)) {
+            map.set(item.id, item);
+          }
+        });
+
+        const combined = Array.from(map.values());
+        combined.sort((a, b) => toEpochMs(b.createdAt) - toEpochMs(a.createdAt));
+        setDoubts(combined);
+      };
+
+      const handleDoubtCreated = () => loadCombinedDoubts([]);
+      window.addEventListener('kuma_doubt_created', handleDoubtCreated);
+      window.addEventListener('storage', handleDoubtCreated);
+      loadCombinedDoubts([]);
+
+      return () => {
+        window.removeEventListener('kuma_doubt_created', handleDoubtCreated);
+        window.removeEventListener('storage', handleDoubtCreated);
+      };
+    }
+
+    if (!profile?.id) {
+      setDoubts([]);
+      return;
+    }
+
+    const qDoubts = query(
+      collection(db, 'doubts'),
+      where('trainerId', '==', profile.id),
+      limit(50)
+    );
+
+    const unsubDoubts = onSnapshot(
+      qDoubts,
+      (snapshot) => {
+        const list: DoubtItem[] = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          let rawStatus = (data.status || 'pending').toString().toLowerCase();
+          if (rawStatus === 'new') rawStatus = 'pending';
+          const validStatus: DoubtStatus = ['pending', 'answered', 'resolved', 'escalated'].includes(rawStatus)
+            ? (rawStatus as DoubtStatus)
+            : 'pending';
+
+          const createdMs = toEpochMs(data.createdAt);
+          const createdIso = createdMs > 0 ? new Date(createdMs).toISOString() : new Date().toISOString();
+          const respondedMs = toEpochMs(data.respondedAt);
+
+          let attachmentObj = undefined;
+          if (data.attachmentName) {
+            attachmentObj = {
+              name: data.attachmentName,
+              sizeMb: data.attachmentSize ? Number((data.attachmentSize / (1024 * 1024)).toFixed(1)) : 1.0,
+              kind: (data.attachmentType?.includes('image') ? 'image' : 'pdf') as any,
+            };
+          }
+
+          return {
+            id: docSnap.id,
+            studentName: data.studentName || 'Student Scholar',
+            studentId: data.studentId || data.traineeUid || 'student_demo',
+            studentPhone: data.studentPhone || '919876543210',
+            courseCode: data.courseCode || (data.subjectName ? data.subjectName.substring(0, 6).toUpperCase() : 'CS301'),
+            subject: data.subjectName || data.subject || 'Data Structures',
+            topic: data.topic || 'General Topic',
+            question: data.question || '',
+            highlightedText: data.selectedText || data.highlightedText || '',
+            attachment: attachmentObj,
+            status: validStatus,
+            priority: data.priority || 'medium',
+            createdAt: createdIso,
+            response: data.response || undefined,
+            respondedAt: respondedMs > 0 ? new Date(respondedMs).toISOString() : undefined,
+          };
+        });
+
+        list.sort((a, b) => toEpochMs(b.createdAt) - toEpochMs(a.createdAt));
+        setDoubts(list);
+      },
+      (err) => {
+        console.warn('Error reading scoped doubts from Firestore:', err);
+        setDoubts([]);
+      }
+    );
+
+    return () => unsubDoubts();
+  }, [isDemoTrainer, profile?.id]);
 
   const logActivity = useCallback((event: Omit<ActivityEvent, 'id' | 'at'>) => {
     setActivity((list) => [{ ...event, id: uid('e'), at: new Date().toISOString() }, ...list])
@@ -352,7 +381,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   const addAnnouncement = useCallback(
-    (input: { title: string; body: string; audience: string[]; author: string }) => {
+    async (input: { title: string; body: string; audience: string[]; author: string }) => {
       const reach = courses
         .filter((c) => input.audience.includes(c.courseCode))
         .reduce((sum, c) => sum + c.students, 0)
@@ -367,13 +396,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
         reach,
       }
       setAnnouncements((list) => [announcement, ...list])
+      if (!isDemoTrainer && profile?.id) {
+        try {
+          await addDoc(collection(db, 'announcements'), {
+            trainerId: profile.id,
+            organization: profile.university || 'Capacity Connect Organization',
+            title: input.title,
+            body: input.body,
+            audience: input.audience,
+            author: input.author,
+            postedAt: serverTimestamp(),
+            reach,
+            pinned: false
+          })
+        } catch (err) {
+          console.warn('Failed to save announcement to Firestore:', err)
+        }
+      }
       logActivity({
         kind: 'announcement',
         title: 'Announcement broadcast',
         detail: `"${input.title}" sent to ${input.audience.join(', ') || 'all classes'} (${reach} reached).`,
       })
     },
-    [courses, logActivity],
+    [courses, isDemoTrainer, profile?.id, profile?.university, logActivity],
   )
 
   const value = useMemo<DataContextValue>(

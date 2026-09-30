@@ -1,3 +1,7 @@
+/**
+ * STALE / LEGACY TRAINER SHELL — Retained for compatibility.
+ * The active live shell is src/teacher-portal/TeacherPortalApp.tsx (mounted in src/App.tsx).
+ */
 import { useState } from 'react'
 import type { ViewId } from './types'
 import { ThemeProvider } from './context/ThemeContext'

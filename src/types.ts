@@ -629,6 +629,8 @@ export interface TrainingEnrollment {
   completedAt?: string;
   quizPassed?: boolean;
   certificateId?: string;
+  beforeCompetencyLevels?: Record<string, number>;
+  competencyGains?: Array<{ competencyId: string; fromLevel: number; toLevel: number; gain: number }>;
   updatedAt?: any;
 }
 
@@ -751,5 +753,34 @@ export interface FirestoreEnrollment {
   createdAt: string | number;
   updatedAt: string | number;
 }
+
+export interface PracticeQuestion {
+  id: string;
+  questionText: string;
+  options: { id: string; text: string }[];
+  correctOptionId: string;
+  explanation: string;
+}
+
+export interface PracticeResult {
+  id: string; // `${uid}_${moduleId}`
+  uid: string;
+  courseId: string;
+  moduleId: string;
+  attemptsCount: number;
+  lastScore: number; // 0..100
+  missedQuestionIds: string[];
+  updatedAt: string | number;
+}
+
+export interface FlashcardItem {
+  id: string;
+  questionText: string;
+  answerText: string;
+  explanation: string;
+  status?: 'know_it' | 'review_again';
+  lastReviewedAt?: number;
+}
+
 
 

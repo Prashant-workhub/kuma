@@ -53,6 +53,8 @@ import {
   createCatalogCompetencyInFirestore,
   deleteCatalogCompetencyFromFirestore
 } from '../services/adminDataService';
+import { parseAndValidateCsv, MAX_BULK_IMPORT_ROWS, CsvUserRow, CsvParseResult } from '../utils/csvImportUtils';
+import { bulkImportUsers, BulkUserImportResponse } from '../services/adminUserService';
 
 
 
@@ -364,45 +366,59 @@ export default function AdminPortalApp({
 
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvContent, setCsvContent] = useState(
-`fullName,emailAddress,department,designation
-Ananya Rao,ananya.rao@acme.com,Data & Analytics,Data Analyst
-Vikram Patel,vikram.patel@acme.com,Technology,Senior Software Engineer
-Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
+`fullName,emailAddress,department,designation,employeeId
+Ananya Rao,ananya.rao@acme.com,Data & Analytics,Data Analyst,EMP-101
+Vikram Patel,vikram.patel@acme.com,Technology,Senior Software Engineer,EMP-102
+Meera Joshi,meera.j@acme.com,Human Resources,HR Lead,EMP-103`
   );
+  const [isImportingCsv, setIsImportingCsv] = useState(false);
+  const [bulkImportResult, setBulkImportResult] = useState<BulkUserImportResponse | null>(null);
 
-  const handleBulkImportCsv = (e: React.FormEvent) => {
+  const csvParseResult: CsvParseResult = useMemo(() => {
+    const deptNames = departments.map(d => d.name);
+    const desigNames = designations.map(d => d.name);
+    return parseAndValidateCsv(csvContent, deptNames, desigNames);
+  }, [csvContent, departments, designations]);
+
+  const handleBulkImportCsv = async (e: React.FormEvent) => {
     e.preventDefault();
-    const lines = csvContent.trim().split('\n');
-    if (lines.length <= 1) return;
+    if (csvParseResult.validRows.length === 0) return;
+    setIsImportingCsv(true);
+    setBulkImportResult(null);
 
-    let addedCount = 0;
-    const newTrainees = [...traineeList];
-
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      const parts = line.split(',').map(s => s.trim());
-      if (parts.length >= 2) {
-        const [fullName, emailAddress, department, designation] = parts;
-        if (fullName && emailAddress && !newTrainees.some(t => t.emailAddress.toLowerCase() === emailAddress.toLowerCase())) {
-          newTrainees.push({
-            uid: `user-csv-${Date.now()}-${i}`,
-            fullName,
-            emailAddress,
-            department: department || 'General',
-            designation: designation || 'Trainee',
-            competencies: [],
-            enrollments: [],
-            certificates: []
+    try {
+      const res = await bulkImportUsers(csvParseResult.validRows);
+      setBulkImportResult(res);
+      if (res.success) {
+        const createdItems = res.results.filter(r => r.status === 'created');
+        if (createdItems.length > 0) {
+          const newTrainees = [...traineeList];
+          csvParseResult.validRows.forEach((row, i) => {
+            const matchRes = res.results.find(r => r.email.toLowerCase() === row.email.toLowerCase());
+            if (matchRes && matchRes.status === 'created') {
+              newTrainees.push({
+                uid: matchRes.uid || `user-csv-${Date.now()}-${i}`,
+                fullName: row.name,
+                emailAddress: row.email,
+                department: row.department || 'General',
+                designation: row.designation || 'Trainee',
+                competencies: [],
+                enrollments: [],
+                certificates: []
+              });
+            }
           });
-          addedCount++;
+          setTraineeList(newTrainees);
         }
+        setStatusNotice(`Bulk import complete: ${res.createdCount} created, ${res.skippedCount} skipped, ${res.errorCount} failed.`);
+      } else {
+        setStatusNotice(`Bulk import error: ${res.error || 'Failed to import users'}`);
       }
+    } catch (err: any) {
+      setStatusNotice(`Bulk import error: ${err.message || 'Network error'}`);
+    } finally {
+      setIsImportingCsv(false);
     }
-
-    setTraineeList(newTrainees);
-    setShowCsvModal(false);
-    setStatusNotice(`Successfully imported ${addedCount} new trainees into organization directory.`);
   };
 
   // Certificates real lookup
@@ -1278,34 +1294,212 @@ Meera Joshi,meera.j@acme.com,Human Resources,HR Lead`
       {/* BULK CSV TRAINEE IMPORT MODAL */}
       {showCsvModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-mono">
-          <div className="w-full max-w-lg p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4">
-            <h3 className="text-lg font-extrabold text-[var(--text-primary)] uppercase">Bulk Import Trainees (CSV)</h3>
-            <p className="text-xs text-[var(--text-secondary)]">Paste CSV rows formatted as <code className="text-[#FFC400]">fullName, emailAddress, department, designation</code>:</p>
-
-            <form onSubmit={handleBulkImportCsv} className="space-y-3 text-xs">
-              <textarea
-                value={csvContent}
-                onChange={(e) => setCsvContent(e.target.value)}
-                rows={7}
-                className="w-full p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-mono font-bold text-xs outline-none"
-              />
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCsvModal(false)}
-                  className="px-3 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-secondary)] font-bold border border-[var(--border-main)] cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded bg-[#38BDF8] text-[#111111] font-extrabold border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer"
-                >
-                  Import Trainees
-                </button>
+          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 rounded-[12px] bg-[var(--card-bg)] border-2 border-[var(--border-main)] shadow-paper-md space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-3">
+              <div>
+                <h3 className="text-lg font-extrabold text-[var(--text-primary)] uppercase flex items-center gap-2">
+                  <Users className="h-5 w-5 text-[#38BDF8]" />
+                  Bulk Provision Trainee Accounts (CSV)
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Creates Firebase Auth accounts, sets role <code className="text-[#FFC400]">trainee</code>, sets status <code className="text-[#19B56B]">approved</code>, and generates invite links. Max {MAX_BULK_IMPORT_ROWS} rows per request.
+                </p>
               </div>
-            </form>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCsvModal(false);
+                  setBulkImportResult(null);
+                }}
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xl font-bold cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            {bulkImportResult ? (
+              /* PROVISIONING EXECUTION RESULT VIEW */
+              <div className="space-y-4 text-xs">
+                <div className="p-4 rounded bg-[#19B56B]/15 border border-[#19B56B]/40 space-y-1">
+                  <h4 className="font-extrabold uppercase text-[#19B56B] flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Provisioning Complete
+                  </h4>
+                  <p className="text-[var(--text-primary)] font-bold">
+                    Total: {bulkImportResult.total} | Created: {bulkImportResult.createdCount} | Skipped (Existing): {bulkImportResult.skippedCount} | Failed: {bulkImportResult.errorCount}
+                  </p>
+                </div>
+
+                {bulkImportResult.results.length > 0 && (
+                  <div className="space-y-2">
+                    <h5 className="font-extrabold uppercase text-[var(--text-secondary)] text-[10px]">User Account Status & Password Reset Invite Links:</h5>
+                    <div className="max-h-60 overflow-y-auto border border-[var(--border-main)] rounded bg-[var(--input-bg)] p-2 divide-y divide-[var(--border-main)]">
+                      {bulkImportResult.results.map((res, idx) => (
+                        <div key={idx} className="py-2 flex flex-col gap-1">
+                          <div className="flex items-center justify-between font-bold">
+                            <span className="text-[var(--text-primary)]">{res.email}</span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-black ${
+                              res.status === 'created' ? 'bg-[#19B56B]/20 text-[#19B56B]' :
+                              res.status === 'skipped' ? 'bg-amber-500/20 text-amber-500' :
+                              'bg-red-500/20 text-red-500'
+                            }`}>
+                              {res.status}
+                            </span>
+                          </div>
+                          {res.status === 'created' && res.inviteLink && (
+                            <div className="flex items-center gap-2 bg-[var(--panel-bg)] p-1.5 rounded border border-[var(--border-main)] text-[10px] font-mono">
+                              <span className="text-[var(--text-secondary)] shrink-0">Invite Link:</span>
+                              <input
+                                type="text"
+                                readOnly
+                                value={res.inviteLink}
+                                className="w-full bg-transparent text-[#38BDF8] select-all outline-none truncate"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => navigator.clipboard.writeText(res.inviteLink || '')}
+                                className="px-2 py-0.5 bg-[#38BDF8] text-[#111111] font-black rounded hover:bg-[#7dd3fc] cursor-pointer shrink-0"
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          )}
+                          {res.error && (
+                            <p className="text-red-400 text-[10px] font-bold">{res.error}</p>
+                          )}
+                          {res.message && (
+                            <p className="text-amber-400 text-[10px]">{res.message}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCsvModal(false);
+                      setBulkImportResult(null);
+                    }}
+                    className="px-4 py-2 rounded bg-[#38BDF8] text-[#111111] font-black border-2 border-[var(--border-main)] cursor-pointer"
+                  >
+                    Done & Return to User List
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* INPUT & PREVIEW FORM */
+              <form onSubmit={handleBulkImportCsv} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase text-[var(--text-secondary)] mb-1">
+                    Paste CSV Content (Headers auto-detected: fullName, emailAddress, department, designation, employeeId):
+                  </label>
+                  <textarea
+                    value={csvContent}
+                    onChange={(e) => setCsvContent(e.target.value)}
+                    rows={6}
+                    placeholder="fullName,emailAddress,department,designation,employeeId"
+                    className="w-full p-3 rounded-[6px] border-2 border-[var(--border-main)] bg-[var(--input-bg)] text-[var(--text-primary)] font-mono font-bold text-xs outline-none"
+                  />
+                </div>
+
+                {/* Validation Preview Header */}
+                <div className="p-3 rounded bg-[var(--panel-bg)] border border-[var(--border-main)] flex items-center justify-between font-bold text-xs">
+                  <div className="flex items-center gap-3">
+                    <span>Validation Summary:</span>
+                    <span className="text-[var(--text-primary)]">{csvParseResult.totalRows} Rows</span>
+                    <span className="text-[#19B56B]">{csvParseResult.validCount} Valid</span>
+                    <span className="text-amber-500">{csvParseResult.warningCount} Warnings</span>
+                    <span className="text-red-500">{csvParseResult.errorCount} Errors</span>
+                  </div>
+                  {csvParseResult.totalRows > MAX_BULK_IMPORT_ROWS && (
+                    <span className="text-red-400 font-extrabold text-[10px] uppercase">
+                      ⚠️ Exceeds limit ({MAX_BULK_IMPORT_ROWS} max)
+                    </span>
+                  )}
+                </div>
+
+                {/* Validation Preview Table */}
+                {csvParseResult.rows.length > 0 && (
+                  <div className="space-y-1">
+                    <h5 className="font-extrabold uppercase text-[var(--text-secondary)] text-[10px]">Row-Level Validation Preview:</h5>
+                    <div className="max-h-48 overflow-y-auto border border-[var(--border-main)] rounded bg-[var(--input-bg)]">
+                      <table className="w-full text-left text-[11px]">
+                        <thead className="bg-[var(--panel-bg)] text-[var(--text-secondary)] uppercase text-[9px] sticky top-0">
+                          <tr>
+                            <th className="p-2">#</th>
+                            <th className="p-2">Name / Email</th>
+                            <th className="p-2">Dept / Designation</th>
+                            <th className="p-2">Status</th>
+                            <th className="p-2">Validation Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--border-main)] font-mono">
+                          {csvParseResult.rows.map((r) => (
+                            <tr key={r.rowNumber} className="hover:bg-[var(--panel-bg)]">
+                              <td className="p-2 font-bold text-[var(--text-secondary)]">{r.rowNumber}</td>
+                              <td className="p-2 font-bold text-[var(--text-primary)]">
+                                {r.name || '<empty>'} <br />
+                                <span className="text-[10px] text-[#38BDF8]">{r.email || '<empty>'}</span>
+                              </td>
+                              <td className="p-2 text-[var(--text-secondary)]">
+                                {r.department} / {r.designation}
+                              </td>
+                              <td className="p-2">
+                                <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-black ${
+                                  !r.isValid ? 'bg-red-500/20 text-red-500' :
+                                  r.warnings.length > 0 ? 'bg-amber-500/20 text-amber-500' :
+                                  'bg-[#19B56B]/20 text-[#19B56B]'
+                                }`}>
+                                  {!r.isValid ? 'Error' : r.warnings.length > 0 ? 'Warning' : 'Valid'}
+                                </span>
+                              </td>
+                              <td className="p-2 text-[10px]">
+                                {r.errors.map((e, i) => (
+                                  <div key={i} className="text-red-400 font-bold">{e}</div>
+                                ))}
+                                {r.warnings.map((w, i) => (
+                                  <div key={i} className="text-amber-400">{w}</div>
+                                ))}
+                                {r.isValid && r.warnings.length === 0 && (
+                                  <span className="text-[#19B56B]">Ready to import</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-main)]">
+                  <button
+                    type="button"
+                    onClick={() => setShowCsvModal(false)}
+                    className="px-3 py-2 rounded bg-[var(--panel-bg)] text-[var(--text-secondary)] font-bold border border-[var(--border-main)] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isImportingCsv || csvParseResult.validRows.length === 0 || csvParseResult.totalRows > MAX_BULK_IMPORT_ROWS}
+                    className="px-4 py-2 rounded bg-[#38BDF8] text-[#111111] font-extrabold border-2 border-[var(--border-main)] shadow-paper-sm hover:bg-[#7dd3fc] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isImportingCsv ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span>Provisioning Accounts...</span>
+                      </>
+                    ) : (
+                      <span>Provision {csvParseResult.validRows.length} User Accounts</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

@@ -540,9 +540,11 @@ export function subscribeFacultyDoubts(
   teacherId: string,
   onUpdate: (doubts: DoubtItem[]) => void
 ) {
-  const doubtsRef = collection(db, 'doubts');
+  const doubtsRef = query(
+    collection(db, 'doubts'),
+    where('teacherId', '==', teacherId)
+  );
 
-  // Query without orderBy to prevent Firestore index errors
   return onSnapshot(doubtsRef, (snapshot) => {
     const list: DoubtItem[] = [];
 

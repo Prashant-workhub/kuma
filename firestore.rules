@@ -355,6 +355,27 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isApprovedTrainer() && resource.data.trainerId == request.auth.uid);
     }
 
+    match /courses/{courseId} {
+      allow read: if signedIn() && (isAdmin() ||
+        resource.data.ownerTrainerId == request.auth.uid ||
+        resource.data.trainerId == request.auth.uid ||
+        (resource.data.status == 'published' && sameOrganization(resource.data.orgId || resource.data.organization)));
+      allow create: if isApprovedTrainer() &&
+        (request.resource.data.ownerTrainerId == request.auth.uid || request.resource.data.trainerId == request.auth.uid);
+      allow update: if isAdmin() || (isApprovedTrainer() &&
+        (resource.data.ownerTrainerId == request.auth.uid || resource.data.trainerId == request.auth.uid));
+      allow delete: if isAdmin() || (isApprovedTrainer() &&
+        (resource.data.ownerTrainerId == request.auth.uid || resource.data.trainerId == request.auth.uid));
+
+      match /modules/{moduleId} {
+        allow read: if signedIn();
+        allow write: if isAdmin() || (isApprovedTrainer() && (
+          get(/databases/$(database)/documents/courses/$(courseId)).data.ownerTrainerId == request.auth.uid ||
+          get(/databases/$(database)/documents/courses/$(courseId)).data.trainerId == request.auth.uid
+        ));
+      }
+    }
+
     match /trainingEnrollments/{enrollmentId} {
       allow read: if isAdmin() || (signedIn() &&
         (resource.data.userId == request.auth.uid || resource.data.trainerId == request.auth.uid));
@@ -558,6 +579,34 @@ service cloud.firestore {
     match /notifications/{id} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
       allow write: if false; // Server-only via firebase-admin / REST API
+    }
+
+    match /practiceResults/{resultId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == resource.data.uid);
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /doubts/{doubtId} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.traineeUid == request.auth.uid ||
+        resource.data.trainerId == request.auth.uid
+      ));
+      allow create: if signedIn() && (request.resource.data.traineeUid == request.auth.uid || request.resource.data.studentId == request.auth.uid);
+      allow update: if isAdmin() || (signedIn() && (
+        resource.data.trainerId == request.auth.uid ||
+        resource.data.traineeUid == request.auth.uid ||
+        resource.data.studentId == request.auth.uid
+      ));
+      allow delete: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if signedIn() && (isAdmin() || resource.data.trainerId == request.auth.uid || sameOrganization(resource.data.organization));
+      allow create: if isApprovedTrainer() && request.resource.data.trainerId == request.auth.uid &&
+        sameOrganization(request.resource.data.organization);
+      allow update, delete: if isAdmin() || (isApprovedTrainer() && resource.data.trainerId == request.auth.uid);
     }
 
     // Certificates, assessment attempts, organization data, announcements and
